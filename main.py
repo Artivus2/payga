@@ -16,6 +16,28 @@ async def route():
 async def test():
     return "all ok"
 
+
+@app.get("/api/v1/login")
+async def login():
+    base_url = 'https://greenavi.com'
+    api_url = f'{base_url}/api/user/login'
+    headers = {
+        'Content-Type': 'application/json'
+    }
+    email = 'artivus3@yandex.ru'
+    password = 'Adm142!@'
+    payload = {
+        'email': 'artivus3@yandex.ru', #req
+        'password': 'Adm142!@' #req
+    }
+    print(api_url)
+    response = requests.post(api_url, headers=headers, data=json.dumps(payload))
+    if response.status_code != 200:
+        raise HTTPException(status_code=response.status_code, detail=response.json())
+    print(response.json())
+    return response.json()
+
+
 @app.get("/jwt")
 def get_jwt_token(request: models.models.JwtRequest):
     email = 'artivus3@yandex.ru'

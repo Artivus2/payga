@@ -6,6 +6,15 @@ import logging
 import time
 
 
+class Login(BaseModel):
+    email: str
+    password: str
+
+
+class SendCode(BaseModel):
+    code: str
+
+
 class JwtRequest(BaseModel):
     email: str
     password: str
