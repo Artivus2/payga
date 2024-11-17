@@ -12,6 +12,10 @@ app = FastAPI()
 async def route():
     return "root"
 
+@app.get("/api/v1/test")
+async def test():
+    return "all ok"
+
 @app.get("/jwt")
 def get_jwt_token(request: models.models.JwtRequest):
     email = 'artivus3@yandex.ru'
@@ -33,7 +37,7 @@ def get_jwt_token(request: models.models.JwtRequest):
     return api_url
 
 async def main():
-    config = uvicorn.Config("main:app", port=5000, log_level="info", reload=True)
+    config = uvicorn.Config("main:app", port=5001, log_level="info", reload=True)
     server = uvicorn.Server(config)
     await server.serve()
 
