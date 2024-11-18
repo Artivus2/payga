@@ -17,22 +17,6 @@ async def route():
     return "root"
 
 
-@app.get("/api/v1/test")
-async def api1():
-    config = {
-        'user': 'greenavi_user',
-        'password': 'tb7x3Er5PQ',
-        'host': '127.0.0.1',
-        'port': 3306,
-        'database': 'greenavi_app',
-        'raise_on_warnings': True
-    }
-    #cnx = mysql.connector.connect(**config)
-    async with await cpy_async.connect(**config) as cnx:
-        async with await cnx.cursor() as cur:
-            await cur.execute("SELECT @@version")
-            print(await cur.fetchall())
-
 @app.post("/api/v1/user/logout")
 async def logout(request: models.models.Logout):
     """
