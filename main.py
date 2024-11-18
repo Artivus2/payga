@@ -16,7 +16,28 @@ async def route():
 
 @app.get("/api/v1/test")
 async def api1():
-    return "all ok"
+    cnx = models.models.get_db_connection()
+    return cnx
+
+@app.post("/api/v1/logout")
+async def logout(request: models.models.Logout):
+    """
+    Логаут
+    :param request:
+    token
+    :return:
+    """
+    api_url = f'{base_url}/api/user/logout'
+    headers = {
+        'Content-Type': 'application/json'
+    }
+    payload = {
+        'token': request.token,  # req
+    }
+    response = requests.post(api_url, headers=headers, data=json.dumps(payload))
+    if response.status_code != 200:
+        raise HTTPException(status_code=response.status_code, detail=response.json())
+    return response.json()
 
 
 @app.post("/api/v1/login")
@@ -25,7 +46,7 @@ async def login(request: models.models.Login):
     email
     password
     :return:
-    {код}
+    {token}
     """
     api_url = f'{base_url}/api/user/login'
     headers = {
@@ -42,14 +63,13 @@ async def login(request: models.models.Login):
 
 
 @app.post("/api/v1/code")
-async def send_code(request: models.models.Code):
+async def code(request: models.models.Code):
     """
     запрос токена авторизации
     :param request: email, password, code
     :return:
     token
     """
-
     api_url = f'{base_url}/api/user/code'
     headers = {
         'Content-Type': 'application/json'
