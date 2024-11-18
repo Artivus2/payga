@@ -1,9 +1,12 @@
 import asyncio
+import mysql.connector.aio as cpy_async
 import uvicorn
 import models.models
 import requests
 import json
 from fastapi import FastAPI, HTTPException, Depends, Header, Query
+import mysql
+
 
 base_url = 'https://greenavi.com'
 app = FastAPI()
@@ -16,8 +19,19 @@ async def route():
 
 @app.get("/api/v1/test")
 async def api1():
-    cnx = models.models.get_db_connection()
-    return cnx
+    config = {
+        'user': 'greenavi_user',
+        'password': 'tb7x3Er5PQ',
+        'host': '127.0.0.1',
+        'port': '3306',
+        'database': 'greenavi_app',
+        'raise_on_warnings': True
+    }
+    #cnx = mysql.connector.connect(**config)
+    async with await cpy_async.connect(**config) as cnx:
+        async with await cnx.cursor() as cur:
+            await cur.execute("SELECT @@version")
+            print(await cur.fetchall())
 
 @app.post("/api/v1/logout")
 async def logout(request: models.models.Logout):
