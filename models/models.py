@@ -5,13 +5,19 @@ from mysql.connector import errorcode
 import logging
 import time
 
+class Register(BaseModel):
+    login: str
+    password: str
+    telegram: str
 
 class Login(BaseModel):
     email: str
     password: str
 
 
-class SendCode(BaseModel):
+class Code(BaseModel):
+    email: str
+    password: str
     code: str
 
 
@@ -27,7 +33,6 @@ class JwtRequest(BaseModel):
             'database': 'greenavi_app',
             'raise_on_warnings': True
         }
-
         cnx = mysql.connector.connect(**config)
         try:
             cnx = mysql.connector.connect(config)
