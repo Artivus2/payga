@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from routers.orders.router import router as router_orders
 from routers.user.router import router as router_user
+from routers.admin.router import router as router_admin
 
 app = FastAPI()
 
@@ -25,6 +26,7 @@ async def route():
     }
 app.include_router(router_user)
 app.include_router(router_orders)
+app.include_router(router_admin)
 # и еще todo
 
 

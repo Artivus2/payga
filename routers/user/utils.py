@@ -2,7 +2,6 @@
 import json
 import secrets
 import string
-
 import requests
 from fastapi import HTTPException
 

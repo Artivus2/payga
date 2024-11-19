@@ -1,10 +1,5 @@
 from pydantic import BaseModel
 
-
-class Role(BaseModel):
-    pass
-
-
 class User(BaseModel):
     login: str
     email: str

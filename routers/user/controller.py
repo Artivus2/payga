@@ -35,14 +35,4 @@ async def insert_new_user_banned(**payload):
                                                     + ' / ' + str(payload['login']) + " уже существует"}
 
 
-async def send_link_to_user(id, login=None):
-    with cpy.connect(**config.config) as cnx:
-        with cnx.cursor() as cur:
-            string = "SELECT comment from user where id = '" + str(id) + \
-                     "' or login = '" + str(login) + "'"
-            cur.execute(string)
-            data = cur.fetchone()
-            if data:
-                link = config.REG_URL + "/" + data[0]
-                return {"link": link}
-            cur.close()
+

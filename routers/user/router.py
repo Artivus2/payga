@@ -4,7 +4,7 @@ import routers.user.models as user_models
 import requests
 from fastapi import APIRouter, HTTPException
 from routers.user.utils import hash_from_yii2
-from routers.user.controller import insert_new_user_banned, send_link_to_user
+from routers.user.controller import insert_new_user_banned
 
 import config
 
@@ -100,26 +100,11 @@ async def register_request(request: user_models.User):
         'affiliate_invitation_id': request.affiliate_invitation_id,
         'password': hashed_password['password']
     }
-    pattern = '/^([A-Za-z0-9_\-\.])+\@([A-Za-z0-9_\-\.])+\.([A-Za-z]{2,4})$/'
+    pattern = '/^([A-Za-z0-9_\-\.])+\@([A-Za-z0-9_\-\.])+\.([A-Za-z]{2,4})$/' #todo
     if not payload['login'] or not payload['email'] or not payload['telegram'] or not payload['password']:
         #or len(re.findall(pattern, payload['email'])) > 0:
         return {"status": False, "message": "Указаны не все обязательные параметры при отправке заявки на регистрацию!"}
     return await insert_new_user_banned(**payload)
-
-
-@router.post("/confirm-request")
-async def confirm_request(request: user_models.RegisterRequest):
-    """
-    Подтверждение регистрации админом
-    Args: Подтверждение
-        request: Логин
-
-    Returns:
-        Успешно
-
-    """
-    link = await send_link_to_user()
-    # send link todo
 
 
 @router.post("/enable-2fa")
