@@ -1,135 +1,31 @@
 import asyncio
-import mysql.connector.aio as cpy_async
+
 import uvicorn
-import models.models
-import requests
-import json
-from fastapi import FastAPI, HTTPException, Depends, Header, Query
-import mysql
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from routers.orders.router import router as router_orders
+from routers.user.router import router as router_user
 
-
-base_url = 'http://localhost'
 app = FastAPI()
 
 
+# Добавляем middleware для CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Разрешаем все источники
+    allow_credentials=True,
+    allow_methods=["*"],  # Разрешаем все методы
+    allow_headers=["*"],  # Разрешаем все заголовки
+)
+
 @app.get("/")
 async def route():
-    return "root"
-
-
-@app.post("/api/v1/user/logout")
-async def logout(request: models.models.Logout):
-    """
-    Логаут
-    :param request:
-    token
-    :return:
-    """
-    api_url = f'{base_url}/api/user/logout'
-    headers = {
-        'Content-Type': 'application/json'
+    return {
+        "message": "Сайт находится в разработке!"
     }
-    payload = {
-        'token': request.token,  # req
-    }
-    response = requests.post(api_url, headers=headers, data=json.dumps(payload))
-    if response.status_code != 200:
-        raise HTTPException(status_code=response.status_code, detail=response.json())
-    return response.json()
-
-
-@app.post("/api/v1/user/register-request")
-async def register_request(request: models.models.RegisterRequest):
-    """
-    login: Логин,
-    email: емаил,
-    telegram: телеграм
-    affiliate: реф,
-    password: пароль,
-    :param request:
-    :return:
-    {comment возращает ссылку на регистрацию после подтверждения администратора, отправляет на почту пользователю}
-    """
-    hashed_password = await hashFromYii2(request.password)
-    #hashed_password = '1212'
-    payload = {
-        'email': request.email,  # req
-        'login': request.login,  # req
-        'telegram': request.telegram,  # req
-        'affiliate': request.affiliate,  # req
-        'password': hashed_password['password'],  # req
-    }
-    print(payload)
-    models.models.insert_new_user(**payload)
-
-
-
-
-async def hashFromYii2(password):
-    """
-    получить хешкод пароля из yii2
-    :param password:
-    :return:
-    """
-    api_url = f'{base_url}/api/user/get-password'
-    headers = {
-        'Content-Type': 'application/json'
-    }
-    payload = {
-        'password': password  # req
-    }
-    response = requests.post(api_url, headers=headers, data=json.dumps(payload))
-    if response.status_code != 200:
-        raise HTTPException(status_code=response.status_code, detail=response.json())
-    print(response.json())
-    return response.json()
-
-
-@app.post("/api/v1/user/login")
-async def login(request: models.models.Login):
-    """
-    email
-    password
-    :return:
-    {token}
-    """
-    api_url = f'{base_url}/api/user/login'
-    headers = {
-        'Content-Type': 'application/json'
-    }
-    payload = {
-        'email': request.email,  # req
-        'password': request.password  # req
-    }
-    response = requests.post(api_url, headers=headers, data=json.dumps(payload))
-    if response.status_code != 200:
-        raise HTTPException(status_code=response.status_code, detail=response.json())
-    return response.json()
-
-
-@app.post("/api/v1/user/code")
-async def code(request: models.models.Code):
-    """
-    запрос токена авторизации
-    :param request: email, password, code
-    :return:
-    {access_token}
-    """
-    api_url = f'{base_url}/api/user/code'
-    headers = {
-        'Content-Type': 'application/json'
-    }
-    payload = {
-        'email': request.email,  # req
-        'password': request.password,  # req
-        'code': request.code  # req
-    }
-    print(payload)
-    response = requests.post(api_url, headers=headers, data=json.dumps(payload))
-    if response.status_code != 200:
-        raise HTTPException(status_code=response.status_code, detail=response.json())
-    print(response.json())
-    return response.json()
+app.include_router(router_user)
+app.include_router(router_orders)
+# и еще todo
 
 
 async def main():
