@@ -1,11 +1,14 @@
 import asyncio
-
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from routers.orders.router import router as router_orders
 from routers.user.router import router as router_user
 from routers.admin.router import router as router_admin
+from routers.actives.router import router as router_actives
+from routers.mains.router import router as router_mains
+from routers.roles.router import router as router_roles
+from routers.stats.router import router as router_stats
 
 app = FastAPI()
 
@@ -27,6 +30,10 @@ async def route():
 app.include_router(router_user)
 app.include_router(router_orders)
 app.include_router(router_admin)
+app.include_router(router_actives)
+app.include_router(router_mains)
+app.include_router(router_roles)
+app.include_router(router_stats)
 # и еще todo
 
 

@@ -11,7 +11,7 @@ async def send_email_yii2(login, email):
     """
     api_url = f'{config.BASE_URL}/api/user/send-email'
     headers = {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
     }
     payload = {
         'login': login,

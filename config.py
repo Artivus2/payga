@@ -1,5 +1,6 @@
 BASE_URL = 'http://localhost:8080'
 REG_URL = 'https://test.greenavi.com'
+API_KEY_EXPIRATION_PERIOD = '1 year'
 config = {
             'user': 'greenavi_user',
             'password': 'tb7x3Er5PQ',

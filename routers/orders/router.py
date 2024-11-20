@@ -1,6 +1,9 @@
 
 from fastapi import APIRouter, Response
 from routers.orders.utils import generate_uuid
+import json
+import routers.orders.models as orders_models
+import requests
 
 
 
@@ -8,7 +11,7 @@ from routers.orders.utils import generate_uuid
 router = APIRouter(prefix='/api/v1/orders', tags=['Orders'])
 
 
-@router.get("/create-order")
+@router.post("/create-order")
 async def create_order():
     """
 
@@ -18,7 +21,7 @@ async def create_order():
     #print(uuids)
     return uuids
 
-@router.post("/read-order")
+@router.get("/read-order")
 async def read_order():
     """
 

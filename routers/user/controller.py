@@ -36,3 +36,37 @@ async def insert_new_user_banned(**payload):
 
 
 
+async def insert_generated_api_key(user_id):
+
+    with cpy.connect(**config.config) as cnx:
+        with cnx.cursor() as cur:
+            api_key = await create_random_key(45)
+            string = "SELECT * from user where app_id = 3 and id = " + str(user_id)
+            cur.execute(string)
+            data = cur.fetchone()
+            if data:
+                data_str = "INSERT INTO pay_api_keys (user_id, api_key, api_key_begin_date, api_key_expired_date, " \
+                           "status) " \
+                "VALUES ('" + str(user_id) + "','" + str(api_key) + "', NOW(),NOW() + interval " + str(config.API_KEY_EXPIRATION_PERIOD)+", 1)"
+                print(data_str)
+                cur.execute(data_str)
+                cnx.commit()
+                cnx.close()
+                return {"Success": True, "api_key": api_key}
+            else:
+                return {"Success": False, "api_key": 'не создан'}
+
+async def get_token_by_user_id(token):
+    with cpy.connect(**config.config) as cnx:
+        with cnx.cursor() as cur:
+            string = "SELECT token, expired_at from auth_tokens where expired_at > UNIX_TIMESTAMP() - 86400 and token = " \
+                     "'" + str(token) + "'"
+            print(string)
+            cur.execute(string)
+            data = cur.fetchone()
+
+            print(data)
+            if data:
+                return {"Status": True, "token":data[0]}
+            else:
+                return {"Status": False, "token": "Токен не найден или просрочен"}

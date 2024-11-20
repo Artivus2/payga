@@ -1,14 +1,25 @@
-import json
 import re
+import json
 import routers.user.models as user_models
 import requests
 from fastapi import APIRouter, HTTPException
 from routers.user.utils import hash_from_yii2
-from routers.user.controller import insert_new_user_banned
+from routers.user.controller import insert_new_user_banned, insert_generated_api_key, get_token_by_user_id
 
 import config
 
 router = APIRouter(prefix='/api/v1/user', tags=['User'])
+
+
+@router.get("/get-jwt-token/{token}")
+async def get_jwt_token(token: str):
+    """
+    Запрос токена
+    :param request:
+    :return:
+    token
+    """
+    return await get_token_by_user_id(token)
 
 
 @router.post("/login")
@@ -21,7 +32,8 @@ async def login(request: user_models.Login):
     """
     api_url = f'{config.BASE_URL}/api/user/login'
     headers = {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+
     }
     payload = {
         'email': request.email,  # req
@@ -51,7 +63,6 @@ async def code(request: user_models.Code):
         'password': request.password,  # req
         'code': request.code  # req
     }
-    print(payload)
     response = requests.post(api_url, headers=headers, data=json.dumps(payload))
     if response.status_code != 200:
         raise HTTPException(status_code=response.status_code, detail=response.json())
@@ -106,17 +117,82 @@ async def register_request(request: user_models.User):
         return {"status": False, "message": "Указаны не все обязательные параметры при отправке заявки на регистрацию!"}
     return await insert_new_user_banned(**payload)
 
+@router.post("/two-factor-new")
+async def two_factor_new(request: user_models.Twofa):
+    """
+    token: str
+    user_id: int
+    :param request:
+    :return:
+    """
+    api_url = f'{config.BASE_URL}/api/user/two-factor-new'
+    headers = {
+        'Content-Type': 'application/json',
+        'Authorization': request.token # везде
+    }
+    payload = {
+        'user_id': request.user_id,
+    }
+    response = requests.post(api_url, headers=headers, data=json.dumps(payload))
+    if response.status_code != 200:
+        raise HTTPException(status_code=response.status_code, detail=response.json())
+    return response.json()
 
-@router.post("/enable-2fa")
-async def enable_2fa(request: user_models.Twofa):
-    pass
+
+@router.post("/two-factor")
+async def two_factor(request: user_models.Twofa):
+    """
+    token: str
+    user_id: int
+    :param request:
+    :return:
+    """
+    api_url = f'{config.BASE_URL}/api/user/two-factor'
+    headers = {
+        'Content-Type': 'application/json',
+        'Authorization': request.token
+    }
+    payload = {
+        'user_id': request.user_id,
+        'secret': request.secret
+    }
+    response = requests.post(api_url, headers=headers, data=json.dumps(payload))
+    if response.status_code != 200:
+        raise HTTPException(status_code=response.status_code, detail=response.json())
+    return response.json()
 
 
-@router.post("/disable-2fa")
+@router.post("/two-factor-disable")
 async def disable_2fa(request: user_models.Twofa):
-    pass
+    """
+    token: str
+    user_id: int
+    :param request:
+    :return:
+    """
+    api_url = f'{config.BASE_URL}/api/user/two-factor-disable'
+    headers = {
+        'Content-Type': 'application/json',
+        'Authorization': request.token,
+    }
+    payload = {
+        'user_id': request.user_id,
+        'secret': request.secret
+    }
+    response = requests.post(api_url, headers=headers, data=json.dumps(payload))
+    if response.status_code != 200:
+        raise HTTPException(status_code=response.status_code, detail=response.json())
+    return response.json()
 
 
 @router.post("/change-password")
 async def change_password(request: user_models.User):
+    pass
+
+@router.post("/generate-user-apikey")
+async def generate_user_apikey(request: user_models.ApiKey):
+    return await insert_generated_api_key(request.user_id)
+
+@router.post("/remove-user-apikey")
+async def remove_user_apikey(request: user_models.User):
     pass

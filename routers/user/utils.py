@@ -1,10 +1,8 @@
-
 import json
 import secrets
 import string
 import requests
 from fastapi import HTTPException
-
 import config
 
 
@@ -28,5 +26,5 @@ async def hash_from_yii2(password):
 
 
 async def create_random_key(length: int = 8) -> str:
-    chars = string.ascii_uppercase + string.digits
+    chars = string.ascii_uppercase + string.digits + string.ascii_lowercase
     return "".join(secrets.choice(chars) for _ in range(length))
