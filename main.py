@@ -10,6 +10,7 @@ from routers.mains.router import router as router_mains
 from routers.roles.router import router as router_roles
 from routers.stats.router import router as router_stats
 
+
 app = FastAPI()
 
 
@@ -27,6 +28,19 @@ async def route():
     return {
         "message": "Сайт находится в разработке!"
     }
+
+# @app.get("/register/{referral_code}")
+# async def register_with_referral_code(referral_code: str | None):
+#     """
+#     регистрация по реферальной ссылке
+#     http://test.greenavi.com/24g23g24g2
+#     :param referral_code:
+#     :return:
+#     """
+#     print(referral_code)
+#     return referral_code
+
+
 app.include_router(router_user)
 app.include_router(router_orders)
 app.include_router(router_admin)
@@ -38,7 +52,7 @@ app.include_router(router_stats)
 
 
 async def main():
-    config = uvicorn.Config("main:app", port=5001, log_level="info", reload=True)
+    config = uvicorn.Config("main:app", port=8000, log_level="info", reload=True)
     server = uvicorn.Server(config)
     await server.serve()
 

@@ -1,5 +1,5 @@
 
-from fastapi import APIRouter, Response
+from fastapi import APIRouter, Response, Depends, UploadFile, File
 from routers.orders.utils import generate_uuid
 import json
 import routers.orders.models as orders_models
@@ -46,3 +46,8 @@ async def delete_order(response: Response):
 
     pass
 
+@router.post("/order-docs-load")
+def store(data: orders_models.Docs = Depends(), image: UploadFile = File(...)):
+    data_received = data.dict()
+
+    return {"message": data_received['id'], "image_filename": image.filename}

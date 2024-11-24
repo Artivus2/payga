@@ -8,3 +8,7 @@ config = {
             'database': 'greenavi_app',
             'raise_on_warnings': True
         }
+SECRET_KEY ="_5x99maBZNQ6du_A4l6Hx2WPAW8-EAp6"
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRES_MINUTES = 30
+REFRESH_TOKEN_EXPIRES_MINUTES = 15 * 24 * 60  # 15 days

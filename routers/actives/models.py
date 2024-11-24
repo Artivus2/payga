@@ -2,15 +2,19 @@ from pydantic import BaseModel
 
 
 class Pay(BaseModel):
+    __table_name__ = "pay_pay"
     """
-    Payin, Payout
+    +
+    Payin (1), Payout (2)
     """
     id: int
     title: str
 
 
 class PayStatus(BaseModel):
+    __table_name__ = "pay_pay_status"
     """
+    +
     Действующий (1), не действующий (0)
     """
     id: int
@@ -18,26 +22,33 @@ class PayStatus(BaseModel):
 
 
 class PayPercent(BaseModel):
+    __table_name__ = "pay_pay_percent"
     """
+    +
     pay_id in Pay
+    pay_status_id in status_id
     """
-    id: int
-    user_id: int
-    pay_id: int
-    percent: float
-    date: int
-    pay_status_id: int
+    id: int | None
+    user_id: int | None
+    pay_id: int | None
+    value: float | None
+    date: str | None
+    pay_status_id: int | None
 
 
-class BalanceStatus(BaseModel):
+class BaldepStatus(BaseModel):
+    __table_name__ = "pay_balance_status"
     """
-    title: 0 - доступно, 1 - заморожено
+    +
+    title: 1 - доступно, 2 - заморожено
     """
     id: int
     title: str
 
-class BalanceTypes(BaseModel):
+class BaldepTypes(BaseModel):
+    __table_name__ = "pay_balance_types"
     """
+    +
     title: 0 - активные, 1 - архивные
     """
     id: int
@@ -45,54 +56,67 @@ class BalanceTypes(BaseModel):
 
 
 class Balance(BaseModel):
+    __table_name__ = "pay_balance"
     """
-    balance_types: 0 - активные, 1 - архивные
-    balance_status: 0 - доступно, 1 - заморожено
+    +
+    balance_status: 1 - доступно, 0 - заморожено
+    balance_types: 1 - активные, 0 - архивные
     """
     id: int
     user_id: int
     value: float
     mains_chart_id: int
-    balance_status_id: int
-    balance_types_id: int
+    baldep_status_id: int
+    baldep_types_id: int
 
 
 class BalanceHistory(BaseModel):
+    __table_name__ = "pay_balance_history"
     """
-    description - Основание
+    +
+        description - Основание
     """
+
     id: int
     user_id: int
     balance_id: int
     chart: str
-    date: int
+    date: str
     value: float
-    balance_status_id: int
-    balance_types_id: int
+    baldep_status_id: int
+    baldep_types_id: int
     description: str
 
 
 class Deposit(BaseModel):
+    __table_name__ = "pay_deposit"
     """
+    +
     types: 0 - активные, 1 - архивные
-    status: 0 - доступно, 1 - заморожено
+    status_id: 0 - доступно, 1 - заморожено
     """
     id: int
-    value: float
     user_id: int
-    status: int
-    types: int
+    value: float
+    baldep_status_id: int
+    baldep_types_id: int
+    description: str
 
 
 class WalletStatus(BaseModel):
+    __table_name__ = "pay_wallet_status"
     """
-    Активный / не активный
+    +
+    Активный (1) / не активный (2)
     """
     id: int
     title: str
 
+
 class Wallet(BaseModel):
+    __table_name__ = "pay_wallet"
     """
+    +
     крипто кошелек
     """
     id: int
@@ -100,19 +124,23 @@ class Wallet(BaseModel):
     network: str
     address: str
     wallet_status: int
-    date: int
+    date: str
 
 
 class TransferStatus(BaseModel):
+    __table_name__ = "pay_transfer_status"
     """
-    status: исполнен, отменен
+    +
+    status: исполнен (1), отменен (2), в ожидании (3)
     """
     id: int
     title: str
 
 
-class Transfer(BaseModel):
+class TransferHistory(BaseModel):
+    __table_name__ = "pay_transfer_history"
     """
+    +
     status: 0 - активные, 1 - архивные
     """
     id: int
@@ -120,13 +148,18 @@ class Transfer(BaseModel):
     user_id_out: int
     value: float
     status: int
+    date: str
 
 
-class Exchange(BaseModel):
+class ExchangeHistory(BaseModel):
+    __table_name__ = "pay_exchange_history"
+    """
+    +
+    """
     id: int
     chart_in_id: int
     chart_out_id: int
-    date: int
     value: float
     course: float # from todo
+    date: str
 

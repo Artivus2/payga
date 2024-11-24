@@ -4,6 +4,7 @@ from pydantic import BaseModel
 
 
 class Automation(BaseModel):
+    __table_name__ = "pay_automation"
     """
     status = automation_status_id
     """
@@ -17,14 +18,16 @@ class Automation(BaseModel):
 
 
 class TypesAutomate(BaseModel):
+    __table_name__ = "pay_automation_type"
     """
-    types_automate_id - способ автоматизации, Ручной (0), Автоматический (1)
+    types_automate_id - способ автоматизации, Ручной (1), Автоматический (2)
     """
     id: int
     title: str
 
 
 class AutomationHistory(BaseModel):
+    __table_name__ = "pay_automation_history"
     """
     status = automation_status_id
     text: текст сообщения
@@ -41,14 +44,16 @@ class AutomationHistory(BaseModel):
 
 
 class AutomationStatus(BaseModel):
+    __table_name__ = "pay_automation_status"
     """
-    status automate_status_id Активные, Успешные, Ошибка, Ошибка шаблона
+    status automate_status_id Активные (1), Успешные (2), Ошибка (2), Ошибка шаблона (3)
     """
     id: int
     title: str
 
 
 class Bank(BaseModel):
+    __table_name__ = "banks"
     """
     from yii2
     """
@@ -58,6 +63,7 @@ class Bank(BaseModel):
 
 
 class Chart(BaseModel):
+    __table_name__ = "chart"
     """
     from yii2
     """
@@ -66,6 +72,7 @@ class Chart(BaseModel):
 
 
 class StatusReqs(BaseModel):
+    __table_name__ = "pay_reqs_status"
     """
     status_reqs_id: Реквизит Активен (1) / не активен (0)
     """
@@ -74,6 +81,7 @@ class StatusReqs(BaseModel):
 
 
 class ReqsTypes(BaseModel):
+    __table_name__ = "pay_reqs_types"
     """
     reqs.types - СБП / перевод с карты на карту / перевод по номеру счета...
     """
@@ -82,6 +90,7 @@ class ReqsTypes(BaseModel):
 
 
 class Reqs(BaseModel):
+    __table_name__ = "pay_reqs"
     """
     value - номер карты / счета
     reqs_types - Способ оплаты (СБП / перевод с карты на карту / перевод по номеру счета...)
@@ -116,7 +125,8 @@ class Reqs(BaseModel):
     status_reqs_id: int
 
 
-class ReqGroup(BaseModel):
+class ReqGroups(BaseModel):
+    __table_name__ = "pay_reqs_groups"
     """
     types_automate_id: способ автоматизации Автоматический / ручной
     turn_off: автоматическое выключение реквизитов без доступа к автоматике
@@ -124,7 +134,7 @@ class ReqGroup(BaseModel):
     id: int
     reqs_id: int
     pay_id: int
-    date: int
+    date: str
     title: str
     api_key_id: int
     types_automate_id: int
@@ -132,30 +142,42 @@ class ReqGroup(BaseModel):
 
 
 class Telegram(BaseModel):
+    __table_name__ = "pay_telegram"
     """
     модуль для телеграма
     """
     id: int
     chat_id: str
     admin_id: str
-    date: int
+    date: str
 
 
 class RefsTypes(BaseModel):
+    __table_name__ = "pay_refs_types"
     """
     Трейдеры, Магазины
     """
     id: int
     title: str
 
+
 class Refs(BaseModel):
+    __table_name__ = "pay_refs"
     """
     pay_referals from user
     level 0 по умолчанию 1 линия
     """
     id: int
     user_id: int
-    ref_token: str
     referal_id: int
     level: int
 
+
+class RefsLevel(BaseModel):
+    __table_name__ = "pay_refs_level"
+    """
+    уровни рефералов %
+    """
+    id: int
+    title: str
+    value: float

@@ -2,33 +2,46 @@ import json
 import routers.actives.models as actives_models
 import requests
 from fastapi import APIRouter, HTTPException
+import config
+from routers.actives.controller import (
+    crud_balance_percent,
+    crud_balance,
+    crud_deposit
+)
 
 router = APIRouter(prefix='/api/v1/actives', tags=['Actives'])
 
 
 ### percent ###
 @router.post("/create-balance-percent")
-async def create_balance_percent(request: actives_models.PayPercent):
+async def create_balance_percent(request: dict):
     """
     Создать процент payin или payout
     :param request:
     :return:
     {
-    id: int
     user_id: int
     pay_id: int
-    percent: float
+    value: float
     date: int
     pay_status_id: int
     }
     """
-    pass
+    response = await crud_balance_percent('create', request)
+    print(response)
+    if not response['Success']:
+        raise HTTPException(
+            status_code=400,
+            detail=response
+        )
+    return response
 
 
 @router.get("/get-balance-percent")
 async def get_balance_percent(request: actives_models.PayPercent):
     """
     Получить процент payin или payout
+    :param user_id:
     :param request:
     :return:
     {
@@ -40,10 +53,19 @@ async def get_balance_percent(request: actives_models.PayPercent):
     pay_status_id: int
     }
     """
-    pass
+    print(request)
+
+    response = await crud_balance_percent('get', request)
+    print(response)
+    if not response['Success']:
+        raise HTTPException(
+            status_code=400,
+            detail=response
+        )
+    return response
 
 
-@router.post("/set-balance-percent")
+@router.put("/set-balance-percent")
 async def set_balance_percent(request: actives_models.PayPercent):
     """
     установить процент payin или payout
@@ -58,10 +80,16 @@ async def set_balance_percent(request: actives_models.PayPercent):
     pay_status_id: int
     }
     """
-    pass
+    response = await crud_balance_percent('set', request)
+    if not response['Success']:
+        raise HTTPException(
+            status_code=400,
+            detail=response
+        )
+    return response
 
 
-@router.post("/remove-balance-percent")
+@router.delete("/remove-balance-percent")
 async def remove_balance_percent(request: actives_models.PayPercent):
     """
     Удалить процент payin или payout
@@ -76,7 +104,13 @@ async def remove_balance_percent(request: actives_models.PayPercent):
     pay_status_id: int
     }
     """
-    pass
+    response = await crud_balance_percent('remove', request)
+    if not response['Success']:
+        raise HTTPException(
+            status_code=400,
+            detail=response
+        )
+    return response
 
 
 ### balance ###
@@ -95,10 +129,16 @@ async def create_balance(request: actives_models.Balance):
     balance_types_id: int
     }
     """
-    pass
+    response = await crud_balance('create', request)
+    if not response['Success']:
+        raise HTTPException(
+            status_code=400,
+            detail=response.json()
+        )
+    return response.json()
 
 
-@router.get("/get-balance")
+@router.post("/get-balance")
 async def get_balance(request: actives_models.Balance):
     """
     Получить баланс
@@ -113,10 +153,16 @@ async def get_balance(request: actives_models.Balance):
     balance_types_id: int
     }
     """
-    pass
+    response = await crud_balance('get', request)
+    if not response['Success']:
+        raise HTTPException(
+            status_code=400,
+            detail=response.json()
+        )
+    return response.json()
 
 
-@router.post("/set-balance")
+@router.put("/set-balance")
 async def set_balance(request: actives_models.Balance):
     """
     Update баланс
@@ -131,10 +177,16 @@ async def set_balance(request: actives_models.Balance):
     balance_types_id: int
     }
     """
-    pass
+    response = await crud_balance('set', request)
+    if not response['Success']:
+        raise HTTPException(
+            status_code=400,
+            detail=response.json()
+        )
+    return response.json()
 
 
-@router.post("/remove-balance")
+@router.delete("/remove-balance")
 async def remove_balance(request: actives_models.Balance):
     """
     удалить баланс
@@ -149,8 +201,101 @@ async def remove_balance(request: actives_models.Balance):
     balance_types_id: int
     }
     """
-    pass
+    response = await crud_balance('remove', request)
+    if not response['Success']:
+        raise HTTPException(
+            status_code=400,
+            detail=response.json()
+        )
+    return response.json()
 
+#deposit
+@router.post("/create-deposit")
+async def create_deposit(request: actives_models.Deposit):
+    """
+    :param request:
+    :return:
+    {
+    id: int
+    value: float
+    user_id: int
+    status: int
+    types: int
+    }
+    """
+    response = await crud_deposit('create', request)
+    if not response['Success']:
+        raise HTTPException(
+            status_code=400,
+            detail=response.json()
+        )
+    return response.json()
+
+
+@router.post("/get-deposit")
+async def get_deposit(request: actives_models.Deposit):
+    """
+    :param request:
+    :return:
+    {
+    id: int
+    value: float
+    user_id: int
+    status: int
+    types: int
+    }
+    """
+    response = await crud_deposit('get', request)
+    if not response['Success']:
+        raise HTTPException(
+            status_code=400,
+            detail=response.json()
+        )
+    return response.json()
+
+
+@router.put("/set-deposit")
+async def set_deposit(request: actives_models.Deposit):
+    """
+    :param request:
+    :return:
+    {
+    id: int
+    value: float
+    user_id: int
+    status: int
+    types: int
+    }
+    """
+    response = await crud_deposit('set', request)
+    if not response['Success']:
+        raise HTTPException(
+            status_code=400,
+            detail=response.json()
+        )
+    return response.json()
+
+
+@router.delete("/remove-deposit")
+async def remove_deposit(request: actives_models.Deposit):
+    """
+    :param request:
+    :return:
+    {
+    id: int
+    value: float
+    user_id: int
+    status: int
+    types: int
+    }
+    """
+    response = await crud_deposit('remove', request)
+    if not response['Success']:
+        raise HTTPException(
+            status_code=400,
+            detail=response.json()
+        )
+    return response.json()
 
 # wallet
 @router.post("/create-wallet")
@@ -183,7 +328,7 @@ async def get_wallet(request: actives_models.Wallet):
     pass
 
 
-@router.post("/set-wallet")
+@router.put("/set-wallet")
 async def set_wallet(request: actives_models.Wallet):
     """
     :param request:
@@ -198,7 +343,7 @@ async def set_wallet(request: actives_models.Wallet):
     pass
 
 
-@router.post("/remove-wallet")
+@router.delete("/remove-wallet")
 async def remove_wallet(request: actives_models.Wallet):
     """
     :param request:
@@ -234,7 +379,7 @@ async def get_balance_history(request: actives_models.BalanceHistory):
     pass
 
 
-@router.post("/set-balance-history")
+@router.put("/set-balance-history")
 async def set_balance_history(request: actives_models.BalanceHistory):
     """
     :param request:
@@ -254,7 +399,7 @@ async def set_balance_history(request: actives_models.BalanceHistory):
     pass
 
 
-@router.post("/remove-balance-history")
+@router.delete("/remove-balance-history")
 async def remove_balance_history(request: actives_models.BalanceHistory):
     """
     :param request:
@@ -274,72 +419,8 @@ async def remove_balance_history(request: actives_models.BalanceHistory):
     pass
 
 
-@router.post("/create-deposit")
-async def create_deposit(request: actives_models.Deposit):
-    """
-    :param request:
-    :return:
-    {
-    id: int
-    value: float
-    user_id: int
-    status: int
-    types: int
-    }
-    """
-    pass
-
-
-@router.get("/get-deposit")
-async def get_deposit(request: actives_models.Deposit):
-    """
-    :param request:
-    :return:
-    {
-    id: int
-    value: float
-    user_id: int
-    status: int
-    types: int
-    }
-    """
-    pass
-
-
-@router.post("/set-deposit")
-async def set_deposit(request: actives_models.Deposit):
-    """
-    :param request:
-    :return:
-    {
-    id: int
-    value: float
-    user_id: int
-    status: int
-    types: int
-    }
-    """
-    pass
-
-
-@router.post("/remove-deposit")
-async def remove_deposit(request: actives_models.Deposit):
-    """
-    :param request:
-    :return:
-    {
-    id: int
-    value: float
-    user_id: int
-    status: int
-    types: int
-    }
-    """
-    pass
-
-
 @router.post("/create-transfer")
-async def create_transfer(request: actives_models.Transfer):
+async def create_transfer(request: actives_models.TransferHistory):
     """
     :param request:
     :return:
@@ -355,7 +436,7 @@ async def create_transfer(request: actives_models.Transfer):
 
 
 @router.get("/get-transfer")
-async def get_transfer(request: actives_models.Transfer):
+async def get_transfer(request: actives_models.TransferHistory):
     """
     :param request:
     :return:
@@ -370,8 +451,8 @@ async def get_transfer(request: actives_models.Transfer):
     pass
 
 
-@router.post("/set-transfer")
-async def set_transfer(request: actives_models.Transfer):
+@router.put("/set-transfer")
+async def set_transfer(request: actives_models.TransferHistory):
     """
     :param request:
     :return:
@@ -386,8 +467,8 @@ async def set_transfer(request: actives_models.Transfer):
     pass
 
 
-@router.post("/remove-transfer")
-async def remove_transfer(request: actives_models.Transfer):
+@router.delete("/remove-transfer")
+async def remove_transfer(request: actives_models.TransferHistory):
     """
     :param request:
     :return:
@@ -403,7 +484,7 @@ async def remove_transfer(request: actives_models.Transfer):
 
 
 @router.post("/create-exchange")
-async def create_exchange(request: actives_models.Exchange):
+async def create_exchange(request: actives_models.ExchangeHistory):
     """
     :param request:
     :return:
@@ -420,7 +501,7 @@ async def create_exchange(request: actives_models.Exchange):
 
 
 @router.get("/get-exchange")
-async def get_exchange(request: actives_models.Exchange):
+async def get_exchange(request: actives_models.ExchangeHistory):
     """
     :param request:
     :return:
@@ -436,8 +517,8 @@ async def get_exchange(request: actives_models.Exchange):
     pass
 
 
-@router.post("/set-exchange")
-async def set_exchange(request: actives_models.Exchange):
+@router.put("/set-exchange")
+async def set_exchange(request: actives_models.ExchangeHistory):
     """
     :param request:
     :return:
@@ -453,8 +534,8 @@ async def set_exchange(request: actives_models.Exchange):
     pass
 
 
-@router.post("/remove-exchange")
-async def remove_exchange(request: actives_models.Exchange):
+@router.delete("/remove-exchange")
+async def remove_exchange(request: actives_models.ExchangeHistory):
     """
     :param request:
     :return:
