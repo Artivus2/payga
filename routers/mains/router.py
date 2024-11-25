@@ -20,6 +20,7 @@ async def get_bank_by_id(id: str):
     :return:
     token
     """
+
     response = await get_bank(id)
     if not response['Success']:
         raise HTTPException(

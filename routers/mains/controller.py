@@ -10,7 +10,7 @@ async def get_bank(id):
     """
     with cpy.connect(**config.config) as cnx:
         with cnx.cursor(dictionary=True) as cur:
-            data = "SELECT id, bank from bank where id = " + str(id)
+            data = "SELECT id, title from banks where id = " + str(id)
             cur.execute(data)
             data = cur.fetchone()
             if data:
