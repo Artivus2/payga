@@ -71,7 +71,7 @@ class Chart(BaseModel):
     title: str
 
 
-class StatusReqs(BaseModel):
+class ReqsStatus(BaseModel):
     __table_name__ = "pay_reqs_status"
     """
     status_reqs_id: Реквизит Активен (1) / не активен (0)
@@ -89,13 +89,22 @@ class ReqsTypes(BaseModel):
     title: str
 
 
+class AutomationTurnOff(BaseModel):
+    __table_name__ = "pay_automation_turn_off"
+    """
+    автоматическое выключение реквизитов без доступа к автоматике (1 - включено, 0 - выключено)
+    """
+    id: int
+    title: str
+
+
 class Reqs(BaseModel):
     __table_name__ = "pay_reqs"
     """
     value - номер карты / счета
     reqs_types - Способ оплаты (СБП / перевод с карты на карту / перевод по номеру счета...)
     bank_id - банк
-    chart - валюта
+    currency_id - валюта
     phone - телефон
     pay_id: Payin - 0, Payout - 1
     req_group_id - ид группы реквизитов
@@ -105,24 +114,26 @@ class Reqs(BaseModel):
     sequence - частота успешных ордеров
     status_reqs_id - Активен (1) / не активен (0)
     """
-    uuid: str
-    user_id: int
-    req_group_id: int
-    sequence: int
-    pay_id: int
-    value: str
-    reqs_types_id: int
-    bank_id: int
-    chart_id: int
-    phone: str
-    date: int
-    qty_limit_hour: int
-    qty_limit_day: int
-    qty_limit_month: int
-    sum_limit_hour: float
-    sum_limit_day: float
-    sum_limit_month: float
-    status_reqs_id: int
+    uuid: str | None = None
+    user_id: int | None = None
+    req_group_id: int | None = None
+    sequence: int | None = None
+    pay_pay_id: int | None = None
+    value: str | None = None
+    currency_id: int | None = None
+    reqs_types_id: int | None = None
+    reqs_status_id: int | None = None
+    bank_id: int | None = None
+    chart_id: int | None = None
+    phone: str | None = None
+    date: int | None = None
+    qty_limit_hour: int | None = None
+    qty_limit_day: int | None = None
+    qty_limit_month: int | None = None
+    sum_limit_hour: float | None = None
+    sum_limit_day: float | None = None
+    sum_limit_month: float | None = None
+
 
 
 class ReqGroups(BaseModel):
@@ -131,14 +142,13 @@ class ReqGroups(BaseModel):
     types_automate_id: способ автоматизации Автоматический / ручной
     turn_off: автоматическое выключение реквизитов без доступа к автоматике
     """
-    id: int
-    reqs_id: int
-    pay_id: int
-    date: str
-    title: str
-    api_key_id: int
-    types_automate_id: int
-    turn_off: int
+    id: int | None = None
+    uuid: str | None = None
+    reqs_id: int | None = None
+    date: str | None = None
+    title: str | None = None
+    automation_type_id: int | None = None
+    turn_off: int | None = None
 
 
 class Telegram(BaseModel):

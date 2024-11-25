@@ -4,22 +4,23 @@ from pydantic import BaseModel
 class Orders(BaseModel):
     __table_name__ = "pay_orders"
     """
-    req_type = reqs.id
     status: pay_notify_order_types
     pay: Payin (0), Payout (1)
     """
-    id: int
-    uuid: str
-    course: float
-    sum_fiat: float
-    pay_id: int
-    percent: float
-    cashback: float
-    date: str
-    date_expiry: str
-    req_id: int
-    pay_notify_order_types_id: int
-    docs_id: int
+    id: int | None = None
+    user_id: int | None = None
+    course: float | None = None
+    chart_id: int | None = None
+    sum_fiat: float | None = None
+    pay_id: int | None = None
+    value: float | None = None
+    cashback: float | None = None
+    date: str | None = None
+    date_expiry: str | None = None
+    req_id: int | None = None
+    pay_notify_order_types_id: int | list | None = None
+    docs_id: int | list | None = None
+
 
 
 class CashbackStatus(BaseModel):
@@ -52,7 +53,7 @@ class Docs(BaseModel):
     """
     Квитанции (image)
     """
-    id: int
+    #id: int
     order_id: int
     url: str
 

@@ -2,16 +2,12 @@ import json
 import secrets
 import string
 import requests
-from fastapi import HTTPException
-import config
 from passlib.context import CryptContext
 import uuid
 import sys
 from datetime import timedelta, datetime, timezone
-
 from jose import jwt, JWTError
 from fastapi import Response
-from sqlalchemy.ext.asyncio import AsyncSession
 import routers.user.models as user_models
 import config
 #from models import User, TokenPair, JwtTokenSchema

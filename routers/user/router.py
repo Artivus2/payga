@@ -8,10 +8,10 @@ from fastapi import APIRouter, HTTPException, Cookie
 from routers.user.utils import (
     hash_from_yii2,
     BadRequestException,
-    refresh_token_state,
-    _create_access_token,
-    _create_refresh_token,
-    create_token_pair
+    # refresh_token_state,
+    # _create_access_token,
+    # _create_refresh_token,
+    # create_token_pair
 )
 from routers.user.controller import (
     get_token_by_token,
@@ -56,7 +56,7 @@ async def get_profile(user_id: str):
     return response
 
 
-@router.get("/get-jwt-token/{token}")
+@router.post("/jwt-token")
 async def get_jwt_token(token: str):
     """
     Запрос токена
@@ -91,7 +91,7 @@ async def get_jwt_token(token: str):
 #     return response.json()
 
 
-@router.get("/get-refresh-token/{user_id}") # todo
+@router.post("/get-refresh-token") # todo
 async def refresh(user_id: int):
     print(user_id)
     response = await check_user_by_id(user_id)
