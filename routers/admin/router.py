@@ -5,7 +5,7 @@ from routers.admin.utils import send_email_yii2
 from typing import Annotated
 
 
-router = APIRouter(prefix='/api/v1/admin', tags=['Admin'])
+router = APIRouter(prefix='/api/v1/admin', tags=['Администратор'])
 
 
 @router.post("/confirm-request")
@@ -121,3 +121,49 @@ async def delete_role(request: admin_models.AuthRoles):
     :return:
     """
     pass
+
+
+@router.get("/get-admin-role-status/{id}")
+async def get_admin_role_status(id: int):
+    """
+    Статусы ролей
+    status: Активна (1), не активна (2)
+    :param id:
+    :return:
+    """
+    pass
+
+
+@router.get("/get-admin-method-status/{id}")
+async def get_admin_method_status(id: int):
+    """
+    Статусы методов
+    status: Активна (1), не активна (2)
+    :param id:
+    :return:
+    """
+    pass
+
+
+@router.get("/get-admin-page-status/{id}")
+async def get_admin_page_status(id: int):
+    """
+    Статусы страниц
+    status: Активна (1), не активна (2)
+    :param id:
+    :return:
+    """
+    pass
+
+
+@router.get("/get-allowed-status/{id}")
+async def get_allowed_status(id: int):
+    """
+    Доступность роли, метода, страницы
+    Доступна (1), Не доступна (0)
+    :param id:
+    :return:
+    """
+    pass
+
+

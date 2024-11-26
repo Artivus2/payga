@@ -30,19 +30,14 @@ from fastapi.security import OAuth2PasswordBearer
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
-router = APIRouter(prefix='/api/v1/user', tags=['User'])
-
-@router.get("/items/")
-async def read_items(token: Annotated[str, Depends(oauth2_scheme)]):
-        return {"token": token}
-
+router = APIRouter(prefix='/api/v1/user', tags=['Пользователи'])
 
 
 @router.get("/profile/{user_id}")
 async def get_profile(user_id: str):
     """
     Запрос профиля
-    :param token:
+    :param user_id:
     :return:
     token
     """
@@ -56,7 +51,7 @@ async def get_profile(user_id: str):
     return response
 
 
-@router.post("/jwt-token")
+@router.get("/jwt-token/{token}")
 async def get_jwt_token(token: str):
     """
     Запрос токена
@@ -64,6 +59,7 @@ async def get_jwt_token(token: str):
     :return:
     token
     """
+    print(token)
     response = await get_token_by_token(token)
     if not response['Success']:
         raise HTTPException(
@@ -101,8 +97,6 @@ async def refresh(user_id: int):
     return create_token_pair(user_id)
 
 
-
-
 @router.post("/login")
 async def login(request: user_models.Login):
     """
@@ -120,11 +114,15 @@ async def login(request: user_models.Login):
         'email': request.email,  # req
         'password': request.password  # req
     }
-    response = requests.post(api_url, headers=headers, data=json.dumps(payload))
-    print(response)
-    if response.status_code != 200:
-        raise HTTPException(status_code=response.status_code, detail=response.json())
-    return response.json()
+    try:
+
+        response = requests.post(api_url, headers=headers, data=json.dumps(payload))
+        print(response)
+        if response.status_code != 200:
+            raise HTTPException(status_code=response.status_code, detail="Не допустимая ошибка")
+        return response.json()
+    except:
+        raise HTTPException(status_code=response.status_code, detail="не удалось авторизироваться")
 
 
 @router.post("/code")

@@ -15,7 +15,7 @@ class PayStatus(BaseModel):
     __table_name__ = "pay_pay_status"
     """
     +
-    Действующий (1), не действующий (0)
+    Действующий (1), не действующий (2) , 0 - все
     """
     id: int
     title: str
@@ -37,7 +37,7 @@ class PayPercent(BaseModel):
 
 
 class BaldepStatus(BaseModel):
-    __table_name__ = "pay_balance_status"
+    __table_name__ = "pay_baldep_status"
     """
     +
     title: 1 - доступно, 2 - заморожено
@@ -46,7 +46,7 @@ class BaldepStatus(BaseModel):
     title: str
 
 class BaldepTypes(BaseModel):
-    __table_name__ = "pay_balance_types"
+    __table_name__ = "pay_baldep_types"
     """
     +
     title: 0 - активные, 1 - архивные
@@ -62,12 +62,13 @@ class Balance(BaseModel):
     balance_status: 1 - доступно, 0 - заморожено
     balance_types: 1 - активные, 0 - архивные
     """
-    id: int
-    user_id: int
-    value: float
-    mains_chart_id: int
-    baldep_status_id: int
-    baldep_types_id: int
+    id: int | None
+    user_id: int | None
+    value: float | None
+    chart_id: int | None
+    baldep_status_id: int | None
+    baldep_types_id: int | None
+    date: str | None
 
 
 class BalanceHistory(BaseModel):
@@ -133,8 +134,8 @@ class TransferStatus(BaseModel):
     +
     status: исполнен (1), отменен (2), в ожидании (3)
     """
-    id: int
-    title: str
+    id: int = 0
+    title: str | None = None
 
 
 class TransferHistory(BaseModel):

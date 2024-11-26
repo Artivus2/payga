@@ -11,6 +11,7 @@ import routers.orders.models as orders_models
 import requests
 from routers.orders.controller import (
     create_order_for_user,
+    get_order_status_by_id,
     get_orders_by_any,
     delete_order_by_id,
     update_order_by_id,
@@ -20,7 +21,7 @@ from routers.orders.controller import (
 
 
 
-router = APIRouter(prefix='/api/v1/orders', tags=['Orders'])
+router = APIRouter(prefix='/api/v1/orders', tags=['Ордера'])
 
 
 @router.post("/create-order")
@@ -70,6 +71,22 @@ async def order_filters(request: orders_models.Orders):
         if v is not None:
             payload[k] = v
     response = await get_orders_by_any(payload)
+    if not response['Success']:
+        raise HTTPException(
+            status_code=400,
+            detail=response
+        )
+    print(response)
+    return response
+
+
+@router.get("/get-order-status/{id}")
+async def get_order(id: int):
+    """
+    Получить статус ордера по id из pay_notify_order_types
+    :return:
+    """
+    response = await get_order_status_by_id(id)
     if not response['Success']:
         raise HTTPException(
             status_code=400,
@@ -160,3 +177,44 @@ async def get_docs(order_id: int):
 
 
 
+@router.get("/get-cashback/{order_id}")
+async def get_cashback(order_id: int):
+    """
+    получаем список кешбеков по ордеру
+    :param request:
+    :return:
+    """
+    pass
+
+
+@router.put("/set-cashback")
+async def set_cashback(order_id: int):
+    """
+    установить кешбек по ордеру
+    :param request:
+    :return:
+    """
+    pass
+
+
+
+@router.get("/get-cashback-status/{id}")
+async def get_cashback_status(id: int):
+    """
+    получаем список статусов кешбека
+    status: действует, не действует
+    :param request:
+    :return:
+    """
+    pass
+
+
+@router.put("/set-cashback-status")
+async def set_cashback_status(id: int):
+    """
+    Изменить список статусов кешбека
+    status: действует, не действует
+    :param request:
+    :return:
+    """
+    pass

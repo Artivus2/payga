@@ -19,8 +19,9 @@ class User(BaseModel):
 
 class JwtTokenSchema(BaseModel):
     token: str
-    payload: dict
-    expire: datetime.datetime
+    payload: dict | None
+    expire: datetime.datetime | None
+
 
 
 class TokenPair(BaseModel):

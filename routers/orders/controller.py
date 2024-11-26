@@ -64,6 +64,10 @@ async def get_orders_by_any(payload):
                 return {"Success": False, "data": "Ордер не найден"}
 
 
+async def get_order_status_by_id(id):
+    pass
+
+
 async def update_order_by_id(order_id, status):
     with cpy.connect(**config.config) as cnx:
         with cnx.cursor(dictionary=True) as cur:
