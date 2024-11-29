@@ -1,51 +1,12 @@
 import mysql.connector as cpy
 import config
-from routers.user.utils import create_random_key
+from jose import JWTError, jwt
+from datetime import datetime, timedelta
+from fastapi import Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
+from pydantic import ValidationError
 
-
-async def insert_new_user_banned(**payload):
-    # try todo
-    with cpy.connect(**config.config) as cnx:
-        with cnx.cursor(dictionary=True) as cur:
-            app_id = 3  # paygreenavi
-            link_gen = await create_random_key()
-            data_login = "SELECT id from user where login = '" + str(payload['login']) + \
-                         "' or email = '" + payload['email'] + "'"
-            cur.execute(data_login)
-            data = cur.fetchone()
-            data_ref = "SELECT id from user where comment = '" + str(payload['affiliate_invitation_code']) + "'"
-            cur.execute(data_ref)
-            ref_id = cur.fetchone()
-            print("ref_id", ref_id)
-            if ref_id:
-                ref_id = ref_id['id']
-            else:
-                ref_id = 0
-            if not data:
-                banned_for_submit = 1  # блокируем вход до подтверждения админом
-                data_string = "INSERT INTO user (login, email, password, affiliate_invitation_id, comment, telegram, app_id, banned) " \
-                              "VALUES ('" + str(payload['login']) + "','" + str(payload['email']) + \
-                              "','" + str(payload['password']) + "','" + str(ref_id) + "','" + str(
-                    link_gen) + "','" + str(payload['telegram']) + "','" + str(app_id) + "','" + str(
-                    banned_for_submit) + "')"
-                cur.execute(data_string)
-                cnx.commit()
-                data_user_id = "SELECT * from user where login = '" + str(payload['login']) + \
-                               "' and email = '" + payload['email'] + "'"
-                cur.execute(data_user_id)
-                data_user = cur.fetchone()
-                if data_user and ref_id != 0:
-                    # insert refs
-                    pay_refs = "INSERT INTO pay_refs (user_id, referal_id, level) " \
-                               "VALUES ('" + str(data_user['id']) + "','" + str(ref_id) + "', '0')"
-                    cur.execute(pay_refs)
-                    cnx.commit()
-                cnx.close()
-                # print(comment)
-                return {"Success": True, "data": "Поставлен в очередь на регистрацию. Ожидайте"}
-            else:
-                return {"Success": False, "data": "Пользователь: " + str(payload['email'])
-                                                  + ' / ' + str(payload['login']) + " уже существует"}
+from routers.admin.utils import create_random_key
 
 
 async def insert_generated_api_key(user_id):
@@ -103,27 +64,27 @@ async def delete_user_api_key_by_id(id):
                 return {"Success": False, "data": 'не удален'}
 
 
-async def get_token_by_token(token):
-    print(token)
-    with cpy.connect(**config.config) as cnx:
-        with cnx.cursor(dictionary=True) as cur:
-            string = "SELECT user_id, token, expired_at from auth_tokens where " \
-                     "expired_at > UNIX_TIMESTAMP() - 86400 and token = " \
-                     "'" + str(token) + "'"
-            cur.execute(string)
-            data = cur.fetchone()
-            if data:
-                return {"Success": True, "data": data['user_id']}
-            else:
-                return {"Success": False, "data": "Токен не найден или просрочен"}
+# async def get_token_by_token(token):
+#     print(token)
+#     with cpy.connect(**config.config) as cnx:
+#         with cnx.cursor(dictionary=True) as cur:
+#             string = "SELECT user_id, token, expired_at from auth_tokens where " \
+#                      "expired_at > UNIX_TIMESTAMP() - 86400 and token = " \
+#                      "'" + str(token) + "'"
+#             cur.execute(string)
+#             data = cur.fetchone()
+#             if data:
+#                 return {"Success": True, "data": data['user_id']}
+#             else:
+#                 return {"Success": False, "data": "Токен не найден или просрочен"}
 
 
-async def get_refresh_token(token):
-    """
-
-    :param token:
-    :return:
-    """
+# async def get_refresh_token(token):
+#     """
+#
+#     :param token:
+#     :return:
+#     """
 
 
 async def get_profile_by_id(user_id):
@@ -152,14 +113,127 @@ async def get_profile_by_id(user_id):
                 return {"Success": False, "data": "Токен не найден или просрочен"}
 
 
-async def check_user_by_id(user_id):
+async def get_user_by_email(email):
     with cpy.connect(**config.config) as cnx:
         with cnx.cursor(dictionary=True) as cur:
-            string = "SELECT * from user where id = " + str(user_id)
-            print(string)
+            string = "SELECT id, login, email, password from user where email = '" + str(email) + "'"
             cur.execute(string)
             data = cur.fetchone()
+            print(data)
             if data:
                 return {"Success": True, "data": data}
             else:
                 return {"Success": False, "data": "Пользователь не найден"}
+
+
+async def set_user_active(email, datenowutc):
+    with cpy.connect(**config.config) as cnx:
+        with cnx.cursor(dictionary=True) as cur:
+            string = "UPDATE user set is_active = 1 and last_visit_time = " \
+                     "'"+str(datenowutc)+"' where email = '" + str(email) + "'"
+            cur.execute(string)
+            cnx.commit()
+            cnx.close()
+
+
+# def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(dbUtil.get_db)):
+#     credentials_exception = HTTPException(
+#         status_code=status.HTTP_401_UNAUTHORIZED,
+#         detail="Could not validate credentials",
+#         headers={"WWW-Authenticate": "Bearer"},
+#     )
+#
+#     try:
+#         payload = jwt.decode(token, config.SECRET_KEY, algorithms=[config.ALGORITHM])
+#         username = payload.get("subject")
+#         expiration = datetime.strptime(payload.get("expiration"), "%Y-%m-%d %H:%M:%S")
+#
+#         if username is None:
+#             raise credentials_exception
+#
+#         ## To check if the user have logged out or the token has expired
+#         black_list = find_token_black_lists(token, db)
+#         if black_list or (expiration <= datetime.now()):
+#             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Token Experied! Please login again. ")
+#
+#     except (JWTError, ValidationError):
+#         raise credentials_exception
+#
+#     # print("======================================",payload,"======================================",)
+#
+#     user = auth.find_existed_user(username, db);
+#     if user is None:
+#         raise credentials_exception
+#     return user
+
+
+# def get_current_active_user(current_user: schemas.User = Depends(get_current_user)):
+#     if not bool(current_user.is_active):
+#         raise HTTPException(status_code=400, detail="Inactive user")
+#     return current_user
+
+
+## ---------------------------- Auth CRUD Operations-------------------------------
+## To create new token for a password reset
+# def create_reset_code(request: schemas.EmailRequest, reset_code: str, db: Session):
+#     query = f"""INSERT INTO codes(email,reset_code,status,expired_in)
+#                 VALUES ('{request.email}','{reset_code}',1,'{(datetime.now() + timedelta(hours=8))}');"""
+#
+#     db.execute(query)
+#     db.commit()
+#
+#     return {"Message": f"Reset Code created successfully for User with email {request.email}."}
+
+
+## Replacing the old password with the new password for the given email
+# def reset_password(new_password: str, email: str, db: Session):
+#     query = f"""UPDATE users SET password='{cryptoUtil.get_hash(new_password)}' WHERE email='{email}';"""
+#
+#     db.execute(query)
+#     db.commit()
+#
+#     return {"Message": f"Password reset successful for User with email {email}."}
+
+
+## For diabling the reset token for the user after a successfull password reset
+# def disable_reset_code(reset_password_token: str, email: str, db: Session):
+#     query = f"""UPDATE codes
+#                 SET status='0'
+#                 WHERE
+#                     status='1'
+#                 AND
+#                     reset_code='{reset_password_token}'
+#                 OR
+#                     email='{email}'
+#                 ;"""
+#     db.execute(query)
+#     db.commit()
+#
+#     return {"Message": f"Reset code successfully disabled for User with email - {email}."}
+
+
+## Finding if the user with the given email exsists or not
+# def find_existed_user(email: str, db: Session):
+#     user = db.query(models.User).filter(and_(models.User.email == email, models.User.is_active == True)).first()
+#
+#     if not user:
+#         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+#                             detail=f"Either user with email {email} not found OR currently in-active !")
+#     return user
+
+
+## To check if the password reset token is valid or not
+# def check_reset_password_token(token: str, db: Session):
+#     query = f"""SELECT email FROM codes
+#                 WHERE
+#                     status='1'
+#                 AND
+#                     reset_code='{token}'
+#                 AND
+#                     expired_in >= CURRENT_TIMESTAMP
+#                 ;"""
+#
+#     resultproxy = db.execute(query)
+#
+#     # The end result is the list which contains query results in tuple format
+#     return [rowproxy for rowproxy in resultproxy]

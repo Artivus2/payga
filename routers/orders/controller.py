@@ -33,17 +33,19 @@ async def get_orders_by_any(payload):
     """
     with cpy.connect(**config.config) as cnx:
         with cnx.cursor(dictionary=True) as cur:
-            null_id = payload.get('id', 0)
-            data_check = "select pay_orders.id, pay_orders.user_id, course, pay_orders.chart_id, " \
+            null_id = payload.get('id', -1)
+            data_check = "select pay_orders.id, pay_orders.uuid, pay_orders.user_id, course, pay_orders.chart_id, " \
                          "chart.symbol as chart_symbol, sum_fiat, pay_pay.id as pay_id, " \
                          "pay_pay.title as pay_id_title, pay_orders.value, cashback, " \
-                         "pay_orders.date, date_expiry, pay_reqs.uuid as pay_reqs_uuid, " \
-                         "pay_notify_order_types_id, pay_notify_order_types.title as " \
-                         "pay_notify_order_types_title, pay_docs.url as pay_docs_url from pay_orders " \
+                         "pay_orders.date, date_expiry, pay_reqs.id as pay_reqs_id, pay_reqs.uuid as pay_reqs_uuid, " \
+                         "pay_reqs.phone, pay_reqs_types.title as pay_type, pay_notify_order_types_id, " \
+                         "pay_notify_order_types.title as pay_notify_order_types_title, " \
+                         "pay_docs.url as pay_docs_url from pay_orders " \
                          "LEFT JOIN chart ON pay_orders.chart_id = chart.id " \
                          "LEFT JOIN pay_pay ON pay_orders.pay_id = pay_pay.id " \
                          "LEFT JOIN pay_reqs ON pay_orders.req_id = pay_reqs.id " \
                          "LEFT JOIN pay_docs ON pay_orders.docs_id = pay_docs.order_id " \
+                         "LEFT JOIN pay_reqs_types ON pay_reqs.reqs_types_id = pay_reqs_types.id " \
                          "LEFT JOIN pay_notify_order_types ON pay_orders.pay_notify_order_types_id = " \
                          "pay_notify_order_types.id " \
                          "where "

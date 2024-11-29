@@ -1,0 +1,12 @@
+[Unit]
+Description=payga
+After=network-online.target
+
+[Service]
+User=root
+WorkingDirectory=/var/www/html/payga
+ExecStart=/var/www/html/payga/run.sh
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

@@ -2,6 +2,8 @@ import datetime
 from pydantic import BaseModel
 
 
+
+
 class User(BaseModel):
     __table_name__ = "user"
     """
@@ -22,6 +24,12 @@ class JwtTokenSchema(BaseModel):
     payload: dict | None
     expire: datetime.datetime | None
 
+
+class Blacklists(BaseModel):
+    __tablename__ = 'blacklists'
+    id: int
+    token: str
+    email: str
 
 
 class TokenPair(BaseModel):
@@ -108,6 +116,7 @@ class RegisterRequest(BaseModel):
 
 class Login(BaseModel):
     email: str
+    login: str | None = None
     password: str
 
 
@@ -145,3 +154,10 @@ class Twofa(BaseModel):
 
 
 
+## ---------------------------------  2FA ---------------------------------
+class LoginOTP(BaseModel):
+    email: str
+    otp: int
+
+class Enable2FA(BaseModel):
+    otp: int
