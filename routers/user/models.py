@@ -9,14 +9,15 @@ class User(BaseModel):
     """
     Пользователь из yii2
     """
-    #id: int | None = None
-    login: str
-    email: str
-    password: str
-    telegram: str
+    id: int | None = None
+    login: str | None = None
+    email: str | None = None
+    password: str | None = None
+    telegram: str | None = None
     affiliate_invitation_code: str | None = None
-    # disable: bool | None = False
-    # role: str | None = None
+    is_active: int | None = None
+    role_id: int | None = None
+    banned: int | None = None
 
 
 class JwtTokenSchema(BaseModel):
@@ -103,6 +104,11 @@ class ApiKey(BaseModel):
     api_key_begin_date: str | None = None
     api_key_expired_date: str | None = None
     status_id: int | None = None
+    code:  int | None = None
+    email:  str | None = None
+    fcm_token: str | None = None
+    access_token: str | None = None
+
 
 
 class Logout(BaseModel):

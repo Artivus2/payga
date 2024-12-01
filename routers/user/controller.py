@@ -116,24 +116,30 @@ async def get_profile_by_id(user_id):
 async def get_user_by_email(email):
     with cpy.connect(**config.config) as cnx:
         with cnx.cursor(dictionary=True) as cur:
-            string = "SELECT id, login, email, password from user where email = '" + str(email) + "'"
+            string = "SELECT id, login, email, password, role_id from user where" \
+                     " banned = 0 and email = '" + str(email) + "'"
             cur.execute(string)
             data = cur.fetchone()
-            print(data)
             if data:
                 return {"Success": True, "data": data}
             else:
                 return {"Success": False, "data": "Пользователь не найден"}
 
 
-async def set_user_active(email, datenowutc):
+async def set_user_active(email, datenowutc, access_token):
     with cpy.connect(**config.config) as cnx:
         with cnx.cursor(dictionary=True) as cur:
-            string = "UPDATE user set is_active = 1 and last_visit_time = " \
-                     "'"+str(datenowutc)+"' where email = '" + str(email) + "'"
-            cur.execute(string)
-            cnx.commit()
-            cnx.close()
+            string = "UPDATE user SET is_active = 1, token = '"+str(access_token) + \
+                     "', last_visit_time = '"+str(datenowutc)+"' " \
+                     "where email = '" + str(email) + "'"
+
+            try:
+                cur.execute(string)
+                cnx.commit()
+                cnx.close()
+                return {"Success": True, "data": "Успешно авторизован"}
+            except:
+                return {"Success": False, "data": "Ошибка авторизации"}
 
 
 # def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(dbUtil.get_db)):

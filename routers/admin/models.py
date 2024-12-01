@@ -5,9 +5,9 @@ class ConfirmRegister(BaseModel):
     """
     user
     """
-    user_id: int
-    login: str
-    email: str
+    user_id: int | None = None
+    login: str | None = None
+    email: str | None = None
 
 
 class Status(BaseModel):
@@ -48,10 +48,10 @@ class Role(BaseModel):
     Группы пользователе
     + (Трейдеры, Магазины, Оператор, администратор)
     """
-    id: int
-    title: str
-    pages: int
-    status: int
+    id: int | None = None
+    title: str | None = None
+    pages: int | None = None
+    status: int | None = None
 
 
 class Allowed(BaseModel):
@@ -69,13 +69,13 @@ class AuthRoles(BaseModel):
     +
     привязка к группе методов ролей user страниц
     """
-    id: int | None
-    user_id: int | None
-    role_id: int | None
-    method_id: int | None
-    page_id: int | None
-    status: int | None
-    pay_admin_roles_allowed: bool | None
+    id: int | None = None
+    user_id: int | None = None
+    role_id: int | None = None
+    method_id: int | None = None
+    page_id: int | None = None
+    status: int | None = None
+    pay_admin_roles_allowed: int | None = None
 
 
 

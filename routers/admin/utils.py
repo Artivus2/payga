@@ -2,9 +2,9 @@ import json
 import secrets
 import string
 from datetime import datetime, timedelta
+from jose import jwt, JWTError
 from fastapi import HTTPException, Depends
 from fastapi.security import OAuth2PasswordBearer
-from jose import jwt
 from passlib.context import CryptContext
 import config
 import pyotp
@@ -22,6 +22,8 @@ def verify_otp(secret, otp):
 ## For password encryption and verfications
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
+# async def create_random_key(length: int = 8) -> str:
+#     return "12345678"
 
 async def create_random_key(length: int = 8) -> str:
     chars = string.ascii_uppercase + string.digits + string.ascii_lowercase
@@ -33,8 +35,7 @@ async def verify(plain, hashed):
 
 
 async def get_hash(value):
-    return pwd_context.hash(value)
-
+    return "pwd_context.hash(value)"
 
 
 ## Checking if the JWT token is used before and the user is no longer active
@@ -53,8 +54,9 @@ def get_token_user(token: str = Depends(oauth2_scheme)):
 
 
 ## Creating access token by embedding the user details and the expiration timestamp
-def create_access_token(*, subject: str, expires_delta: int):
-    to_encode = {"subject": subject,
+def create_access_token(*, user_id: str, role: int, expires_delta: int):
+    to_encode = {"user_id": user_id,
+                 "role": role,
                  "expiration": (datetime.now() + timedelta(minutes=expires_delta)).strftime("%Y-%m-%d %H:%M:%S")}
 
     encoded_jwt = jwt.encode(to_encode, config.SECRET_KEY, algorithm=config.ALGORITHM)
@@ -82,4 +84,5 @@ def create_access_token(*, subject: str, expires_delta: int):
 #         raise HTTPException(status_code=response.status_code, detail=response.json())
 #     return response.json()
 
-
+async def send_email(email):
+    pass

@@ -39,12 +39,14 @@ async def get_orders_by_any(payload):
                          "pay_pay.title as pay_id_title, pay_orders.value, cashback, " \
                          "pay_orders.date, date_expiry, pay_reqs.id as pay_reqs_id, pay_reqs.uuid as pay_reqs_uuid, " \
                          "pay_reqs.phone, pay_reqs_types.title as pay_type, pay_notify_order_types_id, " \
+                         "banks.id as bank_id, banks.title as banks_name, banks.bik, " \
                          "pay_notify_order_types.title as pay_notify_order_types_title, " \
                          "pay_docs.url as pay_docs_url from pay_orders " \
                          "LEFT JOIN chart ON pay_orders.chart_id = chart.id " \
                          "LEFT JOIN pay_pay ON pay_orders.pay_id = pay_pay.id " \
                          "LEFT JOIN pay_reqs ON pay_orders.req_id = pay_reqs.id " \
                          "LEFT JOIN pay_docs ON pay_orders.docs_id = pay_docs.order_id " \
+                         "LEFT JOIN banks ON banks.id = pay_reqs.bank_id " \
                          "LEFT JOIN pay_reqs_types ON pay_reqs.reqs_types_id = pay_reqs_types.id " \
                          "LEFT JOIN pay_notify_order_types ON pay_orders.pay_notify_order_types_id = " \
                          "pay_notify_order_types.id " \
@@ -70,13 +72,15 @@ async def get_order_status_by_id(id):
     pass
 
 
-async def update_order_by_id(order_id, status):
+async def update_order_by_id(id, pay_notify_order_types_id):
     with cpy.connect(**config.config) as cnx:
         with cnx.cursor(dictionary=True) as cur:
             # def check_status
+
+            string = "UPDATE pay_orders SET pay_notify_order_types_id = '" \
+                     "" + str(pay_notify_order_types_id) + \
+                     "' where id = " + str(id)
             try:
-                string = "UPDATE orders set pay_notify_order_types_id = '" + str(status) + \
-                         "where id = " + str(order_id)
                 cur.execute(string)
                 cnx.commit()
                 return {"Success": True, "data": "Статус успешно изменен"}
@@ -87,9 +91,8 @@ async def update_order_by_id(order_id, status):
 async def delete_order_by_id(id):
     with cpy.connect(**config.config) as cnx:
         with cnx.cursor(dictionary=True) as cur:
-            # def check_status_for_delete статус удален ???
             try:
-                string = "UPDATE orders set pay_notify_order_types_id = 0 where id = " + str(id)
+                string = "UPDATE pay_orders SET pay_notify_order_types_id = 26 where id = " + str(id)
                 cur.execute(string)
                 cnx.commit()
                 return {"Success": True, "data": "Успешно изменен"}
@@ -119,6 +122,83 @@ async def get_docs_urls(order_id):
             cur.execute(data_check)
             check = cur.fetchall()
             if check:
+                cnx.close()
                 return {"Success": True, "data": check}
             else:
+                cnx.close()
                 return {"Success": False, "data": "Платежки не найдены"}
+
+
+async def create_new_cashback_for_group(payload):
+    print(payload)
+    with cpy.connect(**config.config) as cnx:
+        with cnx.cursor(dictionary=True) as cur:
+            data_string = "INSERT INTO pay_cashback (title, date, pay_reqs_group_id, value, status_id) " \
+                          "VALUES ('" + str(payload['title']) + "', NOW(), '" + str(payload['pay_reqs_group_id']) \
+                          + "','" + str(payload['value']) + "','" + str(payload['status_id']) + "')"
+            cur.execute(data_string)
+            try:
+                cnx.commit()
+                cnx.close()
+                return {"Success": True, "data": "Кешбек добавлен"}
+            except:
+                cnx.close()
+                return {"Success": False, "data": "Кешбек не добавлен"}
+
+
+async def set_cashback_to_group(id, value):
+    with cpy.connect(**config.config) as cnx:
+        with cnx.cursor(dictionary=True) as cur:
+            data_string = "UPDATE cashback SET value = " + str(value) + " where id = " + str(id)
+            cur.execute(data_string)
+            try:
+                cnx.commit()
+                cnx.close()
+                return {"Success": True, "data": "Кешбек обновлен"}
+            except:
+                cnx.close()
+                return {"Success": False, "data": "Кешбек не добавлен"}
+
+
+async def set_cashback_status_for_group_by_id(id, value):
+    with cpy.connect(**config.config) as cnx:
+        with cnx.cursor(dictionary=True) as cur:
+            data_string = "UPDATE pay_cashback SET status_id = " + str(value) + " where id = " + str(id)
+            cur.execute(data_string)
+            try:
+                cnx.commit()
+                cnx.close()
+                return {"Success": True, "data": "Статус кешбека обновлен"}
+            except:
+                cnx.close()
+                return {"Success": False, "data": "Статус кешбека не обновлен"}
+
+
+async def get_all_cashback_statuses(payload):
+    with cpy.connect(**config.config) as cnx:
+        with cnx.cursor(dictionary=True) as cur:
+            data_string = "SELECT * from pay_cashback_status"
+            cur.execute(data_string)
+            data = cur.fetchall()
+            if data:
+                cnx.close()
+                return {"Success": True, "data": data}
+            else:
+                return {"Success": False, "data": "Статусы не получены"}
+
+
+async def get_all_cashback_by_id(id):
+    with cpy.connect(**config.config) as cnx:
+        with cnx.cursor(dictionary=True) as cur:
+            data_string = "SELECT pay_cashback.title, pay_cashback.date, reqs_group_id, " \
+                          "pay_reqs_groups.title as reqs_group_title, value, status_id,  " \
+                          "pay_cashback_status.title as status_title from pay_cashback " \
+                          "LEFT JOIN pay_cashback_status ON pay_cashback.status_id = pay_cashback_status.id " \
+                          "LEFT JOIN pay_reqs_groups ON pay_reqs_groups.id = pay_cashback.reqs_group_id "
+            cur.execute(data_string)
+            data = cur.fetchall()
+            if data:
+                cnx.close()
+                return {"Success": True, "data": data}
+            else:
+                return {"Success": False, "data": "Статусы не получены"}

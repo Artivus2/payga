@@ -28,12 +28,12 @@ class PayPercent(BaseModel):
     pay_id in Pay
     pay_status_id in status_id
     """
-    id: int | None
-    user_id: int | None
-    pay_id: int | None
-    value: float | None
-    date: str | None
-    pay_status_id: int | None
+    id: int | None = None
+    user_id: int | None = None
+    pay_id: int | None = None
+    value: float | None = None
+    date: str | None = None
+    pay_status_id: int | None = None
 
 
 class BaldepStatus(BaseModel):
@@ -62,13 +62,21 @@ class Balance(BaseModel):
     balance_status: 1 - доступно, 0 - заморожено
     balance_types: 1 - активные, 0 - архивные
     """
-    id: int | None
-    user_id: int | None
-    value: float | None
-    chart_id: int | None
-    baldep_status_id: int | None
-    baldep_types_id: int | None
-    date: str | None
+    id: int | None = None
+    user_id: int | None = None
+    value: float | None = None
+    chart_id: int | None = None
+    baldep_status_id: int | None = None
+    baldep_types_id: int | None = None
+
+
+class BalanceHistoryStatus(BaseModel):
+    __table_name__ = "pay_balance_history_status"
+    """
+    статус истории баланса
+    """
+    id: int | None = None
+    title: str | None = None
 
 
 class BalanceHistory(BaseModel):
@@ -96,12 +104,12 @@ class Deposit(BaseModel):
     types: 0 - активные, 1 - архивные
     status_id: 0 - доступно, 1 - заморожено
     """
-    id: int
-    user_id: int
-    value: float
-    baldep_status_id: int
-    baldep_types_id: int
-    description: str
+    id: int | None = None
+    user_id: int | None = None
+    value: float | None = None
+    baldep_status_id: int | None = None
+    baldep_types_id: int | None = None
+    description: str | None = None
 
 
 class WalletStatus(BaseModel):
@@ -110,8 +118,8 @@ class WalletStatus(BaseModel):
     +
     Активный (1) / не активный (2)
     """
-    id: int
-    title: str
+    id: int | None = None
+    title: str | None = None
 
 
 class Wallet(BaseModel):
@@ -120,12 +128,12 @@ class Wallet(BaseModel):
     +
     крипто кошелек
     """
-    id: int
-    user_id: int
-    network: str
-    address: str
-    wallet_status: int
-    date: str
+    id: int | None = None
+    user_id: int | None = None
+    network: str | None = None
+    address: str | None = None
+    wallet_status_id: int | None = None
+    date: str | None = None
 
 
 class TransferStatus(BaseModel):

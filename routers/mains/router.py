@@ -50,14 +50,15 @@ async def get_chart_by_id(id: str):
 
 
 @router.post("/get-reqs")
-async def get_reqs_by_user(user_id: int):
+async def get_reqs(request: mains_models.Reqs):
     """
     Запрос реквизитов пользователя по user_id
+    :param request:
     :param dict:
     :return:
 
     """
-    response = await get_reqs_by_user(user_id)
+    response = await get_reqs_by_user(request.user_id)
     if not response['Success']:
         raise HTTPException(
             status_code=400,

@@ -26,11 +26,11 @@ class Orders(BaseModel):
 class CashbackStatus(BaseModel):
     __table_name__ = "pay_cashback_status"
     """
-    status: действует, не действует
+    status: действует (1), не действует (0)
     """
 
     id: int
-    title: str
+    title: str | None
 
 
 class Cashback(BaseModel):
@@ -40,12 +40,12 @@ class Cashback(BaseModel):
     group_user_id: группа пользователей (Трейдеры, Магазины..)
     status: действует
     """
-    id: int
-    title: str
-    date: str
-    group_user_id: int
-    value: float
-    status_id: int
+    id: int | None
+    title: str | None
+    date: str | None
+    pay_reqs_group_id: int | None
+    value: float | None
+    status_id: int | None
 
 
 class Docs(BaseModel):

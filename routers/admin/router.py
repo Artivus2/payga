@@ -1,7 +1,14 @@
 import routers.admin.models as admin_models
+import routers.user.models as users_models
 from fastapi import APIRouter, HTTPException, Depends
-from routers.admin.controller import send_link_to_user, check_access, insert_new_user_banned
-
+from routers.admin.controller import (
+    send_link_to_user,
+    check_access,
+    get_all_users_profiles,
+    get_all_roles,
+    crud_roles
+)
+from routers.admin.utils import send_email
 
 router = APIRouter(prefix='/api/v1/admin', tags=['Администратор'])
 
@@ -21,37 +28,46 @@ async def confirm_request(request: admin_models.ConfirmRegister):
     if not response['Success']:
         raise HTTPException(
             status_code=400,
-            detail=response.json(),
+            detail=response,
         )
-    await send_email_yii2(request.login, request.email)
+    return response
+    #await send_email(request.email)
+
+
+
+@router.post("/get-all-roles")
+async def get_roles(request: admin_models.Role):
+    """
+    Получить роль
+    id: int
+    :param request:
+    :return:
+    """
+    response = await get_all_roles(request.id)
+    if not response['Success']:
+        raise HTTPException(
+            status_code=400,
+            detail=response,
+        )
+    return response
 
 
 @router.post("/create-role")
-async def create_role(request: admin_models.AuthRoles):
+async def create_role(request: admin_models.Role):
     """
     Создать роль
-    :param item:
-    :param id:
-    :param request:
+    title: str (unique)
+    pages: int
+    status: int
     :return:
     """
-    print(request)
-    return request
-
-
-@router.post("/get-role")
-async def get_role(request: admin_models.AuthRoles):
-    """
-    Получить роль
-    :param commons:
-    :param user_id:
-    :param result:
-    :param item:
-    :param id:
-    :param request:
-    :return:
-    """
-    return request
+    response = await crud_roles("create", request)
+    if not response['Success']:
+        raise HTTPException(
+            status_code=400,
+            detail=response,
+        )
+    return response
 
 
 
@@ -65,20 +81,46 @@ async def set_role(request: admin_models.Role):
     status: int
     :return:
     """
-    pass
+    response = await crud_roles("set", request)
+    if not response['Success']:
+        raise HTTPException(
+            status_code=400,
+            detail=response,
+        )
+    return response
 
 
-@router.post("/delete-role")
+@router.post("/remove-role")
 async def delete_role(request: admin_models.Role):
     """
     Удалить роль
     id: int
-    title: str
-    pages: list
+    :return:
+    """
+    response = await crud_roles("remove", request)
+    if not response['Success']:
+        raise HTTPException(
+            status_code=400,
+            detail=response,
+        )
+    return response
+
+
+@router.post("/set-role-status")
+async def set_role_status(request: admin_models.Role):
+    """
+    Статус роли
+    id: int
     status: int
     :return:
     """
-    pass
+    response = await crud_roles("status", request)
+    if not response['Success']:
+        raise HTTPException(
+            status_code=400,
+            detail=response,
+        )
+    return response
 
 
 @router.post("/create-auth-roles")
@@ -154,6 +196,26 @@ async def get_admin_page_status(id: int):
     pass
 
 
+@router.post("/get-all-users")
+async def get_all_users(request: users_models.User):
+    """
+    Все пользователи
+
+    :param request:
+    :param id:
+    :return:
+    """
+    print(request)
+    response = await get_all_users_profiles(request)
+    if not response['Success']:
+        raise HTTPException(
+            status_code=400,
+            detail=response,
+        )
+    return response
+
+
+
 @router.get("/get-allowed-status/{id}")
 async def get_allowed_status(id: int):
     """
@@ -163,6 +225,9 @@ async def get_allowed_status(id: int):
     :return:
     """
     pass
+
+
+
 
 
 
