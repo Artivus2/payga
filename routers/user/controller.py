@@ -96,7 +96,7 @@ async def get_profile_by_id(user_id):
     # todo dic(zip)
     with cpy.connect(**config.config) as cnx:
         with cnx.cursor(dictionary=True) as cur:
-            string = "SELECT user.id, login, email, telegram, created_at as reg_date, telegram_connected, " \
+            string = "SELECT user.id, login, role_id, email, telegram, created_at as reg_date, telegram_connected, " \
                      "twofa_status, user.verify_status, verify_status.title as verify, user.banned as banned_status," \
                      "banned_status.title as banned, user.chart_id, chart.symbol as chart, user.currency_id, " \
                      "currency.symbol as currency from user " \
