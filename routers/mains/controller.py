@@ -4,15 +4,18 @@ import config
 
 async def get_bank(id):
     """
-    Найти банк по id
+    Найти банк по id, 0 - все банки
     :param id:
     :return:
     """
     with cpy.connect(**config.config) as cnx:
         with cnx.cursor(dictionary=True) as cur:
-            data = "SELECT id, title from banks where id = " + str(id)
+            if int(id) ==0:
+                data = "SELECT id, title from banks where title is not null"
+            else:
+                data = "SELECT id, title from banks where title is not null and id = " + str(id)
             cur.execute(data)
-            data = cur.fetchone()
+            data = cur.fetchall()
             if data:
                 cnx.close()
                 return {"Success": True, "data": data}
@@ -29,15 +32,38 @@ async def get_chart(id):
     """
     with cpy.connect(**config.config) as cnx:
         with cnx.cursor(dictionary=True) as cur:
-            data = "SELECT id, symbol from chart where id = " + str(id)
+            if int(id) == 0:
+                data = "SELECT id, symbol from chart"
+            else:
+                data = "SELECT id, symbol from chart where id = " + str(id)
             cur.execute(data)
-            data = cur.fetchone()
+            data = cur.fetchall()
             if data:
                 cnx.close()
                 return {"Success": True, "data": data}
             else:
                 return {"Success": False, "data": 'Валюта не найдена'}
 
+
+async def get_curr(id):
+    """
+    Найти валюту по id
+    :param id:
+    :return:
+    """
+    with cpy.connect(**config.config) as cnx:
+        with cnx.cursor(dictionary=True) as cur:
+            if int(id) == 0:
+                data = "SELECT id, symbol from currency"
+            else:
+                data = "SELECT id, symbol from currency where id = " + str(id)
+            cur.execute(data)
+            data = cur.fetchall()
+            if data:
+                cnx.close()
+                return {"Success": True, "data": data}
+            else:
+                return {"Success": False, "data": 'Валюта не найдена'}
 
 async def get_reqs_by_user(user_id):
     """
@@ -221,6 +247,21 @@ async def get_pay_reqs_types_by_id(payload):
                 return {"Success": True, "data": check}
             else:
                 return {"Success": False, "data": "Статусы не найдены"}
+
+
+async def get_turn_off(payload):
+    with cpy.connect(**config.config) as cnx:
+        with cnx.cursor(dictionary=True) as cur:
+            if int(payload) == 0:
+                string = "SELECT * FROM pay_automation_turn_off"
+            else:
+                string = "SELECT * FROM pay_automation_turn_off where id = " + str(payload)
+            cur.execute(string)
+            check = cur.fetchall()
+            if check:
+                return {"Success": True, "data": check}
+            else:
+                return {"Success": False, "data": "Статусы ыключения не найдены"}
 
 
 async def get_automation_history(payload):

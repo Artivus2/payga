@@ -1,10 +1,9 @@
-import json
 import routers.mains.models as mains_models
-import requests
 from fastapi import APIRouter, HTTPException
 from routers.mains.controller import (
     get_bank,
     get_chart,
+    get_curr,
     get_reqs_by_user,
     get_reqs_groups_by_id,
     req_by_filters,
@@ -13,7 +12,8 @@ from routers.mains.controller import (
     get_automation_history,
     get_automation_status,
     get_pay_reqs_status_by_id,
-    get_pay_reqs_types_by_id
+    get_pay_reqs_types_by_id,
+    get_turn_off
 )
 
 router = APIRouter(prefix='/api/v1/mains', tags=['Основные'])
@@ -22,6 +22,7 @@ router = APIRouter(prefix='/api/v1/mains', tags=['Основные'])
 async def get_bank_by_id(id: str):
     """
     Запрос банка
+    :param id:
     :param token:
     :return:
     token
@@ -37,14 +38,34 @@ async def get_bank_by_id(id: str):
 
 
 @router.get("/get-chart/{id}")
-async def get_chart_by_id(id: str):
+async def get_chart_by_id(id: int):
     """
     Запрос крипты
+    :param id:
     :param chart:
     :return:
 
     """
+    print(id)
     response = await get_chart(id)
+    if not response['Success']:
+        raise HTTPException(
+            status_code=400,
+            detail=response
+        )
+    return response
+
+
+@router.get("/get-currency/{id}")
+async def get_currency(id: int):
+    """
+    Запрос крипты
+    :param id:
+    :param chart:
+    :return:
+
+    """
+    response = await get_curr(id)
     if not response['Success']:
         raise HTTPException(
             status_code=400,
@@ -75,26 +96,25 @@ async def get_reqs(request: mains_models.Reqs):
 async def set_reqs(request: mains_models.Reqs):
     """
     установка реквизитов пользователя
-    uuid: str
     user_id: int
-    req_group_id: int
-    sequence: int
-    pay_pay_id: int
-    value: str
-    currency_id: int
-    reqs_types_id: int
-    reqs_status_id: int
-    bank_id: int
-    chart_id: int
-    phone: str
-    date: int
-    qty_limit_hour: int
+    req_group_id: int по умлочанию 0 не добавлен ни в какую группу\n
+    sequence: int частота использования по умолчанию 0
+    pay_pay_id: int из запроса /api/v1/actives/get-pay-type/{id} 0 - все
+    value: str здесь номер карты счета
+    currency_id: int  по умолчанию рубль 1
+    reqs_types_id: int       /api/v1/mains/get-pay-reqs-types/{id}  0 - все типы
+    reqs_status_id: int      /api/v1/mains/get-pay-reqs-types/{id}  0 - все статусы
+    bank_id: int      /api/v1/mains/get-banks/{id}, 0 - все банки
+    chart_id: int     /api/v1/mains/get-chart/{id}, 0 - все криптовалют (259 - usdt)
+    phone: str  телефон
+    qty_limit_hour: int лимиты в час
     qty_limit_day: int
     qty_limit_month: int
-    sum_limit_hour: float
+    sum_limit_hour: float сумма лимитов в час
     sum_limit_day: float
     sum_limit_month: float
 
+    :param request:
     :param dict:
     :return:
     """
@@ -255,7 +275,13 @@ async def get_pay_automation_turn_off(id: int):
     :param dict:
     :return:
     """
-    pass
+    response = await get_turn_off(id)
+    if not response['Success']:
+        raise HTTPException(
+            status_code=400,
+            detail=response
+        )
+    return response
 
 
 @router.get("/get-pay-referal-types/{id}")

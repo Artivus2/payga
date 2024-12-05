@@ -108,7 +108,7 @@ async def crud_balance(crud, payload): # todo -> admin
                     return {"Success": False, "data": "Нет данных"}
             if crud == 'set':
                 string = "UPDATE pay_balance SET value = '" +str(payload.value) + \
-                         "' where baldep_status_id = 1 and user_id = " + str(payload.user_id)
+                         "' where user_id = " + str(payload.user_id)
                 cur.execute(string)
                 cnx.commit()
                 if cur.rowcount > 0:
@@ -146,9 +146,6 @@ async def crud_balance(crud, payload): # todo -> admin
                     return {"Success": True, "data": "Тип изменен"}
                 except:
                     return {"Success": False, "data": "Не удалось имзенить тип"}
-
-
-    return {"Success": False, "data": "Операцию провести не удалось"}
 
 
 async def crud_deposit(crud, payload): # todo -> admin
@@ -190,7 +187,7 @@ async def crud_deposit(crud, payload): # todo -> admin
                     return {"Success": False, "data": "Нет данных"}
             if crud == 'set':
                 string = "UPDATE pay_deposit set value = '" +str(payload.value) + \
-                         "' where baldep_types_id = 1 and user_id = " + str(payload.user_id)
+                         "' where user_id = " + str(payload.user_id)
                 cur.execute(string)
                 cnx.commit()
                 if cur.rowcount > 0:
@@ -220,7 +217,7 @@ async def crud_deposit(crud, payload): # todo -> admin
                     cnx.close()
                     return {"Success": False, "data": "Не удалось имзенить статус"}
             if crud == 'type':
-                string = "UPDATE pay_deposit set baldep_types_id = '"+str(payload.baldep_types_id)+"' " \
+                string = "UPDATE pay_deposit SET baldep_types_id = '"+str(payload.baldep_types_id)+"' " \
                          "where user_id = " + str(payload.user_id)
                 cur.execute(string)
                 cnx.commit()
@@ -230,8 +227,6 @@ async def crud_deposit(crud, payload): # todo -> admin
                 else:
                     cnx.close()
                     return {"Success": False, "data": "Не удалось имзенить тип"}
-
-    return {"Success": False, "data": "Операцию провести не удалось"}
 
 
 async def get_pay_type_by_id(id):

@@ -3,8 +3,8 @@ REG_URL = 'https://test.greenavi.com'
 API_KEY_EXPIRATION_PERIOD = '1 year'
 config = {
             'user': 'greenavi_user',
-            'password': 'tb7x3Er5PQ%',
-            'host': '172.30.241.187',
+            'password': 'tb7x3Er5PQ',
+            'host': 'localhost',
             'database': 'greenavi_app',
             'raise_on_warnings': True
         }

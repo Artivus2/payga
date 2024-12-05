@@ -70,6 +70,14 @@ class Chart(BaseModel):
     id: int
     title: str
 
+class Currency(BaseModel):
+    __table_name__ = "currency"
+    """
+    from yii2
+    """
+    id: int
+    title: str
+
 
 class ReqsStatus(BaseModel):
     __table_name__ = "pay_reqs_status"
@@ -115,6 +123,7 @@ class Reqs(BaseModel):
     status_reqs_id - Активен (1) / не активен (0)
     """
     uuid: str | None = None
+    title: str | None = None
     user_id: int
     req_group_id: int | None = None
     sequence: int | None = None
@@ -126,13 +135,13 @@ class Reqs(BaseModel):
     bank_id: int | None = None
     chart_id: int | None = None
     phone: str | None = None
-    date: int | None = None
     qty_limit_hour: int | None = None
     qty_limit_day: int | None = None
     qty_limit_month: int | None = None
     sum_limit_hour: float | None = None
     sum_limit_day: float | None = None
     sum_limit_month: float | None = None
+    limit_active_orders: int | None = None
 
 
 
