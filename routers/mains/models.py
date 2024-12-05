@@ -48,8 +48,8 @@ class AutomationStatus(BaseModel):
     """
     status automate_status_id Активные (1), Успешные (2), Ошибка (2), Ошибка шаблона (3)
     """
-    id: int
-    title: str
+    id: int | None = None
+    title: str | None = None
 
 
 class Bank(BaseModel):

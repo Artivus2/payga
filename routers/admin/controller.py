@@ -31,10 +31,10 @@ async def send_link_to_user(user_id):
                 cur.execute(string)
                 cnx.commit()
                 cur.close()
-                return {"Success":True, "data": "Пользователь подтвержден"}
+                return {"Success": True, "data": "Пользователь подтвержден"}
             except:
                 cur.close()
-                return {"Success":False, "data": "Пользователь не подтвержден"}
+                return {"Success": False, "data": "Пользователь не подтвержден"}
 
 
 async def insert_new_user_banned(**payload):
@@ -151,27 +151,31 @@ async def crud_roles(crud, payload): # todo -> admin
                 string = "UPDATE pay_admin_roles set title = '" +str(payload.title) + \
                          "' where id = " + str(payload.id)
                 cur.execute(string)
-                try:
-                    cnx.commit()
+                cnx.commit()
+                if cur.rowcount > 0:
+                    cnx.close()
                     return {"Success": True, "data": "Роль Успешно изменена"}
-                except:
+                else:
+                    cnx.close()
                     return {"Success": True, "data": "Не удалось изменить роль"}
             if crud == 'remove':
                 string = "UPDATE pay_admin_roles set status = 0 " \
                          "where id = " + str(payload.id)
                 cur.execute(string)
-                try:
-                    cnx.commit()
+                cnx.commit()
+                if cur.rowcount > 0:
+                    cnx.close()
                     return {"Success": True, "data": "Роль успешно удалена. не действует"}
-                except:
+                else:
+                    cnx.close()
                     return {"Success": True, "data": "Не удалось удалить"}
             if crud == 'status':
                 string = "UPDATE pay_admin_roles set status = '"+str(payload.status) \
                          + "' where id = " + str(payload.id)
                 cur.execute(string)
-                try:
-                    cnx.commit()
+                cnx.commit()
+                if cur.rowcount > 0:
                     return {"Success": True, "data": "Статус изменен"}
-                except:
-                    return {"Success": True, "data": "Не удалось имзенить статус"}
+                else:
+                    return {"Success": False, "data": "Не удалось имзенить статус"}
     return {"Success": False, "data": "Операцию провести не удалось"}

@@ -9,7 +9,11 @@ from routers.mains.controller import (
     get_reqs_groups_by_id,
     req_by_filters,
     set_reqs_by_any,
-    set_reqs_group_by_any
+    set_reqs_group_by_any,
+    get_automation_history,
+    get_automation_status,
+    get_pay_reqs_status_by_id,
+    get_pay_reqs_types_by_id
 )
 
 router = APIRouter(prefix='/api/v1/mains', tags=['Основные'])
@@ -135,6 +139,7 @@ async def filter_reqs(request: mains_models.Reqs):
 async def get_reqs_groups(id: int):
     """
     Запрос реквизитов группы
+    :param id:
     :param request:
     :param dict:
     :return:
@@ -172,47 +177,74 @@ async def set_reqs_groups(request: mains_models.ReqGroups):
 
 
 @router.get("/get-pay-automation-history/{id}")
-async def get_pay_automation_history(id: int):
+async def get_pay_automation_history(request: mains_models.AutomationHistory):
     """
     Запрос типов автоматизации
     :param request:
     :param dict:
     :return:
     """
-    pass
+    response = await get_automation_history(request.id)
+    if not response['Success']:
+        raise HTTPException(
+            status_code=400,
+            detail=response
+        )
+    return response
 
 
 @router.get("/get-pay-automation-status/{id}")
 async def get_pay_automation_status(id: int):
     """
     Запрос статусов автоматизации
+    :param id: 0 - все
     :param request:
     :param dict:
     :return:
     """
-    pass
+    response = await get_automation_status(id)
+    if not response['Success']:
+        raise HTTPException(
+            status_code=400,
+            detail=response
+        )
+    return response
 
 
 @router.get("/get-pay-reqs-status/{id}")
 async def get_pay_reqs_status(id: int):
     """
     Запрос статусов реквизитов
+    :param id: 0 - все
     :param request:
     :param dict:
     :return:
     """
-    pass
+    response = await get_pay_reqs_status_by_id(id)
+    if not response['Success']:
+        raise HTTPException(
+            status_code=400,
+            detail=response
+        )
+    return response
 
 
 @router.get("/get-pay-reqs-types/{id}")
 async def get_pay_reqs_types(id: int):
     """
     Запрос типов реквизитов
+    :param id: 0 - все
     :param request:
     :param dict:
     :return:
     """
-    pass
+    response = await get_pay_reqs_types_by_id(id)
+    if not response['Success']:
+        raise HTTPException(
+            status_code=400,
+            detail=response
+        )
+    return response
 
 
 @router.get("/get-pay-reqs-turn-off/{id}")

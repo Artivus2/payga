@@ -69,7 +69,7 @@ async def get_reqs_by_user(user_id):
                 cnx.close()
                 return {"Success": True, "data": data}
             else:
-                return {"Success": False, "data": 'Валюта не найдена'}
+                return {"Success": False, "data": 'Реквизиты не найдены'}
 
 
 async def set_reqs_by_any(payload):
@@ -81,15 +81,14 @@ async def set_reqs_by_any(payload):
                     data_update += str(k) + " = '" + str(v) + "',"
             data_update = data_update[:-1]
             data_update += " where user_id = " + str(payload.get('user_id'))
-            print(data_update)
-            try:
-                cur.execute(data_update)
-                cnx.commit()
+            cur.execute(data_update)
+            cnx.commit()
+            if cur.rowcount > 0:
                 cnx.close()
-                return {"Success": True, "data": "Успешно обновлены реквизиты"}
-            except:
+                return {"Success": True, "data": "Реквизиты успешно обновлены"}
+            else:
                 cnx.close()
-                return {"Success": False, "data": "Успешно обновлены реквизиты"}
+                return {"Success": False, "data": "Реквизиты не обновлены"}
 
 
 async def get_reqs_groups_by_id(id):
@@ -116,6 +115,7 @@ async def get_reqs_groups_by_id(id):
                 cnx.close()
                 return {"Success": True, "data": data}
             else:
+                cnx.close()
                 return {"Success": False, "data": 'группа не найдена'}
 
 
@@ -128,15 +128,14 @@ async def set_reqs_group_by_any(payload):
                     data_update += str(k) + " = '" + str(v) + "',"
             data_update = data_update[:-1]
             data_update += " where id = " + str(payload.get('id'))
-            print(data_update)
-            try:
-                cur.execute(data_update)
-                cnx.commit()
+            cur.execute(data_update)
+            cnx.commit()
+            if cur.rowcount > 0:
                 cnx.close()
                 return {"Success": True, "data": "Успешно обновлены реквизиты группы"}
-            except:
+            else:
                 cnx.close()
-                return {"Success": False, "data": "Успешно обновлены реквизиты группы"}
+                return {"Success": False, "data": "реквизиты группы не обновлены"}
 
 
 async def req_by_filters(payload):
@@ -172,10 +171,57 @@ async def req_by_filters(payload):
                     data += "pay_reqs." + str(k) + " = '" + str(v) + "' and "
                 data += "pay_reqs.id is not null"
 
-            print(data)
             cur.execute(data)
             check = cur.fetchall()
             if check:
                 return {"Success": True, "data": check}
             else:
                 return {"Success": False, "data": "Реквизиты не найдены"}
+
+
+async def get_automation_status(payload):
+    with cpy.connect(**config.config) as cnx:
+        with cnx.cursor(dictionary=True) as cur:
+            if int(payload) == 0:
+                string = "SELECT * FROM pay_automation_status"
+            else:
+                string = "SELECT * FROM pay_automation_status where id = " + str(payload)
+            cur.execute(string)
+            check = cur.fetchall()
+            if check:
+                return {"Success": True, "data": check}
+            else:
+                return {"Success": False, "data": "Автоматизации не найдены"}
+
+
+async def get_pay_reqs_status_by_id(payload):
+    with cpy.connect(**config.config) as cnx:
+        with cnx.cursor(dictionary=True) as cur:
+            if int(payload) == 0:
+                string = "SELECT * FROM pay_reqs_status"
+            else:
+                string = "SELECT * FROM pay_reqs_status where id = " + str(payload)
+            cur.execute(string)
+            check = cur.fetchall()
+            if check:
+                return {"Success": True, "data": check}
+            else:
+                return {"Success": False, "data": "Статусы не найдены"}
+
+async def get_pay_reqs_types_by_id(payload):
+    with cpy.connect(**config.config) as cnx:
+        with cnx.cursor(dictionary=True) as cur:
+            if int(payload) == 0:
+                string = "SELECT * FROM pay_reqs_types"
+            else:
+                string = "SELECT * FROM pay_reqs_types where id = " + str(payload)
+            cur.execute(string)
+            check = cur.fetchall()
+            if check:
+                return {"Success": True, "data": check}
+            else:
+                return {"Success": False, "data": "Статусы не найдены"}
+
+
+async def get_automation_history(payload):
+    pass

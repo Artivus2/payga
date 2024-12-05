@@ -58,10 +58,11 @@ async def delete_user_api_key_by_id(id):
                 data_str = "UPDATE pay_api_keys SET status = 2 where id = " + str(id)
                 cur.execute(data_str)
                 cnx.commit()
-                cnx.close()
-                return {"Success": True, "data": "Успешно"}
-            else:
-                return {"Success": False, "data": 'не удален'}
+                if cur.rowcount > 0:
+                    cnx.close()
+                    return {"Success": True, "data": "Успешно"}
+                else:
+                    return {"Success": False, "data": 'не удален'}
 
 
 # async def get_token_by_token(token):
@@ -132,13 +133,13 @@ async def set_user_active(email, datenowutc, access_token):
             string = "UPDATE user SET is_active = 1, token = '"+str(access_token) + \
                      "', last_visit_time = '"+str(datenowutc)+"' " \
                      "where email = '" + str(email) + "'"
-
-            try:
-                cur.execute(string)
-                cnx.commit()
+            cur.execute(string)
+            cnx.commit()
+            if cur.rowcount > 0:
                 cnx.close()
                 return {"Success": True, "data": "Успешно авторизован"}
-            except:
+            else:
+                cnx.close()
                 return {"Success": False, "data": "Ошибка авторизации"}
 
 

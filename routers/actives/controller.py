@@ -46,12 +46,13 @@ async def crud_balance_percent(crud, payload): # todo -> admin
                     return {"Success": False, "data": "Нет данных"}
             if crud == 'set':
                 string = "UPDATE pay_pay_percent set percent = " \
-                         "where pay_status_id = 1 and user_id = " + str(payload['user_id'])
-                try:
-                    cur.execute(string)
-                    cnx.commit()
+                         "where pay_status_id = 1 and user_id = " + str(payload.user_id)
+
+                cur.execute(string)
+                cnx.commit()
+                if cur.rowcount > 0:
                     return {"Success": True, "data": "Успешно изменен"}
-                except:
+                else:
                     return {"Success": False, "data": "Не удалось изменить"}
             if crud == 'remove':
                 string = "UPDATE pay_pay_percent set pay_percent_status = 0 " \
@@ -106,15 +107,15 @@ async def crud_balance(crud, payload): # todo -> admin
                 else:
                     return {"Success": False, "data": "Нет данных"}
             if crud == 'set':
-                string = "UPDATE pay_balance set value = '" +str(payload.value) + \
-                         "' where baldep_types_id = 1 and user_id = " + str(payload.user_id)
+                string = "UPDATE pay_balance SET value = '" +str(payload.value) + \
+                         "' where baldep_status_id = 1 and user_id = " + str(payload.user_id)
                 cur.execute(string)
-                try:
-                    cnx.commit()
+                cnx.commit()
+                if cur.rowcount > 0:
                     cnx.close()
                     return {"Success": True, "data": "Успешно изменен"}
-                except:
-                    return {"Success": False, "data": "Ну удалось изменить баланс"}
+                else:
+                    return {"Success": False, "data": "Не удалось изменить баланс"}
             if crud == 'remove':
                 string = "UPDATE pay_balance set baldep_types_id = 0, baldep_status_id = 0, value = 0 " \
                          "where user_id = " + str(payload.user_id)
@@ -191,10 +192,12 @@ async def crud_deposit(crud, payload): # todo -> admin
                 string = "UPDATE pay_deposit set value = '" +str(payload.value) + \
                          "' where baldep_types_id = 1 and user_id = " + str(payload.user_id)
                 cur.execute(string)
-                try:
-                    cnx.commit()
+                cnx.commit()
+                if cur.rowcount > 0:
+                    cnx.close()
                     return {"Success": True, "data": "Успешно изменен"}
-                except:
+                else:
+                    cnx.close()
                     return {"Success": False, "data": "Не удалось изменить баланс"}
             if crud == 'remove':
                 string = "UPDATE pay_deposit set baldep_types_id = 0, baldep_status_id = 0, value = 0 " \
@@ -209,21 +212,25 @@ async def crud_deposit(crud, payload): # todo -> admin
                 string = "UPDATE pay_deposit set baldep_status_id = '"+str(payload.baldep_status_id) \
                          + "' where user_id = " + str(payload.user_id)
                 cur.execute(string)
-                try:
-                    cnx.commit()
+                cnx.commit()
+                if cur.rowcount > 0:
+                    cnx.close()
                     return {"Success": True, "data": "Статус изменен"}
-                except:
+                else:
+                    cnx.close()
                     return {"Success": False, "data": "Не удалось имзенить статус"}
             if crud == 'type':
                 string = "UPDATE pay_deposit set baldep_types_id = '"+str(payload.baldep_types_id)+"' " \
                          "where user_id = " + str(payload.user_id)
                 cur.execute(string)
-                try:
-                    cnx.commit()
+                cnx.commit()
+                if cur.rowcount > 0:
+                    cnx.close()
                     return {"Success": True, "data": "Тип изменен"}
-                except:
+                else:
+                    cnx.close()
                     return {"Success": False, "data": "Не удалось имзенить тип"}
-            cnx.close()
+
     return {"Success": False, "data": "Операцию провести не удалось"}
 
 
@@ -374,10 +381,12 @@ async def crud_wallet(crud, payload): # todo -> admin
                 string = "UPDATE pay_wallet set wallet_status_id = '" +str(payload.wallet_status_id) + \
                          "' where user_id = " + str(payload.user_id)
                 cur.execute(string)
-                try:
-                    cnx.commit()
+                cnx.commit()
+                if cur.rowcount > 0:
+                    cnx.close()
                     return {"Success": True, "data": "Успешно изменен"}
-                except:
+                else:
+                    cnx.close()
                     return {"Success": False, "data": "Не удалось изменить статус кошелька"}
             if crud == 'remove':
                 string = "DELETE from pay_wallet  " \

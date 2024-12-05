@@ -57,9 +57,6 @@ async def get_orders_by_any(payload):
                 for k, v in dict(payload).items():
                     data_check += "pay_orders." + str(k) + " = '" + str(v) + "' and "
                 data_check += "pay_orders.id is not null"
-
-            print(data_check)
-
             cur.execute(data_check)
             check = cur.fetchall()
             if check:
@@ -80,24 +77,26 @@ async def update_order_by_id(id, pay_notify_order_types_id):
             string = "UPDATE pay_orders SET pay_notify_order_types_id = '" \
                      "" + str(pay_notify_order_types_id) + \
                      "' where id = " + str(id)
-            try:
-                cur.execute(string)
-                cnx.commit()
+            cur.execute(string)
+            cnx.commit()
+            if cur.rowcount > 0:
                 return {"Success": True, "data": "Статус успешно изменен"}
-            except:
-                return {"Success": True, "data": "Статус не может быть изменен"}
+            else:
+                return {"Success": False, "data": "Статус не может быть изменен"}
 
 
 async def delete_order_by_id(id):
     with cpy.connect(**config.config) as cnx:
         with cnx.cursor(dictionary=True) as cur:
-            try:
-                string = "UPDATE pay_orders SET pay_notify_order_types_id = 26 where id = " + str(id)
-                cur.execute(string)
-                cnx.commit()
+            string = "UPDATE pay_orders SET pay_notify_order_types_id = 26 where id = " + str(id)
+            cur.execute(string)
+            cnx.commit()
+            if cur.rowcount > 0:
+                cnx.close()
                 return {"Success": True, "data": "Успешно изменен"}
-            except:
-                return {"Success": True, "data": "Статус не может быть изменен"}
+            else:
+                cnx.close()
+                return {"Success": False, "data": "Статус не может быть изменен"}
 
 
 async def insert_docs(order_id, images):
@@ -165,11 +164,11 @@ async def set_cashback_status_for_group_by_id(id, value):
         with cnx.cursor(dictionary=True) as cur:
             data_string = "UPDATE pay_cashback SET status_id = " + str(value) + " where id = " + str(id)
             cur.execute(data_string)
-            try:
-                cnx.commit()
+            cnx.commit()
+            if cur.rowcount > 0:
                 cnx.close()
                 return {"Success": True, "data": "Статус кешбека обновлен"}
-            except:
+            else:
                 cnx.close()
                 return {"Success": False, "data": "Статус кешбека не обновлен"}
 

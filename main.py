@@ -9,6 +9,7 @@ from routers.actives.router import router as router_actives
 from routers.mains.router import router as router_mains
 from routers.roles.router import router as router_roles
 from routers.stats.router import router as router_stats
+from routers.nowpayments.router import router as nowpayements
 
 
 app = FastAPI()
@@ -23,11 +24,11 @@ app.add_middleware(
     allow_headers=["*"],  # Разрешаем все заголовки
 )
 
-@app.get("/")
-async def route():
-    return {
-        "message": "Сайт находится в разработке!"
-    }
+# @app.get("/")
+# async def route():
+#     return {
+#         "message": "Сайт находится в разработке!"
+#     }
 
 # @app.get("/register/{referral_code}")
 # async def register_with_referral_code(referral_code: str | None):
@@ -48,6 +49,7 @@ app.include_router(router_actives)
 app.include_router(router_mains)
 app.include_router(router_roles)
 app.include_router(router_stats)
+app.include_router(nowpayements)
 # и еще todo
 
 
