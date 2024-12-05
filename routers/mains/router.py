@@ -13,7 +13,9 @@ from routers.mains.controller import (
     get_automation_status,
     get_pay_reqs_status_by_id,
     get_pay_reqs_types_by_id,
-    get_turn_off
+    get_turn_off,
+    create_reqs_for_user,
+    create_reqs_group
 )
 
 router = APIRouter(prefix='/api/v1/mains', tags=['Основные'])
@@ -74,6 +76,22 @@ async def get_currency(id: int):
     return response
 
 
+@router.post("/create-reqs")
+async def create_reqs(request: mains_models.Reqs):
+    """
+    Создать реквизиты пользователя
+    :param request:
+    :return:
+    """
+    response = await create_reqs_for_user(request)
+    if not response['Success']:
+        raise HTTPException(
+            status_code=400,
+            detail=response
+        )
+    print(response)
+    return response
+
 @router.post("/get-reqs")
 async def get_reqs(request: mains_models.Reqs):
     """
@@ -95,7 +113,7 @@ async def get_reqs(request: mains_models.Reqs):
 @router.post("/set-reqs")
 async def set_reqs(request: mains_models.Reqs):
     """
-    установка реквизитов пользователя
+    смена реквизитов пользователя
     user_id: int
     req_group_id: int по умлочанию 0 не добавлен ни в какую группу\n
     sequence: int частота использования по умолчанию 0
@@ -154,6 +172,23 @@ async def filter_reqs(request: mains_models.Reqs):
         )
     return response
 
+
+@router.post("/create-reqs-groups")
+async def create_reqs_groups(request: mains_models.ReqGroups):
+    """
+    Создать группу реквизитов
+    :param id:
+    :param request:
+    :param dict:
+    :return:
+    """
+    response = await create_reqs_group(request)
+    if not response['Success']:
+        raise HTTPException(
+            status_code=400,
+            detail=response
+        )
+    return response
 
 @router.get("/get-reqs-groups/{id}")
 async def get_reqs_groups(id: int):

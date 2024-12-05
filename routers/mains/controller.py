@@ -264,5 +264,11 @@ async def get_turn_off(payload):
                 return {"Success": False, "data": "Статусы ыключения не найдены"}
 
 
+async def create_reqs_for_user(payload):
+    pass
+
+async def create_reqs_group(payload):
+    pass
+
 async def get_automation_history(payload):
     pass

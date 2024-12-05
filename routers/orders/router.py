@@ -34,7 +34,7 @@ router = APIRouter(prefix='/api/v1/orders', tags=['Ордера'])
 @router.post("/create-order")
 async def create_order(request: orders_models.Orders):
     """
-
+    Создать ордер
     :return:
     """
     uuids = await generate_uuid()
