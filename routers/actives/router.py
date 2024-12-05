@@ -36,6 +36,7 @@ async def create_balance_percent(request: actives_models.PayPercent):
     pay_status_id: int
     }
     """
+    print(request)
     response = await crud_balance_percent('create', request)
     print(response)
     if not response['Success']:
@@ -267,8 +268,8 @@ async def create_deposit(request: actives_models.Deposit):
     id: int
     value: float
     user_id: int
-    balance_status_id: int
-    balance_types_id: int
+    baldep_status_id: int
+    baldep_types_id: int
     description: str
     }
     """
@@ -712,7 +713,7 @@ async def get_pay_status(id: int):
 
 
 @router.get("/get-baldep-status/{id}")
-async def get_balance_status(id: int):
+async def get_baldeps_status(id: int):
     """
     title: 1 - доступно, 2 - замороженоm 0 - все
     :param id:
@@ -728,7 +729,7 @@ async def get_balance_status(id: int):
 
 
 @router.get("/get-baldep-types/{id}")
-async def get_balance_types(id: int):
+async def get_baldeps_types(id: int):
     """
     title: 1 - активные, 2 - архивные, 0 - все
     :param id:

@@ -7,7 +7,9 @@ from routers.mains.controller import (
     get_chart,
     get_reqs_by_user,
     get_reqs_groups_by_id,
-    req_by_filters
+    req_by_filters,
+    set_reqs_by_any,
+    set_reqs_group_by_any
 )
 
 router = APIRouter(prefix='/api/v1/mains', tags=['Основные'])
@@ -25,9 +27,8 @@ async def get_bank_by_id(id: str):
     if not response['Success']:
         raise HTTPException(
             status_code=400,
-            detail=response.json()
+            detail=response
         )
-    print(response)
     return response
 
 
@@ -43,9 +44,8 @@ async def get_chart_by_id(id: str):
     if not response['Success']:
         raise HTTPException(
             status_code=400,
-            detail=response.json()
+            detail=response
         )
-    print(response)
     return response
 
 
@@ -62,20 +62,50 @@ async def get_reqs(request: mains_models.Reqs):
     if not response['Success']:
         raise HTTPException(
             status_code=400,
-            detail=response.json()
+            detail=response
         )
-    print(response)
     return response
 
 
-@router.put("/set-reqs")
-async def set_reqs_by_user(user_id: int):
+@router.post("/set-reqs")
+async def set_reqs(request: mains_models.Reqs):
     """
-    установка реквизитов пользователя по user_id
+    установка реквизитов пользователя
+    uuid: str
+    user_id: int
+    req_group_id: int
+    sequence: int
+    pay_pay_id: int
+    value: str
+    currency_id: int
+    reqs_types_id: int
+    reqs_status_id: int
+    bank_id: int
+    chart_id: int
+    phone: str
+    date: int
+    qty_limit_hour: int
+    qty_limit_day: int
+    qty_limit_month: int
+    sum_limit_hour: float
+    sum_limit_day: float
+    sum_limit_month: float
+
     :param dict:
     :return:
     """
-    pass
+    payload = {}
+    for k, v in request:
+        print(k, v)
+        if v is not None:
+            payload[k] = v
+    response = await set_reqs_by_any(payload)
+    if not response['Success']:
+        raise HTTPException(
+            status_code=400,
+            detail=response
+        )
+    return response
 
 
 @router.post("/get-reqs-filter")
@@ -98,7 +128,6 @@ async def filter_reqs(request: mains_models.Reqs):
             status_code=400,
             detail=response
         )
-    print(response)
     return response
 
 
@@ -114,21 +143,32 @@ async def get_reqs_groups(id: int):
     if not response['Success']:
         raise HTTPException(
             status_code=400,
-            detail=response.json()
+            detail=response
         )
     print(response)
     return response
 
 
-@router.put("/set-reqs-groups")
-async def set_reqs_groups(id: int):
+@router.post("/set-reqs-groups")
+async def set_reqs_groups(request: mains_models.ReqGroups):
     """
     Установка реквизитов группы
     :param request:
     :param dict:
     :return:
     """
-    pass
+    payload = {}
+    for k, v in request:
+        print(k, v)
+        if v is not None:
+            payload[k] = v
+    response = await set_reqs_group_by_any(payload)
+    if not response['Success']:
+        raise HTTPException(
+            status_code=400,
+            detail=response
+        )
+    return response
 
 
 @router.get("/get-pay-automation-history/{id}")

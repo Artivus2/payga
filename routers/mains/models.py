@@ -115,7 +115,7 @@ class Reqs(BaseModel):
     status_reqs_id - Активен (1) / не активен (0)
     """
     uuid: str | None = None
-    user_id: int | None = None
+    user_id: int
     req_group_id: int | None = None
     sequence: int | None = None
     pay_pay_id: int | None = None
@@ -142,7 +142,7 @@ class ReqGroups(BaseModel):
     types_automate_id: способ автоматизации Автоматический / ручной
     turn_off: автоматическое выключение реквизитов без доступа к автоматике
     """
-    id: int | None = None
+    id: int
     uuid: str | None = None
     reqs_id: int | None = None
     date: str | None = None

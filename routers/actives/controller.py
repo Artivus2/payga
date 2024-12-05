@@ -1,3 +1,5 @@
+import datetime
+
 import mysql.connector as cpy
 import config
 
@@ -8,13 +10,13 @@ async def crud_balance_percent(crud, payload): # todo -> admin
     :param payload:
     :return:
     """
-
+    print(payload)
     with cpy.connect(**config.config) as cnx:
         with cnx.cursor(dictionary=True) as cur:
             if crud == 'create':
                 data_str = "INSERT INTO pay_pay_percent (user_id, pay_id, value, date, pay_status_id) " \
-                           "VALUES ('" + str(payload['user_id']) + "','" + str(payload['pay_id']) + "','" \
-                           + str(payload['value']) + "', NOW(), '" + str(payload['pay_status_id']) + "')"
+                           "VALUES ('" + str(payload.user_id) + "','" + str(payload.pay_id) + "','" \
+                           + str(payload.value) + "', NOW() , '" + str(payload.pay_status_id) + "')"
                 try:
                     cur.execute(data_str)
                     cnx.commit()

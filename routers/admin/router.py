@@ -227,7 +227,16 @@ async def get_allowed_status(id: int):
     pass
 
 
-
+@router.post("/sms-data")
+async def sms_receiver(request: admin_models.Sms):
+    """
+    SMS Receiver
+    :param request:
+    :param id:
+    :return:
+    """
+    print(request)
+    return True
 
 
 

@@ -5,5 +5,5 @@ class Statistic(BaseModel):
     """
     статистика
     """
-    id: int
-    title: str
+    user_id: int | None = None
+    title: str | None = None

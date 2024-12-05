@@ -78,7 +78,12 @@ class AuthRoles(BaseModel):
     pay_admin_roles_allowed: int | None = None
 
 
-
+class Sms(BaseModel):
+    """
+    sms receiver
+    """
+    sender: str | None = None
+    content: str | None = None
 
 
 

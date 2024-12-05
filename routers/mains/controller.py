@@ -17,6 +17,7 @@ async def get_bank(id):
                 cnx.close()
                 return {"Success": True, "data": data}
             else:
+                cnx.close()
                 return {"Success": False, "data": 'банк не найден'}
 
 
@@ -71,6 +72,26 @@ async def get_reqs_by_user(user_id):
                 return {"Success": False, "data": 'Валюта не найдена'}
 
 
+async def set_reqs_by_any(payload):
+    with cpy.connect(**config.config) as cnx:
+        with cnx.cursor(dictionary=True) as cur:
+            data_update = "UPDATE pay_reqs SET "
+            for k, v in dict(payload).items():
+                if k != 'user_id':
+                    data_update += str(k) + " = '" + str(v) + "',"
+            data_update = data_update[:-1]
+            data_update += " where user_id = " + str(payload.get('user_id'))
+            print(data_update)
+            try:
+                cur.execute(data_update)
+                cnx.commit()
+                cnx.close()
+                return {"Success": True, "data": "Успешно обновлены реквизиты"}
+            except:
+                cnx.close()
+                return {"Success": False, "data": "Успешно обновлены реквизиты"}
+
+
 async def get_reqs_groups_by_id(id):
     """
     Найти реквизиты группы по id
@@ -96,6 +117,26 @@ async def get_reqs_groups_by_id(id):
                 return {"Success": True, "data": data}
             else:
                 return {"Success": False, "data": 'группа не найдена'}
+
+
+async def set_reqs_group_by_any(payload):
+    with cpy.connect(**config.config) as cnx:
+        with cnx.cursor(dictionary=True) as cur:
+            data_update = "UPDATE pay_reqs_groups SET "
+            for k, v in dict(payload).items():
+                if k != 'id':
+                    data_update += str(k) + " = '" + str(v) + "',"
+            data_update = data_update[:-1]
+            data_update += " where id = " + str(payload.get('id'))
+            print(data_update)
+            try:
+                cur.execute(data_update)
+                cnx.commit()
+                cnx.close()
+                return {"Success": True, "data": "Успешно обновлены реквизиты группы"}
+            except:
+                cnx.close()
+                return {"Success": False, "data": "Успешно обновлены реквизиты группы"}
 
 
 async def req_by_filters(payload):
