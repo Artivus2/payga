@@ -46,7 +46,7 @@ class Role(BaseModel):
     __table_name__ = "pay_admin_roles"
     """
     Группы пользователе
-    + (Трейдеры, Магазины, Оператор, администратор)
+    + (Трейдер, Магазин, Оператор, администратор)
     """
     id: int | None = None
     title: str | None = None
@@ -64,7 +64,7 @@ class Allowed(BaseModel):
     title: str
 
 class AuthRoles(BaseModel):
-    __table_name__ = "pay_admin_auth_roles"
+    __table_name__ = "user"
     """
     +
     привязка к группе методов ролей user страниц
@@ -72,10 +72,10 @@ class AuthRoles(BaseModel):
     id: int | None = None
     user_id: int | None = None
     role_id: int | None = None
-    method_id: int | None = None
-    page_id: int | None = None
-    status: int | None = None
-    pay_admin_roles_allowed: int | None = None
+    # method_id: int | None = None
+    # page_id: int | None = None
+    # status: int | None = None
+    # pay_admin_roles_allowed: int | None = None
 
 
 class Sms(BaseModel):

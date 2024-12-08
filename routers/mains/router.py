@@ -9,13 +9,18 @@ from routers.mains.controller import (
     req_by_filters,
     set_reqs_by_any,
     set_reqs_group_by_any,
+    remove_reqs_by_id,
     get_automation_history,
     get_automation_status,
+    get_automation_type,
     get_pay_reqs_status_by_id,
     get_pay_reqs_types_by_id,
     get_turn_off,
     create_reqs_for_user,
-    create_reqs_group
+    create_reqs_group,
+    add_reqs_by_id_to_group,
+    remove_reqs_by_id_from_group
+
 )
 
 router = APIRouter(prefix='/api/v1/mains', tags=['Основные'])
@@ -150,6 +155,21 @@ async def set_reqs(request: mains_models.Reqs):
     return response
 
 
+@router.post("/remove-reqs")
+async def remove_reqs(request: mains_models.Reqs):
+    """
+    Удаление реквизитов по ид
+    :param request:
+    :return:
+    """
+    response = await remove_reqs_by_id(request.id)
+    if not response['Success']:
+        raise HTTPException(
+            status_code=400,
+            detail=response
+        )
+    return response
+
 @router.post("/get-reqs-filter")
 async def filter_reqs(request: mains_models.Reqs):
     """
@@ -177,9 +197,10 @@ async def filter_reqs(request: mains_models.Reqs):
 async def create_reqs_groups(request: mains_models.ReqGroups):
     """
     Создать группу реквизитов
-    :param id:
     :param request:
-    :param dict:
+    title: str
+    types_automate_id: int () /get-automation-type/{id} 1 - Ручной, 2 - автоматический
+    turn_off: int /get-pay-reqs-turn-off/{id} 0 - выключено, 1 - включено
     :return:
     """
     response = await create_reqs_group(request)
@@ -189,6 +210,8 @@ async def create_reqs_groups(request: mains_models.ReqGroups):
             detail=response
         )
     return response
+
+
 
 @router.get("/get-reqs-groups/{id}")
 async def get_reqs_groups(id: int):
@@ -205,7 +228,6 @@ async def get_reqs_groups(id: int):
             status_code=400,
             detail=response
         )
-    print(response)
     return response
 
 
@@ -223,6 +245,37 @@ async def set_reqs_groups(request: mains_models.ReqGroups):
         if v is not None:
             payload[k] = v
     response = await set_reqs_group_by_any(payload)
+    if not response['Success']:
+        raise HTTPException(
+            status_code=400,
+            detail=response
+        )
+    return response
+
+@router.post("/add-reqs-to-group")
+async def add_reqs_to_group(request: mains_models.ReqToGroups):
+    """
+    Добавить реквизит в группу
+    :param request:
+    :return:
+    """
+    response = await add_reqs_by_id_to_group(request)
+    if not response['Success']:
+        raise HTTPException(
+            status_code=400,
+            detail=response
+        )
+    return response
+
+
+@router.post("/remove-reqs-from-group")
+async def remove_reqs_from_group(request: mains_models.ReqToGroups):
+    """
+    Удалить реквизит из группы
+    :param request:
+    :return:
+    """
+    response = await remove_reqs_by_id_from_group(request)
     if not response['Success']:
         raise HTTPException(
             status_code=400,
@@ -252,7 +305,7 @@ async def get_pay_automation_history(request: mains_models.AutomationHistory):
 async def get_pay_automation_status(id: int):
     """
     Запрос статусов автоматизации
-    :param id: 0 - все
+    :param id: 0 - все Активные, Успешные, Ошибка, Ошибка шаблона
     :param request:
     :param dict:
     :return:
@@ -264,6 +317,41 @@ async def get_pay_automation_status(id: int):
             detail=response
         )
     return response
+
+
+@router.get("/get-pay-automation-type/{id}")
+async def get_pay_automation_type(id: int):
+    """
+    автоматическое выключение реквизитов без доступа к автоматике (1 - ручной, 2 - автоматический)
+    :param request:
+    :param dict:
+    :return:
+    """
+    response = await get_automation_type(id)
+    if not response['Success']:
+        raise HTTPException(
+            status_code=400,
+            detail=response
+        )
+    return response
+
+
+@router.get("/get-pay-reqs-turn-off/{id}")
+async def get_pay_automation_turn_off(id: int):
+    """
+    автоматическое выключение реквизитов без доступа к автоматике (1 - включено, 0 - выключено)
+    :param request:
+    :param dict:
+    :return:
+    """
+    response = await get_turn_off(id)
+    if not response['Success']:
+        raise HTTPException(
+            status_code=400,
+            detail=response
+        )
+    return response
+
 
 
 @router.get("/get-pay-reqs-status/{id}")
@@ -302,21 +390,7 @@ async def get_pay_reqs_types(id: int):
     return response
 
 
-@router.get("/get-pay-reqs-turn-off/{id}")
-async def get_pay_automation_turn_off(id: int):
-    """
-    автоматическое выключение реквизитов без доступа к автоматике (1 - включено, 0 - выключено)
-    :param request:
-    :param dict:
-    :return:
-    """
-    response = await get_turn_off(id)
-    if not response['Success']:
-        raise HTTPException(
-            status_code=400,
-            detail=response
-        )
-    return response
+
 
 
 @router.get("/get-pay-referal-types/{id}")

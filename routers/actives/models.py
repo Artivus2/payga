@@ -68,6 +68,7 @@ class Balance(BaseModel):
     chart_id: int | None = None
     baldep_status_id: int | None = None
     baldep_types_id: int | None = None
+    frozen: float | None = None
 
 
 class BalanceHistoryStatus(BaseModel):
@@ -109,6 +110,7 @@ class Deposit(BaseModel):
     value: float | None = None
     baldep_status_id: int | None = None
     baldep_types_id: int | None = None
+    frozen: float | None = None
     description: str | None = None
 
 
@@ -152,12 +154,14 @@ class TransferHistory(BaseModel):
     +
     status: 0 - активные, 1 - архивные
     """
-    id: int
-    user_id_in: int
-    user_id_out: int
+    id: int | None = None
+    user_id_in_email_or_login: str | None = None
+    user_id_out_email_or_login: str | None = None
+    user_id_in: int | None = None
+    user_id_out: int | None = None
     value: float
-    status: int
-    date: str
+    status: int | None = None
+    date: str | None = None
 
 
 class ExchangeHistory(BaseModel):

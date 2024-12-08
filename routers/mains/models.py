@@ -118,31 +118,43 @@ class Reqs(BaseModel):
     req_group_id - ид группы реквизитов
     qty - лимит сделок в час / день / месяц
     sum - лимит сумм в час / день / месяц
+    limit_active_orders - количество одновременных ордеров минуты
     types_automate_id - способ автоматизации
     sequence - частота успешных ордеров
     status_reqs_id - Активен (1) / не активен (0)
+    title - название
     """
+    id: int | None = None
     uuid: str | None = None
     title: str | None = None
-    user_id: int
-    req_group_id: int | None = None
-    sequence: int | None = None
+    user_id: int | None = None
+    req_group_id: int = 0
+    sequence: int = 1
     pay_pay_id: int | None = None
-    value: str | None = None
-    currency_id: int | None = None
-    reqs_types_id: int | None = None
-    reqs_status_id: int | None = None
+    value: str = '-'
+    currency_id: int = 1
+    reqs_types_id: int = 1
+    reqs_status_id: int = 1
     bank_id: int | None = None
-    chart_id: int | None = None
-    phone: str | None = None
-    qty_limit_hour: int | None = None
-    qty_limit_day: int | None = None
-    qty_limit_month: int | None = None
-    sum_limit_hour: float | None = None
-    sum_limit_day: float | None = None
-    sum_limit_month: float | None = None
-    limit_active_orders: int | None = None
+    phone: str = '+700000000'
+    qty_limit_hour: int = 1
+    qty_limit_day: int = 10
+    qty_limit_month: int = 100
+    sum_limit_hour: float = 1000
+    sum_limit_day: float = 10000
+    sum_limit_month: float = 100000
+    limit_active_orders: int = 1
+    other_banks:  int = 0
+    min_sum_per_transaction: float = 0
+    max_sum_per_transaction: float = 0
+    max_limit_transaction_sum: float = 0
+    max_limit_transaction: int = 0
 
+
+
+class ReqToGroups(BaseModel):
+    id_reqs: int
+    id_group: int | None = None
 
 
 class ReqGroups(BaseModel):
@@ -151,12 +163,12 @@ class ReqGroups(BaseModel):
     types_automate_id: способ автоматизации Автоматический / ручной
     turn_off: автоматическое выключение реквизитов без доступа к автоматике
     """
-    id: int
+    id: int | None = None
     uuid: str | None = None
     reqs_id: int | None = None
     date: str | None = None
     title: str | None = None
-    automation_type_id: int | None = None
+    types_automate_id: int | None = None
     turn_off: int | None = None
 
 

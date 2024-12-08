@@ -14,7 +14,8 @@ from routers.actives.controller import (
     get_baldep_types_by_id,
     get_baldep_status_by_id,
     get_pay_status_by_id,
-    get_pay_type_by_id
+    get_pay_type_by_id,
+    crud_transfer
 
 )
 
@@ -104,7 +105,7 @@ async def remove_balance_percent(request: actives_models.PayPercent):
     pay_status_id: int
     }
     """
-    response = await crud_balance_percent('remove', request.pay_status_id)
+    response = await crud_balance_percent('remove', request)
     if not response['Success']:
         raise HTTPException(
             status_code=400,
@@ -130,15 +131,7 @@ async def create_balance(request: actives_models.Balance):
     }
     """
 
-    payload = {
-        'id': request.id,
-        'user_id': request.user_id,
-        'chart_id': request.chart_id,
-        'value': request.value,
-        'baldep_status_id': request.baldep_status_id,
-        'baldep_types_id': request.baldep_types_id
-    }
-    response = await crud_balance('create', payload)
+    response = await crud_balance('create', request)
     if not response['Success']:
         raise HTTPException(
             status_code=400,
@@ -181,6 +174,7 @@ async def set_balance(request: actives_models.Balance):
     id: int
     user_id: int
     value: float
+    frozen: float
     chart_id: int
     balance_status_id: int
     balance_types_id: int
@@ -258,6 +252,25 @@ async def change_balance_type(request: actives_models.Balance):
     return response
 
 
+@router.post("/change-balance-frozen")
+async def change_balance_frozen(request: actives_models.Balance):
+    """
+    :param request:
+    :return:
+    {
+    user_id: int
+    frozen: float
+    }
+    """
+    response = await crud_balance('frozen', request)
+    if not response['Success']:
+        raise HTTPException(
+            status_code=400,
+            detail=response
+        )
+    return response
+
+
 #deposit
 @router.post("/create-deposit")
 async def create_deposit(request: actives_models.Deposit):
@@ -270,6 +283,7 @@ async def create_deposit(request: actives_models.Deposit):
     user_id: int
     baldep_status_id: int
     baldep_types_id: int
+    frozen: float
     description: str
     }
     """
@@ -346,7 +360,7 @@ async def change_deposit_status(request: actives_models.Deposit):
     :return:
     {
     user_id: int
-    balance_status_id: int
+    frozen: int
     }
     """
     response = await crud_deposit('status', request)
@@ -369,6 +383,25 @@ async def change_deposit_type(request: actives_models.Deposit):
     }
     """
     response = await crud_deposit('type', request)
+    if not response['Success']:
+        raise HTTPException(
+            status_code=400,
+            detail=response
+        )
+    return response
+
+
+@router.post("/change-deposit-frozen")
+async def change_deposit_frozen(request: actives_models.Deposit):
+    """
+    :param request:
+    :return:
+    {
+    user_id: int
+    frozen: float
+    }
+    """
+    response = await crud_deposit('frozen', request)
     if not response['Success']:
         raise HTTPException(
             status_code=400,
@@ -552,62 +585,39 @@ async def create_transfer(request: actives_models.TransferHistory):
     :param request:
     :return:
     {
-    id: int
-    user_id_in: int
-    user_id_out: int
+    user_id_in_email_or_login: str (кому переводим)
+    user_id_out_email_or_login: str (от кого переводим)
     value: float
-    status: int
     }
     """
-    pass
+    response = await crud_transfer("create", request)
+    if not response['Success']:
+        raise HTTPException(
+            status_code=400,
+            detail=response
+        )
+    return response
 
 
-@router.get("/get-transfer")
-async def get_transfer(request: actives_models.TransferHistory):
+@router.get("/get-transfers/{user_id}")
+async def get_transfer(user_id: int):
     """
+    :param user_id:
     :param request:
     :return:
     {
-    id: int
-    user_id_in: int
-    user_id_out: int
-    value: float
-    status: int
+    user_id: 0 - все
     }
     """
-    pass
+    response = await crud_transfer("get", user_id)
+    print(response)
+    if not response['Success']:
+        raise HTTPException(
+            status_code=400,
+            detail=response
+        )
+    return response
 
-
-@router.put("/set-transfer")
-async def set_transfer(request: actives_models.TransferHistory):
-    """
-    :param request:
-    :return:
-    {
-    id: int
-    user_id_in: int
-    user_id_out: int
-    value: float
-    status: int
-    }
-    """
-    pass
-
-
-@router.delete("/remove-transfer")
-async def remove_transfer(request: actives_models.TransferHistory):
-    """
-    :param request:
-    :return:
-    {
-    id: int
-    user_id_in: int
-    user_id_out: int
-    value: float
-    status: int
-    }
-    """
-    pass
 
 
 @router.post("/create-exchange")

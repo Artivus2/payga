@@ -6,7 +6,9 @@ from routers.admin.controller import (
     check_access,
     get_all_users_profiles,
     get_all_roles,
-    crud_roles
+    crud_roles,
+    change_user_role,
+    set_users_any
 )
 from routers.admin.utils import send_email
 
@@ -43,7 +45,7 @@ async def get_roles(request: admin_models.Role):
     :param request:
     :return:
     """
-    response = await get_all_roles(request.id)
+    response = await get_all_roles(request)
     if not response['Success']:
         raise HTTPException(
             status_code=400,
@@ -123,44 +125,20 @@ async def set_role_status(request: admin_models.Role):
     return response
 
 
-@router.post("/create-auth-roles")
-async def create_role(request: admin_models.AuthRoles):
+@router.post("/update-auth-roles")
+async def update_user_role(request: admin_models.AuthRoles):
     """
-    Создать привязку user-role-method-pages
+    Изменить роль пользователю
     :param request:
     :return:
     """
-    pass
-
-
-@router.get("/get-auth-roles/{id}")
-async def get_role(id: int):
-    """
-    получить привязку user-role-method-pages по id
-    :param id:
-    :return:
-    """
-    pass
-
-
-@router.post("/set-auth-roles")
-async def update_role(request: admin_models.AuthRoles):
-    """
-    Изменить привязку user-role-method-pages
-    :param request:
-    :return:
-    """
-    pass
-
-
-@router.post("/delete-auth-roles")
-async def delete_role(request: admin_models.AuthRoles):
-    """
-    удалить привязку user-role-method-pages по id
-    :param request:
-    :return:
-    """
-    pass
+    response = await change_user_role(request)
+    if not response['Success']:
+        raise HTTPException(
+            status_code=400,
+            detail=response,
+        )
+    return response
 
 
 @router.get("/get-admin-role-status/{id}")
@@ -205,8 +183,11 @@ async def get_all_users(request: users_models.User):
     :param id:
     :return:
     """
-    print(request)
-    response = await get_all_users_profiles(request)
+    payload = {}
+    for k, v in request:
+        if v is not None:
+            payload[k] = v
+    response = await get_all_users_profiles(payload)
     if not response['Success']:
         raise HTTPException(
             status_code=400,
@@ -214,6 +195,34 @@ async def get_all_users(request: users_models.User):
         )
     return response
 
+
+@router.post("/set-any-user")
+async def set_user(request: users_models.User):
+    """
+    Установка параметров пользователя
+    id: user_id
+    login: str
+    email: str
+    telegram: str
+    is_active: int
+    role_id: int
+    banned: int
+    app_id: int
+    :param request:
+    :return:
+    """
+    payload = {}
+    for k, v in request:
+        print(k, v)
+        if v is not None:
+            payload[k] = v
+    response = await set_users_any(payload)
+    if not response['Success']:
+        raise HTTPException(
+            status_code=400,
+            detail=response,
+        )
+    return response
 
 
 @router.get("/get-allowed-status/{id}")

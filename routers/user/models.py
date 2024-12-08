@@ -10,6 +10,7 @@ class User(BaseModel):
     Пользователь из yii2
     """
     id: int | None = None
+    user_id: int | None = None
     login: str | None = None
     email: str | None = None
     password: str | None = None
@@ -18,6 +19,7 @@ class User(BaseModel):
     is_active: int | None = None
     role_id: int | None = None
     banned: int | None = None
+    app_id: int | None = None
 
 
 class JwtTokenSchema(BaseModel):

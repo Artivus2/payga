@@ -91,12 +91,8 @@ async def get_all_users_profiles(payload):
     """
     with cpy.connect(**config.config) as cnx:
         with cnx.cursor(dictionary=True) as cur:
-            if payload.banned:
-                banned = "where banned = " + str(payload.banned)
-            else:
-                banned = ""
-
-            string = "SELECT user.id, login, role_id, email, telegram, created_at as reg_date, telegram_connected, " \
+            string = "SELECT user.id, login, role_id, email, phone, " \
+                     "telegram, created_at as reg_date, telegram_connected, " \
                      "twofa_status, user.verify_status, verify_status.title as verify, user.banned as banned_status," \
                      "banned_status.title as banned, user.chart_id, chart.symbol as chart, user.currency_id, " \
                      "is_active, is_admin, " \
@@ -105,17 +101,26 @@ async def get_all_users_profiles(payload):
                      "LEFT JOIN banned_status ON user.banned = banned_status.id " \
                      "LEFT JOIN chart ON user.chart_id = chart.id " \
                      "LEFT JOIN currency ON user.currency_id = currency.id " \
-                     + banned
+                     "where "
+            id = payload.get('id', 0)
+            if id > 0:
+                for k, v in dict(payload).items():
+                    string += "user." + str(k) + " = '" + str(v) + "' and "
+                string += "user.id is not null"
+            else:
+                for k, v in dict(payload).items():
+                    if k != 'id':
+                        string += "user." + str(k) + " = '" + str(v) + "' and "
+                string += "user.id is not null"
             cur.execute(string)
             data = cur.fetchall()
-
             if data:
                 return {"Success": True, "data": data}
             else:
-                return {"Success": False, "data": "Токен не найден или просрочен"}
+                return {"Success": False, "data": "Данных нет"}
 
 
-async def get_all_roles(id):
+async def get_all_roles(payload):
     with cpy.connect(**config.config) as cnx:
         with cnx.cursor(dictionary=True) as cur:
             string = "SELECT * from pay_admin_roles"
@@ -177,5 +182,40 @@ async def crud_roles(crud, payload): # todo -> admin
                 if cur.rowcount > 0:
                     return {"Success": True, "data": "Статус изменен"}
                 else:
-                    return {"Success": False, "data": "Не удалось имзенить статус"}
+                    return {"Success": False, "data": "Не удалось изменить статус"}
     return {"Success": False, "data": "Операцию провести не удалось"}
+
+
+async def change_user_role(payload):
+    with cpy.connect(**config.config) as cnx:
+        with cnx.cursor(dictionary=True) as cur:
+            string = "UPDATE user SET role_id = " + str(payload.role_id) + " where id = " + str(payload.user_id)
+            cur.execute(string)
+            cnx.commit()
+            if cur.rowcount > 0:
+                return {"Success": True, "data": "Роль изменена"}
+            else:
+                return {"Success": False, "data": "Не удалось изменить роль пользователя"}
+
+
+async def set_users_any(payload): # эталон для update
+    with cpy.connect(**config.config) as cnx:
+        with cnx.cursor(dictionary=True) as cur:
+            data_update = "UPDATE user SET "
+            for k, v in dict(payload).items():
+                if k != 'user_id':
+                    data_update += str(k) + " = '" + str(v) + "',"
+            data_update = data_update[:-1]
+            data_update += " where id = " + str(payload.get('user_id'))
+            try:
+                cur.execute(data_update)
+                cnx.commit()
+            except:
+                cnx.close()
+                return {"Success": False, "data": "Не корректные данные"}
+            if cur.rowcount > 0:
+                cnx.close()
+                return {"Success": True, "data": "Успешно обновлены реквизиты пользователя"}
+            else:
+                cnx.close()
+                return {"Success": False, "data": "реквизиты пользователя не обновлены"}
