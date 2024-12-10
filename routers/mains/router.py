@@ -2,6 +2,7 @@ import routers.mains.models as mains_models
 from fastapi import APIRouter, HTTPException
 from routers.mains.controller import (
     get_bank,
+    set_fav_bank,
     get_chart,
     get_curr,
     get_reqs_groups_by_id,
@@ -14,11 +15,21 @@ from routers.mains.controller import (
     get_automation_type,
     get_pay_reqs_status_by_id,
     get_pay_reqs_types_by_id,
+    set_pay_reqs_types_by_id,
+    remove_pay_reqs_types_by_id,
     get_turn_off,
     create_reqs_for_user,
     create_reqs_group,
     add_reqs_by_id_to_group,
-    remove_reqs_by_id_from_group
+    remove_reqs_by_id_from_group,
+    remove_group_by_id,
+    get_pay_refs_types_by_id,
+    set_or_create_pay_refs_types_by_id,
+    get_pay_refs_levels_by_id,
+    update_pay_refs_level_by_id,
+    get_pay_refs_by_user,
+
+
 
 )
 
@@ -35,6 +46,25 @@ async def get_bank_by_id(id: str):
     """
 
     response = await get_bank(id)
+    if not response['Success']:
+        raise HTTPException(
+            status_code=400,
+            detail=response
+        )
+    return response
+
+
+@router.post("/set-favorite-banks")
+async def set_banks(request: mains_models.BankFavs):
+    """
+    Запрос банка
+    :param request:
+    :param token:
+    :return:
+    token
+    """
+
+    response = await set_fav_bank(request)
     if not response['Success']:
         raise HTTPException(
             status_code=400,
@@ -94,23 +124,6 @@ async def create_reqs(request: mains_models.Reqs):
             detail=response
         )
     return response
-
-# @router.post("/get-reqs")
-# async def get_reqs(request: mains_models.Reqs):
-#     """
-#     Запрос реквизитов пользователя по user_id
-#     :param request:
-#     :param dict:
-#     :return:
-#
-#     """
-#     response = await get_reqs_by_user(request.user_id)
-#     if not response['Success']:
-#         raise HTTPException(
-#             status_code=400,
-#             detail=response
-#         )
-#     return response
 
 
 @router.post("/set-reqs")
@@ -279,6 +292,24 @@ async def remove_reqs_from_group(request: mains_models.ReqToGroups):
     return response
 
 
+@router.post("/remove-group-by-id")
+async def remove_group(request: mains_models.Reqs):
+    """
+    удалить группу и обнулить реквизиты
+    user_id
+    req_group_id
+    :param request:
+    :return:
+    """
+    response = await remove_group_by_id(request)
+    if not response['Success']:
+        raise HTTPException(
+            status_code=400,
+            detail=response
+        )
+    return response
+
+
 @router.get("/get-pay-automation-history/{id}")
 async def get_pay_automation_history(request: mains_models.AutomationHistory):
     """
@@ -385,7 +416,36 @@ async def get_pay_reqs_types(id: int):
     return response
 
 
+@router.post("/set-pay-reqs-types")
+async def get_pay_reqs_types(request: mains_models.ReqsTypes):
+    """
+    Платежные методы
+    :param request:
+    :return:
+    """
+    response = await set_pay_reqs_types_by_id(request)
+    if not response['Success']:
+        raise HTTPException(
+            status_code=400,
+            detail=response
+        )
+    return response
 
+
+@router.post("/remove-pay-reqs-types")
+async def remove_pay_reqs_types(request: mains_models.ReqsTypes):
+    """
+    Платежные методы
+    :param request:
+    :return:
+    """
+    response = await remove_pay_reqs_types_by_id(request)
+    if not response['Success']:
+        raise HTTPException(
+            status_code=400,
+            detail=response
+        )
+    return response
 
 
 @router.get("/get-pay-referal-types/{id}")
@@ -398,11 +458,36 @@ async def get_pay_refs_types(id: int):
     dict:
     :return:
     """
-    pass
+    response = await get_pay_refs_types_by_id(id)
+    if not response['Success']:
+        raise HTTPException(
+            status_code=400,
+            detail=response
+        )
+    return response
+
+
+@router.post("/set-pay-referal-types/{id}")
+async def set_pay_refs_types(request: mains_models.Refs):
+    """
+    Типы рефералов
+    :param
+    request:
+    :param
+    dict:
+    :return:
+    """
+    response = await set_or_create_pay_refs_types_by_id(request)
+    if not response['Success']:
+        raise HTTPException(
+            status_code=400,
+            detail=response
+        )
+    return response
 
 
 @router.get("/get-pay-referal/{user_id}")
-async def get_pay_refs(id: int):
+async def get_pay_refs(user_id: int):
     """
     Рефералы по user_id
     :param
@@ -411,7 +496,14 @@ async def get_pay_refs(id: int):
     dict:
     :return:
     """
-    pass
+    response = await get_pay_refs_by_user(user_id)
+    if not response['Success']:
+        raise HTTPException(
+            status_code=400,
+            detail=response
+        )
+    return response
+
 
 
 @router.post("/set-pay-referal-level")
@@ -431,7 +523,13 @@ async def get_pay_refs_level(id: int):
     :param id:
     :return:
     """
-    pass
+    response = await get_pay_refs_levels_by_id(id)
+    if not response['Success']:
+        raise HTTPException(
+            status_code=400,
+            detail=response
+        )
+    return response
 
 
 @router.put("/update-pay-referal-level")
@@ -441,7 +539,13 @@ async def update_pay_refs_level(request: mains_models.RefsLevel):
     :param id:
     :return:
     """
-    pass
+    response = await update_pay_refs_level_by_id(request)
+    if not response['Success']:
+        raise HTTPException(
+            status_code=400,
+            detail=response
+        )
+    return response
 
 
 @router.delete("/delete-pay-referal-level")

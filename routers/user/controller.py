@@ -1,5 +1,6 @@
 import mysql.connector as cpy
 import config
+import telebot
 from jose import JWTError, jwt
 from datetime import datetime, timedelta
 from fastapi import Depends, HTTPException, status
@@ -7,7 +8,7 @@ from fastapi.security import OAuth2PasswordBearer
 from pydantic import ValidationError
 
 from routers.admin.utils import create_random_key
-
+botgreenavipay = telebot.TeleBot(config.telegram_api)
 
 async def insert_generated_api_key(user_id):
     with cpy.connect(**config.config) as cnx:
@@ -137,6 +138,8 @@ async def set_user_active(email, datenowutc, access_token):
             cnx.commit()
             if cur.rowcount > 0:
                 cnx.close()
+                message = "Пользователь " + str(email) + " авторизован в " + str(datetime.utcnow())
+                botgreenavipay.send_message(config.pay_main_group, message)
                 return {"Success": True, "data": "Успешно авторизован"}
             else:
                 cnx.close()

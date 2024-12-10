@@ -1,12 +1,11 @@
 import random
 import uuid
-
-
 import mysql.connector as cpy
 import config
+from telebot import types
 
 
-#check_orders
+# check_orders
 def check_orders():
     """
     (/set-order-status)
@@ -55,7 +54,7 @@ def get_orders_status_cancel_by_time_status_8(time=-15):
         with cnx.cursor(dictionary=True) as cur:
             string = "UPDATE pay_orders SET pay_notify_order_types_id = 8 where " \
                      "pay_notify_order_types_id = 4 and " \
-                     "date < DATE_ADD(NOW(), INTERVAL "+str(time)+" minute)"
+                     "date < DATE_ADD(NOW(), INTERVAL " + str(time) + " minute)"
             cur.execute(string)
             cnx.commit()
             if cur.rowcount > 0:
@@ -69,7 +68,7 @@ def get_orders_status_cancel_by_time_status_9(time=-15):
         with cnx.cursor(dictionary=True) as cur:
             string = "UPDATE pay_orders SET pay_notify_order_types_id = 9 where " \
                      "pay_notify_order_types_id = 1 and " \
-                     "date < DATE_ADD(NOW(), INTERVAL "+str(time)+" minute)"
+                     "date < DATE_ADD(NOW(), INTERVAL " + str(time) + " minute)"
             cur.execute(string)
             cnx.commit()
             if cur.rowcount > 0:
@@ -83,16 +82,19 @@ def generate_orders():
         with cnx.cursor(dictionary=True) as cur:
             uuids = uuid.uuid4()
             data_string = "INSERT INTO pay_orders (uuid, user_id, course, chart_id, sum_fiat, pay_id," \
-                  "value, cashback, date, date_expiry, req_id, pay_notify_order_types_id, docs_id) " \
-                  "VALUES ('" + str(uuids) + "', 638,'" + str(random.randint(97,105)) + "',259,'" + \
-                  str(random.randint(97,105)*100) + "',1,'" + str(random.randint(97,105)*100) + "','" \
-                  + str(random.randint(1,10)) + "',NOW(), DATE_ADD(NOW(), INTERVAL 15 minute), 0, 1, 1)"
+                          "value, cashback, date, date_expiry, req_id, pay_notify_order_types_id, docs_id) " \
+                          "VALUES ('" + str(uuids) + "', 638,'" + str(random.randint(97, 105)) + "',259,'" + \
+                          str(random.randint(97, 105) * 100) + "',1,'" + str(random.randint(97, 105) * 100) + "','" \
+                          + str(random.randint(1, 10)) + "',NOW(), DATE_ADD(NOW(), INTERVAL 15 minute), 0, 1, 1)"
             print(data_string)
             cur.execute(data_string)
             cnx.commit()
 
 
-#generate_orders()
-get_orders_status_cancel_by_time_status_8()
-get_orders_status_cancel_by_time_status_9()
-#check_orders()
+# generate_orders()
+#get_orders_status_cancel_by_time_status_8()
+#get_orders_status_cancel_by_time_status_9()
+# check_orders()
+print(len([1]))
+
+

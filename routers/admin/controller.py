@@ -1,8 +1,13 @@
+from datetime import datetime
+
 import mysql.connector as cpy
+
+
 import config
 import routers.admin.models as admin_models
 from routers.user.controller import create_random_key
-
+import telebot
+botgreenavipay = telebot.TeleBot(config.telegram_api)
 
 async def check_access(request: admin_models.AuthRoles):
     print("user", request)
@@ -48,7 +53,8 @@ async def insert_new_user_banned(**payload):
                          "' or email = '" + payload['email'] + "'"
             cur.execute(data_login)
             data = cur.fetchone()
-            data_ref = "SELECT id from user where comment = '" + str(payload['affiliate_invitation_code']) + "'"
+            data_ref = "SELECT id from user where affiliate_invitation_code = '" \
+                       "" + str(payload['affiliate_invitation_code']) + "'"
             cur.execute(data_ref)
             ref_id = cur.fetchone()
             print("ref_id", ref_id)
@@ -58,7 +64,8 @@ async def insert_new_user_banned(**payload):
                 ref_id = 0
             if not data:
                 banned_for_submit = 1  # блокируем вход до подтверждения админом
-                data_string = "INSERT INTO user (login, email, password, affiliate_invitation_id, comment, telegram, app_id, banned) " \
+                data_string = "INSERT INTO user (login, email, password, affiliate_invitation_id, " \
+                              "affiliate_invitation_code, telegram, app_id, banned) " \
                               "VALUES ('" + str(payload['login']) + "','" + str(payload['email']) + \
                               "','" + str(payload['password']) + "','" + str(ref_id) + "','" + str(
                     link_gen) + "','" + str(payload['telegram']) + "','" + str(app_id) + "','" + str(
@@ -77,6 +84,9 @@ async def insert_new_user_banned(**payload):
                     cnx.commit()
                 cnx.close()
                 # print(comment)
+                message = "Пользователь " + str(payload['email'])\
+                          + " поставлен в очередь на регистрацию " + str(datetime.utcnow())
+                botgreenavipay.send_message(config.pay_main_group, message)
                 return {"Success": True, "data": "Поставлен в очередь на регистрацию. Ожидайте"}
             else:
                 return {"Success": False, "data": "Пользователь: " + str(payload['email'])
@@ -95,7 +105,7 @@ async def get_all_users_profiles(payload):
                      "telegram, created_at as reg_date, telegram_connected, " \
                      "twofa_status, user.verify_status, verify_status.title as verify, user.banned as banned_status," \
                      "banned_status.title as banned, user.chart_id, chart.symbol as chart, user.currency_id, " \
-                     "is_active, is_admin, " \
+                     "is_active, is_admin, affiliate_invitation_code, " \
                      "currency.symbol as currency from user " \
                      "LEFT JOIN verify_status ON user.verify_status = verify_status.id " \
                      "LEFT JOIN banned_status ON user.banned = banned_status.id " \

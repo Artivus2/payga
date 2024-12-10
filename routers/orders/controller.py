@@ -4,6 +4,9 @@ from fastapi import HTTPException
 import config
 from routers.orders.utils import generate_uuid
 import requests
+import telebot
+
+botgreenavipay = telebot.TeleBot(config.telegram_api)
 
 
 async def get_course():
@@ -37,6 +40,7 @@ async def create_order_for_user(payload):
             cur.execute(data_string)
             cnx.commit()
             if cur.rowcount > 0:
+
                 return {"Success": True, "data": "Ордер поставлен в очередь. Ожидайте исполнения"}
             else:
                 return {"Success": False, "data": "Ордер не может быть создан"}
@@ -208,6 +212,7 @@ async def get_all_cashback_statuses(payload):
                 cnx.close()
                 return {"Success": True, "data": data}
             else:
+                cnx.close()
                 return {"Success": False, "data": "Статусы не получены"}
 
 
@@ -216,7 +221,8 @@ async def get_all_cashback_by_id(id):
         with cnx.cursor(dictionary=True) as cur:
             data_string = "SELECT pay_cashback.title, pay_cashback.date, reqs_group_id, " \
                           "pay_reqs_groups.title as reqs_group_title, value, status_id,  " \
-                          "pay_cashback_status.title as status_title from pay_cashback " \
+                          "pay_cashback_status.title as status_title " \
+                          "from pay_cashback " \
                           "LEFT JOIN pay_cashback_status ON pay_cashback.status_id = pay_cashback_status.id " \
                           "LEFT JOIN pay_reqs_groups ON pay_reqs_groups.id = pay_cashback.reqs_group_id "
             cur.execute(data_string)
@@ -225,4 +231,5 @@ async def get_all_cashback_by_id(id):
                 cnx.close()
                 return {"Success": True, "data": data}
             else:
+                cnx.close()
                 return {"Success": False, "data": "Статусы не получены"}

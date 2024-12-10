@@ -224,7 +224,7 @@ async def get_cashback_status(request: orders_models.CashbackStatus):
     :param id:
     :return:
     """
-    response = await get_all_cashback_statuses(request.id)
+    response = await get_all_cashback_statuses(request)
     if not response['Success']:
         raise HTTPException(
             status_code=400,
@@ -242,7 +242,7 @@ async def get_all_cashback(request: orders_models.Cashback):
     :param request:
     :return:
     """
-    response = await get_all_cashback_by_id(request.id)
+    response = await get_all_cashback_by_id(request)
     if not response['Success']:
         raise HTTPException(
             status_code=400,

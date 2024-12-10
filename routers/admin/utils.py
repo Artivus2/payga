@@ -35,7 +35,7 @@ async def verify(plain, hashed):
 
 
 async def get_hash(value):
-    return "pwd_context.hash(value)"
+    return pwd_context.hash(value)
 
 
 ## Checking if the JWT token is used before and the user is no longer active

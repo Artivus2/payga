@@ -55,11 +55,24 @@ class AutomationStatus(BaseModel):
 class Bank(BaseModel):
     __table_name__ = "banks"
     """
-    from yii2
+    from banks
     """
     id: int
-    bik: str
-    title: str
+    bik: str | None = None
+    title: str | None = None
+    address: str | None = None
+    active: int | None = None
+
+
+class BankFavs(BaseModel):
+    __table_name__ = "pay_fav_banks"
+    """
+    from banks
+    """
+    id: int
+    user_id: int
+    bank_id: int | list
+
 
 
 class Chart(BaseModel):
@@ -84,7 +97,7 @@ class ReqsStatus(BaseModel):
     """
     status_reqs_id: Реквизит Активен (1) / не активен (0)
     """
-    id: int
+    id: int | None = None
     title: str
 
 
@@ -93,8 +106,8 @@ class ReqsTypes(BaseModel):
     """
     reqs.types - СБП / перевод с карты на карту / перевод по номеру счета...
     """
-    id: int
-    title: str
+    id: int = 0
+    title: str | None = None
 
 
 class AutomationTurnOff(BaseModel):
@@ -185,7 +198,7 @@ class ReqsFilters(BaseModel):
 
 
 class ReqToGroups(BaseModel):
-    id_reqs: int
+    id_reqs: int | list | None = None
     id_group: int | None = None
 
 
@@ -202,6 +215,7 @@ class ReqGroups(BaseModel):
     title: str | None = None
     types_automate_id: int | None = None
     turn_off: int | None = None
+    user_id: int | None = None
 
 
 class Telegram(BaseModel):
@@ -220,7 +234,7 @@ class RefsTypes(BaseModel):
     """
     Трейдеры, Магазины
     """
-    id: int
+    id: int = 0
     title: str
 
 
@@ -230,10 +244,10 @@ class Refs(BaseModel):
     pay_referals from user
     level 0 по умолчанию 1 линия
     """
-    id: int
-    user_id: int
-    referal_id: int
-    level: int
+    id: int | None = None
+    user_id: int | None = None
+    referal_id: int | None = None
+    level: int | None = None
 
 
 class RefsLevel(BaseModel):
@@ -241,6 +255,6 @@ class RefsLevel(BaseModel):
     """
     уровни рефералов %
     """
-    id: int
-    title: str
-    value: float
+    id: int | None = None
+    title: str | None = None
+    value: float | None = None

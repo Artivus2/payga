@@ -5,8 +5,8 @@ from typing import Annotated
 import config
 import routers.user.models as user_models
 import requests
+import telebot
 from fastapi import APIRouter, HTTPException, Cookie, Request
-
 from routers.admin.controller import insert_new_user_banned
 from routers.admin.utils import get_hash, verify, create_access_token
 from routers.user.controller import (
@@ -24,7 +24,7 @@ from fastapi import Depends, FastAPI
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
-
+botgreenavipay = telebot.TeleBot(config.telegram_api)
 router = APIRouter(prefix='/api/v1/user', tags=['Пользователи'])
 
 
@@ -323,6 +323,20 @@ async def login_for_access_token(request: user_models.Login):
 #             "login": user['data']['login']
 #         }
 #     }
+
+@router.post("/change-password")
+async def change_password(request: user_models.User):
+    """
+
+    :param request:
+    :return:
+    """
+    pass
+
+
+@router.post("/confirm-password")
+async def change_password(request: user_models.User):
+    pass
 
 
 @router.get("/profile/{user_id}")

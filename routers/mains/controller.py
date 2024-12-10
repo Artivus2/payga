@@ -5,7 +5,7 @@ from routers.orders.utils import generate_uuid
 
 async def get_bank(id):
     """
-    Найти банк по id, 0 - все банки
+    Найти банк по id, 0 - все банки todo fav_banks
     :param id:
     :return:
     """
@@ -23,6 +23,28 @@ async def get_bank(id):
             else:
                 cnx.close()
                 return {"Success": False, "data": 'банк не найден'}
+
+
+async def set_fav_bank(payload): #todo fav_banks
+    with cpy.connect(**config.config) as cnx:
+        with cnx.cursor(dictionary=True) as cur:
+            data_check = ""
+            for k, v in dict(payload).items():
+                if isinstance(v, list):
+                    v = tuple(v)
+                    data_check += ""
+                else:
+                    data_check += ""
+            data_check += "pay_orders.id is not null"
+            string = "UPDATE fav_banks SET active = 2 where id = " + str(payload.id)
+            # cur.execute(string)
+            # cnx.commit()
+            # if cur.rowcount > 0:
+            #     cnx.close()
+            #     return {"Success": True, "data": "Успешно добавлен в группу"}
+            # else:
+            #     cnx.close()
+            #     return {"Success": False, "data": "Реквизиты в группу не добавлены"}
 
 
 async def get_chart(id):
@@ -100,6 +122,27 @@ async def remove_reqs_by_id(id):
                 return {"Success": False, "data": "Реквизиты не удалены"}
 
 
+
+async def remove_group_by_id(payload):
+    with cpy.connect(**config.config) as cnx:
+        with cnx.cursor(dictionary=True) as cur:
+            string0 = "UPDATE pay_reqs SET req_group_id = 0 WHERE user_id = " +str(payload.user_id)\
+                      + " and req_group_id = " + str(payload.req_group_id)
+            cur.execute(string0)
+            cnx.commit()
+            if cur.rowcount > 0:
+                string1 = "DELETE FROM pay_reqs_groups WHERE id = " + str(payload.req_group_id)\
+                      + " and user_id = " + str(payload.user_id)
+                cur.execute(string1)
+                cnx.commit()
+                if cur.rowcount > 0:
+                    cnx.close()
+                    return {"Success": True, "data": "Группа реквизитов успешно удалена"}
+                else:
+                    cnx.close()
+                    return {"Success": False, "data": "Реквизиты группы не удалены"}
+
+
 async def get_reqs_groups_by_id(id):
     """
     Найти реквизиты группы по id
@@ -112,7 +155,7 @@ async def get_reqs_groups_by_id(id):
 
             if int(id) == 0:
                 data = "SELECT pay_reqs_groups.title, pay_reqs_groups.id, pay_reqs_groups.uuid as group_uuid," \
-                       "pay_reqs.id, pay_reqs.uuid as reqs_uuid, pay_reqs.date," \
+                       "pay_reqs.id, pay_reqs.uuid as reqs_uuid, pay_reqs.date, pay_reqs_groups.user_id, " \
                        "types_automate_id, pay_automation_type.title as types_automation_title," \
                        "pay_automation_turn_off.id as turn_off_id, pay_automation_turn_off.title as turn_off_status " \
                        "from pay_reqs_groups " \
@@ -121,7 +164,7 @@ async def get_reqs_groups_by_id(id):
                        "LEFT JOIN pay_automation_turn_off ON pay_reqs_groups.turn_off = pay_automation_turn_off.id"
             else:
                 data = "SELECT pay_reqs_groups.title, pay_reqs_groups.id, pay_reqs_groups.uuid as group_uuid," \
-                       "pay_reqs.id, pay_reqs.uuid as reqs_uuid, pay_reqs.date," \
+                       "pay_reqs.id, pay_reqs.uuid as reqs_uuid, pay_reqs.date, pay_reqs_groups.user_id, " \
                        "types_automate_id, pay_automation_type.title as types_automation_title," \
                        "pay_automation_turn_off.id as turn_off_id, pay_automation_turn_off.title as turn_off_status " \
                        "from pay_reqs_groups " \
@@ -169,12 +212,12 @@ async def req_by_filters(payload):
     with cpy.connect(**config.config) as cnx:
         with cnx.cursor(dictionary=True) as cur:
             # null_id = payload.get('id', 0)
-            string = "SELECT user_id, pay_reqs.id, pay_reqs.uuid as pay_reqs_uuid, pay_reqs.title, " \
+            string = "SELECT pay_reqs.user_id, pay_reqs.id, pay_reqs.uuid as pay_reqs_uuid, pay_reqs.title, " \
                      "req_group_id, pay_reqs_groups.title as pay_reqs_groups_title," \
                      "pay_reqs_groups.types_automate_id as pay_automation_type_id, pay_reqs_groups.turn_off, " \
                      "pay_reqs_groups.uuid as pay_reqs_groups_uuid, " \
                      "sequence, pay_pay_id, pay_pay.title as pay_title," \
-                     "pay_reqs_status.title as pay_status,  pay_reqs.value," \
+                     "pay_reqs_status.title as pay_status, pay_reqs.value," \
                      "reqs_types_id, pay_reqs_types.title as reqs_types_title," \
                      "bank_id, banks.title as bank_title, currency_id, currency.symbol as currency_symbol," \
                      "phone, pay_reqs.date, pay_automation_type.title as pay_automation_type_title, " \
@@ -198,6 +241,7 @@ async def req_by_filters(payload):
             for k, v in dict(payload).items():
                 string += "pay_reqs." + str(k) + " = '" + str(v) + "' and "
             string += "pay_reqs.id is not null"
+            print(string)
             cur.execute(string)
             data = cur.fetchall()
             if data:
@@ -264,6 +308,51 @@ async def get_pay_reqs_types_by_id(payload):
                 return {"Success": True, "data": check}
             else:
                 return {"Success": False, "data": "Статусы не найдены"}
+
+
+async def set_pay_reqs_types_by_id(payload):
+    with cpy.connect(**config.config) as cnx:
+        with cnx.cursor(dictionary=True) as cur:
+            string0 = "SELECT * FROM pay_reqs_types where id = " + str(payload.id)
+            cur.execute(string0)
+            data0 = cur.fetchall()
+            if data0:
+                string = "UPDATE pay_reqs_types SET title = '" + str(payload.title) \
+                         + "' where id = " + str(payload.id)
+                cur.execute(string)
+                cnx.commit()
+                if cur.rowcount > 0:
+                    cnx.close()
+                    return {"Success": True, "data": "Успешно обновлен платежный метод"}
+                else:
+                    cnx.close()
+                    return {"Success": False, "data": "Платежный метод не обновлен"}
+            else:
+                string = "INSERT INTO pay_reqs_types (title) " \
+                         "VALUES('" + str(payload.title) + "')"
+                cur.execute(string)
+                cnx.commit()
+                if cur.rowcount > 0:
+                    cnx.close()
+                    return {"Success": True, "data": "Успешно добавлен платежный метод"}
+                else:
+                    cnx.close()
+                    return {"Success": False, "data": "Платежный метод не добавлены"}
+
+
+
+async def remove_pay_reqs_types_by_id(payload):
+    with cpy.connect(**config.config) as cnx:
+        with cnx.cursor(dictionary=True) as cur:
+            string = "DELETE FROM pay_reqs_types where id = " + str(payload.id)
+            cur.execute(string)
+            cnx.commit()
+            if cur.rowcount > 0:
+                cnx.close()
+                return {"Success": True, "data": "Платежный метод удален"}
+            else:
+                cnx.close()
+                return {"Success": False, "data": "Платежный метод не может быть удален"}
 
 
 async def get_turn_off(payload):
@@ -338,8 +427,10 @@ async def create_reqs_for_user(payload):
                           + "','" + str(payload.sum_limit_hour) + "','" + str(payload.sum_limit_day) \
                           + "','" + str(payload.sum_limit_month) + "','" + str(payload.title) \
                           + "','" + str(payload.limit_active_orders) + "','" + str(payload.other_banks) \
-                          + "','" + str(payload.min_sum_per_transaction) + "','" + str(payload.max_sum_per_transaction) \
-                          + "','" + str(payload.max_limit_transaction_sum) + "','" + str(payload.max_limit_transaction) \
+                          + "','" + str(payload.min_sum_per_transaction) + "','" \
+                          + str(payload.max_sum_per_transaction) \
+                          + "','" + str(payload.max_limit_transaction_sum) + "','" \
+                          + str(payload.max_limit_transaction) \
                           + "')"
             cur.execute(data_string)
             cnx.commit()
@@ -355,6 +446,7 @@ async def create_reqs_group(payload):
     """
     title: str | None = None
     types_automate_id: int | None = None
+    user_id: int
     turn_off: int | None = None
     :param payload:
     :return:
@@ -363,11 +455,9 @@ async def create_reqs_group(payload):
         with cnx.cursor(dictionary=True) as cur:
             uuids = await generate_uuid()
             print(payload)
-            string = "INSERT INTO pay_reqs_groups (uuid, reqs_id, date, title, types_automate_id, turn_off) " \
+            string = "INSERT INTO pay_reqs_groups (uuid, reqs_id, date, title, types_automate_id, turn_off, user_id) " \
                      "VALUES('" + str(uuids) + "',0, NOW(),'" + str(payload.title) + "'," + str(
-                payload.types_automate_id) \
-                     + ",'" + str(payload.turn_off) + "')"
-            print(string)
+                payload.types_automate_id) + ",'" + str(payload.turn_off) + "', '"+str(payload.user_id)+"')"
             cur.execute(string)
             cnx.commit()
             if cur.rowcount > 0:
@@ -381,11 +471,17 @@ async def create_reqs_group(payload):
 async def add_reqs_by_id_to_group(payload):
     with cpy.connect(**config.config) as cnx:
         with cnx.cursor(dictionary=True) as cur:
-            print(payload.id_group)
-            string = "UPDATE pay_reqs SET req_group_id = '" + str(payload.id_group) \
-                     + "' where id = " + str(payload.id_reqs)
-            cur.execute(string)
-            cnx.commit()
+            if isinstance(payload.id_reqs, list):
+                for i in list(payload.id_reqs):
+                    string = "UPDATE pay_reqs SET req_group_id = '" + str(payload.id_group) \
+                             + "' where id = " + str(i)
+                    cur.execute(string)
+                    cnx.commit()
+            else:
+                string = "UPDATE pay_reqs SET req_group_id = '" + str(payload.id_group) \
+                         + "' where id = " + str(payload.id_reqs)
+                cur.execute(string)
+                cnx.commit()
             if cur.rowcount > 0:
                 cnx.close()
                 return {"Success": True, "data": "Успешно добавлен в группу"}
@@ -397,16 +493,111 @@ async def add_reqs_by_id_to_group(payload):
 async def remove_reqs_by_id_from_group(payload):
     with cpy.connect(**config.config) as cnx:
         with cnx.cursor(dictionary=True) as cur:
-            string = "UPDATE pay_reqs SET req_group_id = 0 where id = " + str(payload.id_reqs)
-            cur.execute(string)
-            cnx.commit()
+            if isinstance(payload.id_reqs, list):
+                for i in list(payload.id_reqs):
+                    string = "UPDATE pay_reqs SET req_group_id = 0 where id = " + str(i)
+                    cur.execute(string)
+                    cnx.commit()
+            else:
+                string = "UPDATE pay_reqs SET req_group_id = 0 where id = " + str(payload.id_reqs)
+                cur.execute(string)
+                cnx.commit()
             if cur.rowcount > 0:
                 cnx.close()
-                return {"Success": True, "data": "Успешно удален из группы"}
+                return {"Success": True, "data": "Успешно добавлен в группу"}
             else:
                 cnx.close()
-                return {"Success": False, "data": "Реквизиты из группы не удалены"}
+                return {"Success": False, "data": "Реквизиты в группу не добавлены"}
 
 
 async def get_automation_history(payload):
     pass
+
+
+async def get_pay_refs_types_by_id(payload):
+    with cpy.connect(**config.config) as cnx:
+        with cnx.cursor(dictionary=True) as cur:
+            if int(payload) == 0:
+                string = "SELECT * FROM pay_refs_types"
+            else:
+                string = "SELECT * FROM pay_refs_types where id = " + str(payload)
+            cur.execute(string)
+            check = cur.fetchall()
+            if check:
+                return {"Success": True, "data": check}
+            else:
+                return {"Success": False, "data": "Типы рефералов не найдены"}
+
+
+async def set_or_create_pay_refs_types_by_id(payload):
+    with cpy.connect(**config.config) as cnx:
+        with cnx.cursor(dictionary=True) as cur:
+            string0 = "SELECT * FROM pay_refs_types where id = " + str(payload.id)
+            cur.execute(string0)
+            data0 = cur.fetchall()
+            if data0:
+                string = "UPDATE pay_refs_types SET title = '" + str(payload.title) \
+                         + "' where id = " + str(payload.id)
+                cur.execute(string)
+                cnx.commit()
+                if cur.rowcount > 0:
+                    cnx.close()
+                    return {"Success": True, "data": "Успешно обновлен тип реферала"}
+                else:
+                    cnx.close()
+                    return {"Success": False, "data": "Типы рефералов не обновлены"}
+            else:
+                string = "INSERT INTO pay_refs_types (title) " \
+                         "VALUES('" + str(payload.title) + "')"
+                cur.execute(string)
+                cnx.commit()
+                if cur.rowcount > 0:
+                    cnx.close()
+                    return {"Success": True, "data": "Успешно добавлен тип реферала"}
+                else:
+                    cnx.close()
+                    return {"Success": False, "data": "Типы рефералов не добавлены"}
+
+
+async def get_pay_refs_levels_by_id(payload):
+    with cpy.connect(**config.config) as cnx:
+        with cnx.cursor(dictionary=True) as cur:
+            if int(payload) == 0:
+                string = "SELECT * FROM pay_refs_levels"
+            else:
+                string = "SELECT * FROM pay_refs_levels where id = " + str(payload)
+            cur.execute(string)
+            check = cur.fetchall()
+            if check:
+                return {"Success": True, "data": check}
+            else:
+                return {"Success": False, "data": "Уровни рефералов не найдены"}
+
+
+async def update_pay_refs_level_by_id(payload):
+    with cpy.connect(**config.config) as cnx:
+        with cnx.cursor(dictionary=True) as cur:
+            string = "UPDATE pay_refs_level SET title = " + str(payload.title) \
+                     + ", value = '" + str(payload.value) + "' where id = " + str(payload.id)
+            cur.execute(string)
+            if cur.rowcount > 0:
+                cnx.close()
+                return {"Success": True, "data": "Успешно обновлен уровень реферальной программы"}
+            else:
+                cnx.close()
+                return {"Success": False, "data": "Реферальная программа не обновлена"}
+
+
+async def get_pay_refs_by_user(payload):
+    with cpy.connect(**config.config) as cnx:
+        with cnx.cursor(dictionary=True) as cur:
+            if int(payload) == 0:
+                string = "SELECT * FROM pay_refs"
+            else:
+                string = "SELECT * FROM pay_refs where user_id = " + str(payload)
+            cur.execute(string)
+            check = cur.fetchall()
+            if check:
+                return {"Success": True, "data": check}
+            else:
+                return {"Success": False, "data": "Рефералы не найдены"}

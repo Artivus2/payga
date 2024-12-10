@@ -30,7 +30,7 @@ class CashbackStatus(BaseModel):
     """
 
     id: int
-    title: str | None
+    title: str | None = None
 
 
 class Cashback(BaseModel):
