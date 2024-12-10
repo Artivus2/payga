@@ -1,25 +1,42 @@
 import mysql.connector as cpy
+from fastapi import HTTPException
+
 import config
+from routers.orders.utils import generate_uuid
+import requests
 
 
-async def create_order_for_user(**payload):
+async def get_course():
+
+    api_url = "https://api.coinbase.com/v2/prices/USDT-RUB/spot"
+    headers = {
+        'Content-Type': 'application/json'
+    }
+    response = requests.get(api_url, headers=headers)
+    if response.status_code != 200:
+        raise HTTPException(status_code=response.status_code, detail=response.json())
+    return response.json()
+
+
+async def create_order_for_user(payload):
     with cpy.connect(**config.config) as cnx:
         with cnx.cursor(dictionary=True) as cur:
-            data_string = "INSERT INTO orders (uuid, user_id, course, chart_id, sum_fiat, pay_id," \
-                          "value, cashback, date, date_expiry, req_id, pay_notify_order_types_id, docs_id " \
-                          "VALUES ('" + str(payload['uuid']) + "','" + str(payload['user_id']) + \
-                          "','" + str(payload['course']) + "','" + str(payload['chart_id']) + "','" + \
-                          str(payload['sum_fiat']) + "','" + str(payload['value']) + "','" \
-                          + str(payload['cashback']) + "','" + str(payload['date']) + "','" \
-                          + str(payload['date_expiry']) + "','" + str(payload['req_id']) + "','" \
-                          + str(payload['pay_notify_order_types_id']) + "','" + str(payload['docs_id']) + "')"
+            uuids = await generate_uuid()
+            # try:
+            course = await get_course()
+            course2 = float(course['data']['amount'])
+            summ = course2 * float(payload.value)
+            data_string = "INSERT INTO pay_orders (uuid, user_id, course, chart_id, sum_fiat, pay_id," \
+                          "value, cashback, date, date_expiry, req_id, pay_notify_order_types_id, docs_id) " \
+                          "VALUES ('" + str(uuids) + "','" + str(payload.user_id) + \
+                          "','" + str(round(course2,2)) + "','" + str(payload.chart_id) + "','" + \
+                          str(round(summ, 2)) + "','"+str(payload.pay_id)+"','" + str(payload.value) + "','" \
+                          + str(payload.cashback) + "',NOW(), DATE_ADD(NOW(), INTERVAL 15 minute),'" \
+                          + str(payload.req_id) + "','" \
+                          + str(payload.pay_notify_order_types_id) + "','" + str(payload.docs_id) + "')"
             cur.execute(data_string)
             cnx.commit()
-
-            data_check = "select id from orders where uuid = " + str(payload['uuid'])
-            cur.execute(data_check)
-            check = cur.fetchone()
-            if check:
+            if cur.rowcount > 0:
                 return {"Success": True, "data": "Ордер поставлен в очередь. Ожидайте исполнения"}
             else:
                 return {"Success": False, "data": "Ордер не может быть создан"}
@@ -52,21 +69,29 @@ async def get_orders_by_any(payload):
                          "pay_notify_order_types.id " \
                          "where "
             if int(null_id) == 0:
+                for k, v in dict(payload).items():
+                    if k != 'id':
+                        if isinstance(v, list):
+                            v = tuple(v)
+                            data_check += "pay_orders." + str(k) + " in " + str(v) + " and "
+                        else:
+                            data_check += "pay_orders." + str(k) + " = '" + str(v) + "' and "
                 data_check += "pay_orders.id > 0"
             else:
                 for k, v in dict(payload).items():
-                    data_check += "pay_orders." + str(k) + " = '" + str(v) + "' and "
+                    if isinstance(v, list):
+                        v = tuple(v)
+                        data_check += "pay_orders." + str(k) + " in " + str(v) + " and "
+                    else:
+                        data_check += "pay_orders." + str(k) + " = '" + str(v) + "' and "
                 data_check += "pay_orders.id is not null"
+            print(data_check)
             cur.execute(data_check)
-            check = cur.fetchall()
-            if check:
-                return {"Success": True, "data": check}
+            data = cur.fetchall()
+            if data:
+                return {"Success": True, "data": data}
             else:
                 return {"Success": False, "data": "Ордер не найден"}
-
-
-async def get_order_status_by_id(id):
-    pass
 
 
 async def update_order_by_id(id, pay_notify_order_types_id):

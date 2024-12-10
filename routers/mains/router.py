@@ -4,7 +4,6 @@ from routers.mains.controller import (
     get_bank,
     get_chart,
     get_curr,
-    get_reqs_by_user,
     get_reqs_groups_by_id,
     req_by_filters,
     set_reqs_by_any,
@@ -94,25 +93,24 @@ async def create_reqs(request: mains_models.Reqs):
             status_code=400,
             detail=response
         )
-    print(response)
     return response
 
-@router.post("/get-reqs")
-async def get_reqs(request: mains_models.Reqs):
-    """
-    Запрос реквизитов пользователя по user_id
-    :param request:
-    :param dict:
-    :return:
-
-    """
-    response = await get_reqs_by_user(request.user_id)
-    if not response['Success']:
-        raise HTTPException(
-            status_code=400,
-            detail=response
-        )
-    return response
+# @router.post("/get-reqs")
+# async def get_reqs(request: mains_models.Reqs):
+#     """
+#     Запрос реквизитов пользователя по user_id
+#     :param request:
+#     :param dict:
+#     :return:
+#
+#     """
+#     response = await get_reqs_by_user(request.user_id)
+#     if not response['Success']:
+#         raise HTTPException(
+#             status_code=400,
+#             detail=response
+#         )
+#     return response
 
 
 @router.post("/set-reqs")
@@ -143,7 +141,6 @@ async def set_reqs(request: mains_models.Reqs):
     """
     payload = {}
     for k, v in request:
-        print(k, v)
         if v is not None:
             payload[k] = v
     response = await set_reqs_by_any(payload)
@@ -170,8 +167,8 @@ async def remove_reqs(request: mains_models.Reqs):
         )
     return response
 
-@router.post("/get-reqs-filter")
-async def filter_reqs(request: mains_models.Reqs):
+@router.post("/get-reqs")
+async def filter_reqs(request: mains_models.ReqsFilters):
     """
     Запрос реквизитов пользователя по параметрам
     :param request:
@@ -181,7 +178,6 @@ async def filter_reqs(request: mains_models.Reqs):
     """
     payload = {}
     for k, v in request:
-        print(k, v)
         if v is not None:
             payload[k] = v
     response = await req_by_filters(payload)
@@ -241,7 +237,6 @@ async def set_reqs_groups(request: mains_models.ReqGroups):
     """
     payload = {}
     for k, v in request:
-        print(k, v)
         if v is not None:
             payload[k] = v
     response = await set_reqs_group_by_any(payload)

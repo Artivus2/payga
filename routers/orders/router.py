@@ -1,17 +1,9 @@
 import shutil
 from typing import Annotated
-
 from fastapi import APIRouter, Response, Depends, UploadFile, File, HTTPException, Form, Body, Query
-from routers.orders.utils import (
-    generate_uuid,
-    get_course
-)
-import json
 import routers.orders.models as orders_models
-import requests
 from routers.orders.controller import (
     create_order_for_user,
-    get_order_status_by_id,
     get_orders_by_any,
     delete_order_by_id,
     update_order_by_id,
@@ -37,25 +29,7 @@ async def create_order(request: orders_models.Orders):
     Создать ордер
     :return:
     """
-    uuids = await generate_uuid()
-
-    payload = {
-        'uuid': uuids,
-        'user_id': request.user_id,
-        'sum_fiat': request.sum_fiat,
-        'course': get_course(request.chart_id),
-        'chart_id': request.chart_id,
-        'pay_id': request.pay_id,
-        'value': request.value,
-        'cashback': request.cashback,
-        'date': request.date,
-        'date_expiry': request.date_expiry,
-        'req_id': request.req_id,
-        'pay_notify_order_types_id': request.pay_notify_order_types_id,
-        'docs_ids': request.doc_ids
-    }
-
-    response = await create_order_for_user(**payload)
+    response = await create_order_for_user(request)
     if not response['Success']:
         raise HTTPException(
             status_code=400,
@@ -74,7 +48,6 @@ async def order_filters(request: orders_models.Orders):
     """
     payload = {}
     for k, v in request:
-        print(k, v)
         if v is not None:
             payload[k] = v
     response = await get_orders_by_any(payload)
@@ -87,20 +60,20 @@ async def order_filters(request: orders_models.Orders):
     return response
 
 
-@router.get("/get-order-status/{id}")
-async def get_order(id: int):
-    """
-    Получить статус ордера по id из pay_notify_order_types
-    :return:
-    """
-    response = await get_order_status_by_id(id)
-    if not response['Success']:
-        raise HTTPException(
-            status_code=400,
-            detail=response
-        )
-    print(response)
-    return response
+# @router.get("/get-order-status/{id}")
+# async def get_order(id: int):
+#     """
+#     Получить статус ордера по id из pay_notify_order_types
+#     :return:
+#     """
+#     response = await get_order_status_by_id(id)
+#     if not response['Success']:
+#         raise HTTPException(
+#             status_code=400,
+#             detail=response
+#         )
+#     print(response)
+#     return response
 
 
 @router.post("/set-order-status")

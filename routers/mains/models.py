@@ -151,6 +151,38 @@ class Reqs(BaseModel):
     max_limit_transaction: int = 0
 
 
+class ReqsFilters(BaseModel):
+    __table_name__ = "pay_reqs"
+    """
+    filters
+    """
+    id: int | None = None
+    uuid: str | None = None
+    title: str | None = None
+    user_id: int | None = None
+    req_group_id: int | None = None
+    sequence: int | None = None
+    pay_pay_id: int | None = None
+    value: str | None = None
+    currency_id: int | None = None
+    reqs_types_id: int | None = None
+    reqs_status_id: int | None = None
+    bank_id: int | None = None
+    phone: str | None = None
+    qty_limit_hour: int | None = None
+    qty_limit_day: int | None = None
+    qty_limit_month: int | None = None
+    sum_limit_hour: float | None = None
+    sum_limit_day: float | None = None
+    sum_limit_month: float | None = None
+    limit_active_orders: int | None = None
+    other_banks:  int | None = None
+    min_sum_per_transaction: float | None = None
+    max_sum_per_transaction: float | None = None
+    max_limit_transaction_sum: float | None = None
+    max_limit_transaction: int | None = None
+
+
 
 class ReqToGroups(BaseModel):
     id_reqs: int

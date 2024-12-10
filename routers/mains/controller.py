@@ -66,50 +66,16 @@ async def get_curr(id):
             else:
                 return {"Success": False, "data": 'Валюта не найдена'}
 
-async def get_reqs_by_user(user_id):
-    """
-    Найти реквизиты по user_id
-    :param user_id:
-    :return:
-    """
-    with cpy.connect(**config.config) as cnx:
-        with cnx.cursor(dictionary=True) as cur:
-            string = "SELECT user_id, pay_reqs.id, pay_reqs.uuid, pay_reqs.title " \
-                   "req_group_id, pay_reqs_groups.title as pay_reqs_groups_title," \
-                   "sequence, pay_pay_id, pay_pay.title as pay_title," \
-                   "pay_reqs_status.title as pay_status,  pay_reqs.value," \
-                   "reqs_types_id, pay_reqs_types.title as reqs_types_title," \
-                   "bank_id, banks.title as bank_title, currency_id, currency.symbol as currency_symbol," \
-                   "phone, pay_reqs.date, " \
-                   "qty_limit_hour, qty_limit_day, qty_limit_month, sum_limit_hour, sum_limit_day, " \
-                   "sum_limit_month, limit_active_orders, other_banks, min_sum_per_transaction, " \
-                   "max_sum_per_transaction, max_limit_transaction_sum, max_limit_transaction" \
-                   "from pay_reqs " \
-                   "LEFT JOIN banks ON pay_reqs.bank_id = banks.id " \
-                   "LEFT JOIN currency ON pay_reqs.currency_id = currency.id " \
-                   "LEFT JOIN pay_reqs_groups ON pay_reqs.req_group_id = pay_reqs_groups.id " \
-                   "LEFT JOIN pay_reqs_status ON pay_reqs.reqs_status_id = pay_reqs_status.id " \
-                   "LEFT JOIN pay_reqs_types ON pay_reqs.reqs_types_id = pay_reqs_types.id " \
-                   "LEFT JOIN pay_pay ON pay_reqs.pay_pay_id = pay_pay.id " \
-                   "where user_id = " + str(user_id)
-            cur.execute(string)
-            data = cur.fetchall()
-            if data:
-                cnx.close()
-                return {"Success": True, "data": data}
-            else:
-                return {"Success": False, "data": 'Реквизиты не найдены'}
-
 
 async def set_reqs_by_any(payload):
     with cpy.connect(**config.config) as cnx:
         with cnx.cursor(dictionary=True) as cur:
             data_update = "UPDATE pay_reqs SET "
             for k, v in dict(payload).items():
-                if k != 'user_id':
+                if k != 'id':
                     data_update += str(k) + " = '" + str(v) + "',"
             data_update = data_update[:-1]
-            data_update += " where user_id = " + str(payload.get('user_id'))
+            data_update += " where id = " + str(payload.get('id'))
             cur.execute(data_update)
             cnx.commit()
             if cur.rowcount > 0:
@@ -132,6 +98,7 @@ async def remove_reqs_by_id(id):
             else:
                 cnx.close()
                 return {"Success": False, "data": "Реквизиты не удалены"}
+
 
 async def get_reqs_groups_by_id(id):
     """
@@ -201,36 +168,40 @@ async def req_by_filters(payload):
     """
     with cpy.connect(**config.config) as cnx:
         with cnx.cursor(dictionary=True) as cur:
-            #null_id = payload.get('id', 0)
-            data = "SELECT pay_reqs.id, pay_reqs.uuid, pay_reqs.title," \
-                   "req_group_id, pay_reqs_groups.title as pay_reqs_groups_title," \
-                   "sequence, pay_pay_id, pay_pay.title as pay_title," \
-                   "pay_reqs_status.title as pay_status,  pay_reqs.value," \
-                   "reqs_types_id, pay_reqs_types.title as reqs_types_title," \
-                   "bank_id, banks.title as bank_title, currency_id, currency.symbol as currency_symbol," \
-                   "phone, pay_reqs.date, qty_limit_hour, qty_limit_day, qty_limit_month, " \
-                   "sum_limit_hour, sum_limit_day, sum_limit_month, limit_active_orders, other_banks, " \
-                   "min_sum_per_transaction, max_sum_per_transaction, max_limit_transaction_sum," \
-                   "max_limit_transaction " \
-                   "from pay_reqs " \
-                   "LEFT JOIN banks ON pay_reqs.bank_id = banks.id " \
-                   "LEFT JOIN currency ON pay_reqs.currency_id = currency.id " \
-                   "LEFT JOIN pay_reqs_groups ON pay_reqs.req_group_id = pay_reqs_groups.id " \
-                   "LEFT JOIN pay_reqs_status ON pay_reqs.reqs_status_id = pay_reqs_status.id " \
-                   "LEFT JOIN pay_reqs_types ON pay_reqs.reqs_types_id = pay_reqs_types.id " \
-                   "LEFT JOIN pay_pay ON pay_reqs.pay_pay_id = pay_pay.id " \
-                   "where "
+            # null_id = payload.get('id', 0)
+            string = "SELECT user_id, pay_reqs.id, pay_reqs.uuid as pay_reqs_uuid, pay_reqs.title, " \
+                     "req_group_id, pay_reqs_groups.title as pay_reqs_groups_title," \
+                     "pay_reqs_groups.types_automate_id as pay_automation_type_id, pay_reqs_groups.turn_off, " \
+                     "pay_reqs_groups.uuid as pay_reqs_groups_uuid, " \
+                     "sequence, pay_pay_id, pay_pay.title as pay_title," \
+                     "pay_reqs_status.title as pay_status,  pay_reqs.value," \
+                     "reqs_types_id, pay_reqs_types.title as reqs_types_title," \
+                     "bank_id, banks.title as bank_title, currency_id, currency.symbol as currency_symbol," \
+                     "phone, pay_reqs.date, pay_automation_type.title as pay_automation_type_title, " \
+                     "pay_automation_turn_off.title as turn_off_title," \
+                     "qty_limit_hour, qty_limit_day, qty_limit_month, sum_limit_hour, sum_limit_day, " \
+                     "sum_limit_month, limit_active_orders, other_banks, min_sum_per_transaction, " \
+                     "max_sum_per_transaction, max_limit_transaction_sum, max_limit_transaction " \
+                     "from pay_reqs " \
+                     "LEFT JOIN banks ON pay_reqs.bank_id = banks.id " \
+                     "LEFT JOIN currency ON pay_reqs.currency_id = currency.id " \
+                     "LEFT JOIN pay_reqs_groups ON pay_reqs.req_group_id = pay_reqs_groups.id " \
+                     "LEFT JOIN pay_reqs_status ON pay_reqs.reqs_status_id = pay_reqs_status.id " \
+                     "LEFT JOIN pay_reqs_types ON pay_reqs.reqs_types_id = pay_reqs_types.id " \
+                     "LEFT JOIN pay_pay ON pay_reqs.pay_pay_id = pay_pay.id " \
+                     "LEFT JOIN pay_automation_type ON pay_reqs_groups.types_automate_id = pay_automation_type.id " \
+                     "LEFT JOIN pay_automation_turn_off ON pay_reqs_groups.id = pay_automation_turn_off.id " \
+                     "where "
             # if int(null_id) == 0:
             #     data += "pay_reqs.id > 0"
             # else:
             for k, v in dict(payload).items():
-                data += "pay_reqs." + str(k) + " = '" + str(v) + "' and "
-            data += "pay_reqs.id is not null"
-
-            cur.execute(data)
-            check = cur.fetchall()
-            if check:
-                return {"Success": True, "data": check}
+                string += "pay_reqs." + str(k) + " = '" + str(v) + "' and "
+            string += "pay_reqs.id is not null"
+            cur.execute(string)
+            data = cur.fetchall()
+            if data:
+                return {"Success": True, "data": data}
             else:
                 return {"Success": False, "data": "Реквизиты не найдены"}
 
@@ -393,8 +364,9 @@ async def create_reqs_group(payload):
             uuids = await generate_uuid()
             print(payload)
             string = "INSERT INTO pay_reqs_groups (uuid, reqs_id, date, title, types_automate_id, turn_off) " \
-                     "VALUES('"+str(uuids)+"',0, NOW(),'"+str(payload.title)+"',"+str(payload.types_automate_id)\
-                     +",'"+str(payload.turn_off)+"')"
+                     "VALUES('" + str(uuids) + "',0, NOW(),'" + str(payload.title) + "'," + str(
+                payload.types_automate_id) \
+                     + ",'" + str(payload.turn_off) + "')"
             print(string)
             cur.execute(string)
             cnx.commit()
@@ -410,7 +382,7 @@ async def add_reqs_by_id_to_group(payload):
     with cpy.connect(**config.config) as cnx:
         with cnx.cursor(dictionary=True) as cur:
             print(payload.id_group)
-            string = "UPDATE pay_reqs SET req_group_id = '" + str(payload.id_group)\
+            string = "UPDATE pay_reqs SET req_group_id = '" + str(payload.id_group) \
                      + "' where id = " + str(payload.id_reqs)
             cur.execute(string)
             cnx.commit()
@@ -420,7 +392,6 @@ async def add_reqs_by_id_to_group(payload):
             else:
                 cnx.close()
                 return {"Success": False, "data": "Реквизиты в группу не добавлены"}
-
 
 
 async def remove_reqs_by_id_from_group(payload):

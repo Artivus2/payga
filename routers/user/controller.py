@@ -65,19 +65,19 @@ async def delete_user_api_key_by_id(id):
                     return {"Success": False, "data": 'не удален'}
 
 
-# async def get_token_by_token(token):
-#     print(token)
-#     with cpy.connect(**config.config) as cnx:
-#         with cnx.cursor(dictionary=True) as cur:
-#             string = "SELECT user_id, token, expired_at from auth_tokens where " \
-#                      "expired_at > UNIX_TIMESTAMP() - 86400 and token = " \
-#                      "'" + str(token) + "'"
-#             cur.execute(string)
-#             data = cur.fetchone()
-#             if data:
-#                 return {"Success": True, "data": data['user_id']}
-#             else:
-#                 return {"Success": False, "data": "Токен не найден или просрочен"}
+async def get_token_by_token(token):
+    print(token)
+    with cpy.connect(**config.config) as cnx:
+        with cnx.cursor(dictionary=True) as cur:
+            string = "SELECT user_id, token, expired_at from auth_tokens where " \
+                     "expired_at > UNIX_TIMESTAMP() - 86400 and token = " \
+                     "'" + str(token) + "'"
+            cur.execute(string)
+            data = cur.fetchone()
+            if data:
+                return {"Success": True, "data": data['user_id']}
+            else:
+                return {"Success": False, "data": "Токен не найден или просрочен"}
 
 
 # async def get_refresh_token(token):

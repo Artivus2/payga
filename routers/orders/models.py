@@ -11,9 +11,9 @@ class Orders(BaseModel):
     user_id: int | None = None
     course: float | None = None
     chart_id: int | None = None
-    sum_fiat: float | None = None
     pay_id: int | None = None
     value: float | None = None
+    sum_fiat: float | None = None
     cashback: float | None = None
     date: str | None = None
     date_expiry: str | None = None
