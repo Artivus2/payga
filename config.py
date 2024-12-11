@@ -18,6 +18,6 @@ base_url_np = 'https://api.nowpayments.io/v1/'
 email = 'test.greenavi@mail.ru'
 password = 'M354at790!'
 telegram_api = "7687672183:AAF1hgHQDO6q6uoKdiz_0Aj7qccSd-00gNU"
-pay_group = '-1001896452673'
+pay_group_test = '-1001896452673'
 pay_main_group = '-1002457991085'
 string="https://api.telegram.org/bot7687672183:botAAF1hgHQDO6q6uoKdiz_0Aj7qccSd-00gNU/getUpdates"

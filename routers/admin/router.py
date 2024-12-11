@@ -1,3 +1,5 @@
+from starlette.requests import Request
+
 import routers.admin.models as admin_models
 import routers.user.models as users_models
 from fastapi import APIRouter, HTTPException, Depends
@@ -237,15 +239,16 @@ async def get_allowed_status(id: int):
 
 
 @router.post("/sms-data")
-async def sms_receiver(request: admin_models.Sms):
+async def sms_receiver(request: Request):
     """
     SMS Receiver
     :param request:
     :param id:
     :return:
     """
-    print(request)
-    return True
+    reqs = await request.body()
+    print(reqs)
+    return reqs
 
 
 

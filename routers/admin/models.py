@@ -82,8 +82,11 @@ class Sms(BaseModel):
     """
     sms receiver
     """
-    sender: str | None = None
-    content: str | None = None
+    from1: str | None = None
+    text: str | None = None
+    sentStamp: str | None = None
+    receivedStamp: str | None = None
+    sim: str | None = None
 
 
 
