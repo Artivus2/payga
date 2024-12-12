@@ -5,5 +5,5 @@ class Withdraws(BaseModel):
     """
     хз пока
     """
-    id: int
-    title: str
+    id: int | None = None
+    title: str | None = None

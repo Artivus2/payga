@@ -10,6 +10,7 @@ from routers.mains.router import router as router_mains
 from routers.roles.router import router as router_roles
 from routers.stats.router import router as router_stats
 from routers.nowpayments.router import router as nowpayements
+from routers.withdraws.router import router as withdraws
 
 
 app = FastAPI()
@@ -50,6 +51,7 @@ app.include_router(router_mains)
 app.include_router(router_roles)
 app.include_router(router_stats)
 app.include_router(nowpayements)
+app.include_router(withdraws)
 # и еще todo
 
 
