@@ -1,3 +1,5 @@
+import datetime
+
 import mysql.connector as cpy
 from fastapi import HTTPException
 
@@ -25,25 +27,36 @@ async def create_order_for_user(payload):
     with cpy.connect(**config.config) as cnx:
         with cnx.cursor(dictionary=True) as cur:
             uuids = await generate_uuid()
-            # try:
             course = await get_course()
             course2 = float(course['data']['amount'])
-            summ = course2 * float(payload.value)
-            data_string = "INSERT INTO pay_orders (uuid, user_id, course, chart_id, sum_fiat, pay_id," \
-                          "value, cashback, date, date_expiry, req_id, pay_notify_order_types_id, docs_id) " \
-                          "VALUES ('" + str(uuids) + "','" + str(payload.user_id) + \
-                          "','" + str(round(course2,2)) + "','" + str(payload.chart_id) + "','" + \
-                          str(round(summ, 2)) + "','"+str(payload.pay_id)+"','" + str(payload.value) + "','" \
-                          + str(payload.cashback) + "',NOW(), DATE_ADD(NOW(), INTERVAL 15 minute),'" \
-                          + str(payload.req_id) + "','" \
-                          + str(payload.pay_notify_order_types_id) + "','" + str(payload.docs_id) + "')"
-            cur.execute(data_string)
-            cnx.commit()
-            if cur.rowcount > 0:
-
-                return {"Success": True, "data": "Ордер поставлен в очередь. Ожидайте исполнения"}
-            else:
-                return {"Success": False, "data": "Ордер не может быть создан"}
+            #course2 = 100
+            print(payload)
+            string0 = "SELECT * FROM pay_reqs WHERE id = " + str(payload.get('req_id'))
+            cur.execute(string0)
+            data = cur.fetchone()
+            if data:
+                cashback = 1 # todo из pay_percent
+                currency_id = 1 #todo из sms_data
+                docs_id = 1 # todo из docs после фото документа
+                print(data)
+                summ = float((payload.get('sum_fiat') / course2) * (1 - cashback / 100))
+                data_string = "INSERT INTO pay_orders (uuid, user_id, course, chart_id, sum_fiat, pay_id," \
+                              "value, cashback, date, date_expiry, req_id, pay_notify_order_types_id, docs_id) " \
+                              "VALUES ('" + str(uuids) + "','" + str(data['user_id']) + \
+                              "','" + str(round(course2,2)) + "','" + str(currency_id) + "','" + \
+                              str(payload.get('sum_fiat')) + "',1,'" + str(round(summ, 2)) + "','" \
+                              + str(cashback) + "',NOW(), DATE_ADD(NOW(), INTERVAL 15 minute),'" \
+                              + str(data['id']) + "',1,'" + str(docs_id) + "')"
+                print(data_string)
+                cur.execute(data_string)
+                cnx.commit()
+                if cur.rowcount > 0:
+                    message = "Ордер " + str(uuids) + " \nпоставлен в очередь со статусом СОЗДАН, \n"\
+                              + str(datetime.datetime.now()) + "\nна сумму: " + str(payload.get('sum_fiat')) + " руб."
+                    botgreenavipay.send_message(config.pay_main_group, message, parse_mode='HTML')
+                    return {"Success": True, "data": "Ордер поставлен в очередь. Ожидайте исполнения"}
+                else:
+                    return {"Success": False, "data": "Ордер не может быть создан"}
 
 
 async def get_orders_by_any(payload):
@@ -79,7 +92,8 @@ async def get_orders_by_any(payload):
                             v = tuple(v)
                             data_check += "pay_orders." + str(k) + " in " + str(v) + " and "
                         else:
-                            data_check += "pay_orders." + str(k) + " = '" + str(v) + "' and "
+                            if k != 'date_start' and k != 'date_end':
+                                data_check += "pay_orders." + str(k) + " = '" + str(v) + "' and "
                 data_check += "pay_orders.id > 0"
             else:
                 for k, v in dict(payload).items():
@@ -87,15 +101,22 @@ async def get_orders_by_any(payload):
                         v = tuple(v)
                         data_check += "pay_orders." + str(k) + " in " + str(v) + " and "
                     else:
-                        data_check += "pay_orders." + str(k) + " = '" + str(v) + "' and "
+                        if k != 'date_start' and k != 'date_end':
+                            data_check += "pay_orders." + str(k) + " = '" + str(v) + "' and "
                 data_check += "pay_orders.id is not null"
+            # try: #todo эталон фильтр по датам
+            #     if payload['date_start'] is not None and payload['date_end'] is not None:
+            #         data_check += " and pay_orders.date >= '" + str(payload['date_start']) \
+            #                   + " 00:00' and pay_orders.date <= '" + str(payload['date_end']) + " 23:59'"
+            # except:
+            #     print("фильтр по датам не выбран")
             print(data_check)
             cur.execute(data_check)
             data = cur.fetchall()
             if data:
                 return {"Success": True, "data": data}
             else:
-                return {"Success": False, "data": "Ордер не найден"}
+                return {"Success": False, "data": "Ордера не найдены"}
 
 
 async def update_order_by_id(id, pay_notify_order_types_id):

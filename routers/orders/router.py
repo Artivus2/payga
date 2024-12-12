@@ -23,20 +23,20 @@ from routers.orders.controller import (
 router = APIRouter(prefix='/api/v1/orders', tags=['Ордера'])
 
 
-@router.post("/create-order")
-async def create_order(request: orders_models.Orders):
-    """
-    Создать ордер
-    :return:
-    """
-    response = await create_order_for_user(request)
-    if not response['Success']:
-        raise HTTPException(
-            status_code=400,
-            detail=response
-        )
-    print(response)
-    return response
+# @router.post("/create-order")
+# async def create_order(request: orders_models.Orders):
+#     """
+#     Создать ордер
+#     :return:
+#     """
+#     response = await create_order_for_user(request)
+#     if not response['Success']:
+#         raise HTTPException(
+#             status_code=400,
+#             detail=response
+#         )
+#     print(response)
+#     return response
 
 
 @router.post("/get-orders")
@@ -88,7 +88,6 @@ async def update_order(request: orders_models.Orders):
             status_code=400,
             detail=response
         )
-    print(response)
     return response
 
 

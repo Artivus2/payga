@@ -20,6 +20,8 @@ class Orders(BaseModel):
     req_id: int | None = None
     pay_notify_order_types_id: int | list | None = None
     docs_id: int | list | None = None
+    date_start: str | None = None
+    date_end: str | None = None
 
 
 

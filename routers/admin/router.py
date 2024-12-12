@@ -1,8 +1,12 @@
-from starlette.requests import Request
+import json
+import datetime
 
+from starlette.requests import Request
+import re
 import routers.admin.models as admin_models
 import routers.user.models as users_models
 from fastapi import APIRouter, HTTPException, Depends
+import routers.orders.models as orders_models
 from routers.admin.controller import (
     send_link_to_user,
     check_access,
@@ -10,9 +14,17 @@ from routers.admin.controller import (
     get_all_roles,
     crud_roles,
     change_user_role,
-    set_users_any
+    set_users_any,
+    create_invoice_data,
+    create_sms_data,
+    get_user_from_api_key,
+    get_info_for_invoice
+
 )
-from routers.admin.utils import send_email
+from routers.admin.utils import (
+    send_email,
+)
+from routers.orders.controller import update_order_by_id
 
 router = APIRouter(prefix='/api/v1/admin', tags=['Администратор'])
 
@@ -237,6 +249,55 @@ async def get_allowed_status(id: int):
     """
     pass
 
+@router.get("/get-info-for-invoice/{user_id}")
+async def get_info(user_id: int):
+    """
+    req_group_id: list
+    sum_fiat: float
+    bank_id: int
+    :param request:
+    :return:
+    """
+    response = await get_info_for_invoice(user_id)
+    if not response['Success']:
+        raise HTTPException(
+            status_code=400,
+            detail=response,
+        )
+    return response
+
+
+
+@router.post("/create-invoice")
+async def create_invoice(request: admin_models.Invoice):
+    """
+
+    :param request:
+    :return:
+    """
+    response = await create_invoice_data(request)
+    if not response['Success']:
+        raise HTTPException(
+            status_code=400,
+            detail=response,
+        )
+    return response
+
+@router.post("/confirm-invoice")
+async def update_order(request: orders_models.Orders):
+    """
+    Подтвердить поступление средств статус 3
+    :return:
+    """
+    response = await update_order_by_id(request.id, 3)
+    if not response['Success']:
+        raise HTTPException(
+            status_code=400,
+            detail=response
+        )
+    return response
+
+
 
 @router.post("/sms-data")
 async def sms_receiver(request: Request):
@@ -247,8 +308,57 @@ async def sms_receiver(request: Request):
     :return:
     """
     reqs = await request.body()
-    print(reqs)
-    return reqs
+    string = json.loads(reqs.decode("utf-8"))
+    text = string.get('text',0)
+    sender = string.get('from1',0)
+    api_key_from_merchant = string.get('api_key', 0)
+    print(api_key_from_merchant)
+    #data_receive = 0
+    print(text)
+    #coalmet
+    user_id = await get_user_from_api_key(api_key_from_merchant)
+    if user_id['data'] > 0:
+        #сбер
+        pattern = r'СБП\s+(\d+)\s*р'
+        #colmet
+        #pattern = r"(\d+\,\d+)\s+(RUB)\s*"
+        #pattern2 = r"(\d{2}\.\d{2}\.\d{4})\s+(\d{2}:\d{2})"
+
+        matches = re.search(pattern, text, re.VERBOSE)
+        print(matches)
+        #data = re.search(pattern2, text, re.VERBOSE)
+        if matches:
+            #schet = matches.group(1)
+            suma = matches.group(1).split(" ")
+            print(float(suma[0]))
+
+            valuta = "RUB"
+            # otpravitel = matches.group(4)
+            #datein = data.group(1)
+            #time = data.group(2)
+            # print(f"Счет: {schet}")
+            # print(f"Сумма: {suma} {valuta}")
+            # print(f"Отправитель: {otpravitel}")
+            # print(f"Дата: {datein}")
+            # print(f"Время: {time}")
+            result = {
+                'user_id': user_id['data'],
+                'sender': sender,
+                'sum_fiat': float(suma[0]),
+                #'datain': datetime.datetime.strptime(datein + " " + time, '%d.%m.%Y %H:%M'),
+                'datain': datetime.datetime.now(),
+                'currency': valuta
+            }
+            response = await create_sms_data(result)
+            return response
+
+        else:
+            print("Совпадений не найдено.")
+            return {"Success": False, "data": "Данные не получены"}
+
+
+
+
 
 
 

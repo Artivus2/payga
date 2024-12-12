@@ -122,16 +122,15 @@ async def remove_reqs_by_id(id):
                 return {"Success": False, "data": "Реквизиты не удалены"}
 
 
-
 async def remove_group_by_id(payload):
     with cpy.connect(**config.config) as cnx:
         with cnx.cursor(dictionary=True) as cur:
-            string0 = "UPDATE pay_reqs SET req_group_id = 0 WHERE user_id = " +str(payload.user_id)\
-                      + " and req_group_id = " + str(payload.req_group_id)
+            string0 = "UPDATE pay_reqs SET req_group_id = 0 WHERE user_id = '" +str(payload.user_id) \
+                      + "' and req_group_id = '" + str(payload.id) + "'"
             cur.execute(string0)
             cnx.commit()
             if cur.rowcount > 0:
-                string1 = "DELETE FROM pay_reqs_groups WHERE id = " + str(payload.req_group_id)\
+                string1 = "DELETE FROM pay_reqs_groups WHERE id = " + str(payload.id)\
                       + " and user_id = " + str(payload.user_id)
                 cur.execute(string1)
                 cnx.commit()
@@ -141,7 +140,9 @@ async def remove_group_by_id(payload):
                 else:
                     cnx.close()
                     return {"Success": False, "data": "Реквизиты группы не удалены"}
-
+            else:
+                cnx.close()
+                return {"Success": False, "data": "Реквизиты в данной группе не найдены"}
 
 async def get_reqs_groups_by_id(id):
     """
@@ -155,23 +156,21 @@ async def get_reqs_groups_by_id(id):
 
             if int(id) == 0:
                 data = "SELECT pay_reqs_groups.title, pay_reqs_groups.id, pay_reqs_groups.uuid as group_uuid," \
-                       "pay_reqs.id, pay_reqs.uuid as reqs_uuid, pay_reqs.date, pay_reqs_groups.user_id, " \
+                       "pay_reqs_groups.user_id, " \
                        "types_automate_id, pay_automation_type.title as types_automation_title," \
                        "pay_automation_turn_off.id as turn_off_id, pay_automation_turn_off.title as turn_off_status " \
                        "from pay_reqs_groups " \
-                       "LEFT JOIN pay_reqs ON pay_reqs_groups.id = pay_reqs.req_group_id " \
                        "LEFT JOIN pay_automation_type ON pay_reqs_groups.types_automate_id = pay_automation_type.id " \
                        "LEFT JOIN pay_automation_turn_off ON pay_reqs_groups.turn_off = pay_automation_turn_off.id"
             else:
                 data = "SELECT pay_reqs_groups.title, pay_reqs_groups.id, pay_reqs_groups.uuid as group_uuid," \
-                       "pay_reqs.id, pay_reqs.uuid as reqs_uuid, pay_reqs.date, pay_reqs_groups.user_id, " \
+                       "pay_reqs_groups.user_id, " \
                        "types_automate_id, pay_automation_type.title as types_automation_title," \
                        "pay_automation_turn_off.id as turn_off_id, pay_automation_turn_off.title as turn_off_status " \
                        "from pay_reqs_groups " \
-                       "LEFT JOIN pay_reqs ON pay_reqs_groups.id = pay_reqs.req_group_id " \
                        "LEFT JOIN pay_automation_type ON pay_reqs_groups.types_automate_id = pay_automation_type.id " \
                        "LEFT JOIN pay_automation_turn_off ON pay_reqs_groups.turn_off = pay_automation_turn_off.id " \
-                       "where pay_reqs.id = " + str(id)
+                       "where pay_reqs_groups.id = " + str(id)
 
             cur.execute(data)
             data = cur.fetchall()
@@ -239,8 +238,16 @@ async def req_by_filters(payload):
             #     data += "pay_reqs.id > 0"
             # else:
             for k, v in dict(payload).items():
-                string += "pay_reqs." + str(k) + " = '" + str(v) + "' and "
+                if k != 'date_start' and k != 'date_end':
+                    string += "pay_reqs." + str(k) + " = '" + str(v) + "' and "
+
             string += "pay_reqs.id is not null"
+            try: #todo эталон фильтр по датам
+                if payload['date_start'] is not None and payload['date_end'] is not None:
+                    string += " and pay_reqs.date >= '" + str(payload['date_start']) \
+                              + " 00:00' and pay_reqs.date <= '" + str(payload['date_end']) + " 23:59'"
+            except:
+                print("фильтр по датам не выбран")
             print(string)
             cur.execute(string)
             data = cur.fetchall()
@@ -455,14 +462,17 @@ async def create_reqs_group(payload):
         with cnx.cursor(dictionary=True) as cur:
             uuids = await generate_uuid()
             print(payload)
-            string = "INSERT INTO pay_reqs_groups (uuid, reqs_id, date, title, types_automate_id, turn_off, user_id) " \
-                     "VALUES('" + str(uuids) + "',0, NOW(),'" + str(payload.title) + "'," + str(
+            string = "INSERT INTO pay_reqs_groups (uuid, date, title, types_automate_id, turn_off, user_id) " \
+                     "VALUES('" + str(uuids) + "', NOW(),'" + str(payload.title) + "'," + str(
                 payload.types_automate_id) + ",'" + str(payload.turn_off) + "', '"+str(payload.user_id)+"')"
             cur.execute(string)
             cnx.commit()
             if cur.rowcount > 0:
+                string_check = "SELECT id from pay_reqs_groups where uuid = '" + str(uuids) + "'"
+                cur.execute(string_check)
+                data = cur.fetchone()
                 cnx.close()
-                return {"Success": True, "data": "Успешно добавлены реквизиты группы"}
+                return {"Success": True, "data": data['id']}
             else:
                 cnx.close()
                 return {"Success": False, "data": "Реквизиты группы не добавлены"}

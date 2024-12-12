@@ -54,7 +54,7 @@ def get_orders_status_cancel_by_time_status_8(time=-15):
         with cnx.cursor(dictionary=True) as cur:
             string = "UPDATE pay_orders SET pay_notify_order_types_id = 8 where " \
                      "pay_notify_order_types_id = 4 and " \
-                     "date < DATE_ADD(NOW(), INTERVAL " + str(time) + " minute)"
+                     "date < DATE_ADD(NOW(), INTERVAL " + str(config.TIME_ORDER_EXPIRY) + " minute)"
             cur.execute(string)
             cnx.commit()
             if cur.rowcount > 0:

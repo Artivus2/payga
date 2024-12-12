@@ -5,6 +5,10 @@ import mysql.connector as cpy
 
 import config
 import routers.admin.models as admin_models
+from routers.orders.controller import (
+    create_order_for_user,
+    update_order_by_id
+)
 from routers.user.controller import create_random_key
 import telebot
 botgreenavipay = telebot.TeleBot(config.telegram_api)
@@ -229,3 +233,148 @@ async def set_users_any(payload): # эталон для update
             else:
                 cnx.close()
                 return {"Success": False, "data": "реквизиты пользователя не обновлены"}
+
+
+
+async def create_invoice_data(payload):
+    """
+    Создание ордера payin на основе данных из смс и выбора пользователя
+    1) #из окна приема платежа выбирают мои доступные реквизиты (сбер, открытие, райффазен)
+    2) # из имеющихся доступных реквизитов сбера/открытия/райффайзен выбираем подходящий по доступности, параметрам и лимитам
+    3) # по факту это create-invoice со стороны магазина (от туда мы получаем выбраные req_group_id, sum_fiat, bank_id (из fav_bank)
+     из формы ввода суммы и выбора банка)
+    4) # создаем ордер payin (
+    uuid: генерится
+    user_id: по api_key магазина достать из базы данных,
+    course: - текущий USDT с coinbase к payload.valuta,
+    chart_id - по умолчанию USDT (259)
+    sum_fiat - payload.suma по поступлению смс об оплате после парсинга
+    pay_id: 1 - payin
+    value: sum_fiat / course - количество USDT на отправку мерчанту на счет - cashback % (pay_pay_percent)
+    date: дата полуения смс, создания ордера по факту
+    date_expiry: +15 минут от date
+    req_id: из invoice
+    pay_notify_order_types_id: 1 - статус ордер создан
+    docs_id: путь к прикрепленному чеку об оплате
+    )
+     5) # ждем оплаты со стороны покупателя в течении 15 минут (ждем /sms-data)
+    6) # по bank_id выбираем соответствующую строку парсера
+    7) # ожидаем оплаты и прихода смс
+    8) если рубли по факту пришли за 15 минут, нажимаем подтвердить ордер. статус успешно. отправка usdt мерчанту
+       если рубли не пришли в течение 15 минут на кроне ордер уйдет в отмену.
+       если рубли пришли после 15 минут достаем из отмены в успех руками. отправка usdt мерчанту
+
+    :param payload:
+    :return:
+    """
+    #data_normalize = payload.get('datain')
+    user_sender = await get_user_from_api_key(payload.api_key)
+    result_from_invoice = {
+        "req_id": payload.req_id,
+        "sum_fiat": payload.sum_fiat,
+        'user_sender': user_sender['data']
+    }
+    response = await create_order_for_user(result_from_invoice)
+    print(response)
+    return response
+
+
+
+async def create_sms_data(payload):
+    """
+    первично собрали данные по api_key в pay_sms_data
+    :param payload:
+    :return:
+    'user_id': user_id,
+                'sender': sender,
+                'sum_fiat': suma,
+                'datain': datetime.datetime.strptime(datein + " " + time, '%d.%m.%Y %H:%M'),
+                'currency': valuta
+    """
+    with cpy.connect(**config.config) as cnx:
+        with cnx.cursor(dictionary=True) as cur:
+            # сравнить на полное совпадение
+            data_string = "INSERT INTO pay_sms_data (user_id, date, sum_fiat, currency, sender) " \
+                          "VALUES ('" + str(payload.get('user_id')) + "','" + str(payload.get('datain')) \
+                          + "','" + str(payload.get('sum_fiat')) + "','" + str(payload.get('currency')) \
+                          + "','" + str(payload.get('sender')) + "')"
+            cur.execute(data_string)
+            cnx.commit()
+            if cur.rowcount > 0:
+                # проверяем ордер пришло зачисление
+
+                check_string = "SELECT id, uuid, sum_fiat, user_id, date_expiry FROM pay_orders where user_id = '" \
+                               + str(payload.get('user_id')) + "' and pay_notify_order_types_id = 1 " \
+                                                               "and sum_fiat = '" + str(payload.get('sum_fiat')) + "'"
+                cur.execute(check_string)
+                data = cur.fetchone()
+                print("order", data)
+                if data:
+                    del_string = "DELETE FROM pay_sms_data WHERE user_id = " + str(payload.get('user_id'))\
+                                 + " and sum_fiat = '" + str(payload.get('sum_fiat')) + "'"
+                    cur.execute(del_string)
+
+                    if data['date_expiry'] > datetime.now():
+                        result = await update_order_by_id(data['id'], 3)
+                        message = "Ордер " + str(data['uuid']) + " \nполучен платеж на сумму "\
+                                  + str(payload.get('sum_fiat')) + "\nОбработано автоматикой \n(по СБП Сбербанк)"
+                        botgreenavipay.send_message(config.pay_main_group, message)
+                        #send usdt
+                        #balance - sum_fiat / course
+
+                        cnx.commit()
+                        return result
+                    else:
+                        result = await update_order_by_id(data['id'], 2)
+                        cnx.commit()
+                        return result
+                else:
+                    cnx.commit()
+                    return {"Success": False, "data": 'sms data не добавлена'}
+            else:
+                return {"Success": False, "data": 'sms data не добавлена'}
+
+
+async def get_user_from_api_key(payload):
+    with cpy.connect(**config.config) as cnx:
+        with cnx.cursor(dictionary=True) as cur:
+            string = "SELECT user_id from pay_api_keys where status in (0,1,3) and api_key = '" + str(payload) + "'"
+            print(string)
+            cur.execute(string)
+            data = cur.fetchone()
+            print(data)
+            if data:
+                return {"Success": True, "data": data.get('user_id')}
+            else:
+                return {"Success": False, "data": 'api_key не найден'}
+
+
+async def get_info_for_invoice(payload):
+    with cpy.connect(**config.config) as cnx:
+        with cnx.cursor(dictionary=True) as cur:
+            #ищем reqs_group_id формируем список из доступных банков
+            string = "SELECT * FROM pay_reqs_groups where user_id = " + str(payload)
+            cur.execute(string)
+            data = cur.fetchall()
+            if data:
+                print(len(data))
+                all = []
+
+                for i in data:
+                    result = {}
+                    result["id"] = i['id']
+                    result["group"] = i['title']
+                    # todo логику выбора карт здесь
+                    string2 = "SELECT * FROM pay_reqs where req_group_id = '" + str(i['id'])\
+                              + "' and reqs_status_id = 1 and user_id = " + str(payload)
+                    cur.execute(string2)
+                    data2 = cur.fetchall()
+                    if data2:
+                        result["reqs"] = data2
+                    else:
+                        result["reqs"] = []
+                    all.append(result)
+                print(all)
+                return {"Success": True, "data": all}
+            else:
+                return {"Success": False}

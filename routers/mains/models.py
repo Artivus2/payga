@@ -194,6 +194,8 @@ class ReqsFilters(BaseModel):
     max_sum_per_transaction: float | None = None
     max_limit_transaction_sum: float | None = None
     max_limit_transaction: int | None = None
+    date_start: str | None = None
+    date_end: str | None = None
 
 
 

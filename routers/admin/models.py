@@ -87,6 +87,14 @@ class Sms(BaseModel):
     sentStamp: str | None = None
     receivedStamp: str | None = None
     sim: str | None = None
+    api_key: str | None = None
 
+
+class Invoice(BaseModel):
+    __table_name__ = "pay_invoice"
+    id: int | None = None
+    req_id: int | None = None
+    sum_fiat: float | None = None
+    api_key: str | None = None
 
 
