@@ -25,29 +25,69 @@ async def get_bank(id):
                 return {"Success": False, "data": 'банк не найден'}
 
 
+async def get_fav_bank(user_id):
+    with cpy.connect(**config.config) as cnx:
+        with cnx.cursor(dictionary=True) as cur:
+            data = "SELECT id, title, bik from pay_fav_banks where user_id = " + str(user_id)
+            cur.execute(data)
+            data = cur.fetchall()
+            if data:
+                cnx.close()
+                return {"Success": True, "data": data}
+            else:
+                cnx.close()
+                return {"Success": False, "data": 'банк не найден'}
+
+
 async def set_fav_bank(payload): #todo fav_banks
     with cpy.connect(**config.config) as cnx:
         with cnx.cursor(dictionary=True) as cur:
-            data_check = ""
-            for k, v in dict(payload).items():
-                if isinstance(v, list):
-                    v = tuple(v)
-                    data_check += ""
+            check_string = "SELECT * from pay_fav_banks where " \
+                           "user_id = " + str(payload.user_id) + " and title = '" + str(payload.title) + "'"
+            cur.execute(check_string)
+            fav_banks = cur.fetchall()
+            if fav_banks:
+                insert_string = "UPDATE pay_fav_banks set " \
+                                "title = '" + str(payload.title) + "', bik = '" + str(payload.bik) + "'"
+                cur.execute(insert_string)
+                cnx.commit()
+                if cur.rowcount > 0:
+                    cnx.close()
+                    return {"Success": True, "data": "Успешно изменен в группе избранных банков"}
                 else:
-                    data_check += ""
-            data_check += "pay_orders.id is not null"
-            string = "UPDATE fav_banks SET active = 2 where id = " + str(payload.id)
-            # cur.execute(string)
-            # cnx.commit()
-            # if cur.rowcount > 0:
-            #     cnx.close()
-            #     return {"Success": True, "data": "Успешно добавлен в группу"}
-            # else:
-            #     cnx.close()
-            #     return {"Success": False, "data": "Реквизиты в группу не добавлены"}
+                    cnx.close()
+                    return {"Success": False, "data": "банк не изменен"}
+            else:
+                insert_string = "INSERT INTO pay_fav_banks (user_id, title, bik) " \
+                                "VALUES (" + str(payload.user_id) +\
+                                ",'" + str(payload.title) + "','" + str(payload.bik) + "')"
+                cur.execute(insert_string)
+                cnx.commit()
+                if cur.rowcount > 0:
+                    cnx.close()
+                    return {"Success": True, "data": "Успешно добавлен в группу избранных банков"}
+                else:
+                    cnx.close()
+                    return {"Success": False, "data": "банк в группу не добавлен"}
 
 
-async def get_chart(id):
+
+async def remove_fav_bank(payload): #todo fav_banks
+    with cpy.connect(**config.config) as cnx:
+        with cnx.cursor(dictionary=True) as cur:
+            delete_string = "DELETE FROM pay_fav_banks where " \
+                            "user_id = '"+str(payload.user_id)+"' and title = '" + str(payload.title) + "'"
+            cur.execute(delete_string)
+            cnx.commit()
+            if cur.rowcount > 0:
+                cnx.close()
+                return {"Success": True, "data": "Успешно удален из группы избранных банков"}
+            else:
+                cnx.close()
+                return {"Success": False, "data": "банк не найден"}
+
+
+async def get_chart(id=0):
     """
     Найти крипту по id
     :param id:
@@ -56,9 +96,9 @@ async def get_chart(id):
     with cpy.connect(**config.config) as cnx:
         with cnx.cursor(dictionary=True) as cur:
             if int(id) == 0:
-                data = "SELECT id, symbol from chart"
+                data = "SELECT id, symbol from chart where active = 1"
             else:
-                data = "SELECT id, symbol from chart where id = " + str(id)
+                data = "SELECT id, symbol from chart where active = 1 and id = " + str(id)
             cur.execute(data)
             data = cur.fetchall()
             if data:
@@ -129,22 +169,21 @@ async def remove_group_by_id(payload):
                       + "' and req_group_id = '" + str(payload.id) + "'"
             cur.execute(string0)
             cnx.commit()
+            string1 = "DELETE FROM pay_reqs_groups WHERE id = " + str(payload.id)\
+                  + " and user_id = " + str(payload.user_id)
+            cur.execute(string1)
+            cnx.commit()
             if cur.rowcount > 0:
-                string1 = "DELETE FROM pay_reqs_groups WHERE id = " + str(payload.id)\
-                      + " and user_id = " + str(payload.user_id)
-                cur.execute(string1)
-                cnx.commit()
-                if cur.rowcount > 0:
-                    cnx.close()
-                    return {"Success": True, "data": "Группа реквизитов успешно удалена"}
-                else:
-                    cnx.close()
-                    return {"Success": False, "data": "Реквизиты группы не удалены"}
+                cnx.close()
+                return {"Success": True, "data": "Группа реквизитов успешно удалена"}
             else:
                 cnx.close()
-                return {"Success": False, "data": "Реквизиты в данной группе не найдены"}
+                return {"Success": False, "data": "Реквизиты группы не удалены"}
 
-async def get_reqs_groups_by_id(id):
+
+
+
+async def get_reqs_groups_by_id(user_id):
     """
     Найти реквизиты группы по id
     :param id:
@@ -154,23 +193,27 @@ async def get_reqs_groups_by_id(id):
         with cnx.cursor(dictionary=True) as cur:
             print(id)
 
-            if int(id) == 0:
+            if int(user_id) == 0:
                 data = "SELECT pay_reqs_groups.title, pay_reqs_groups.id, pay_reqs_groups.uuid as group_uuid," \
                        "pay_reqs_groups.user_id, " \
                        "types_automate_id, pay_automation_type.title as types_automation_title," \
-                       "pay_automation_turn_off.id as turn_off_id, pay_automation_turn_off.title as turn_off_status " \
+                       "pay_automation_turn_off.id as turn_off_id, pay_automation_turn_off.title as turn_off_status," \
+                       "pay_api_keys.api_key, pay_api_keys.api_key_expired_date " \
                        "from pay_reqs_groups " \
                        "LEFT JOIN pay_automation_type ON pay_reqs_groups.types_automate_id = pay_automation_type.id " \
-                       "LEFT JOIN pay_automation_turn_off ON pay_reqs_groups.turn_off = pay_automation_turn_off.id"
+                       "LEFT JOIN pay_automation_turn_off ON pay_reqs_groups.turn_off = pay_automation_turn_off.id " \
+                       "LEFT JOIN pay_api_keys ON pay_reqs_groups.user_id = pay_api_keys.user_id"
             else:
                 data = "SELECT pay_reqs_groups.title, pay_reqs_groups.id, pay_reqs_groups.uuid as group_uuid," \
                        "pay_reqs_groups.user_id, " \
                        "types_automate_id, pay_automation_type.title as types_automation_title," \
-                       "pay_automation_turn_off.id as turn_off_id, pay_automation_turn_off.title as turn_off_status " \
+                       "pay_automation_turn_off.id as turn_off_id, pay_automation_turn_off.title as turn_off_status," \
+                       "pay_api_keys.api_key, pay_api_keys.api_key_expired_date " \
                        "from pay_reqs_groups " \
                        "LEFT JOIN pay_automation_type ON pay_reqs_groups.types_automate_id = pay_automation_type.id " \
                        "LEFT JOIN pay_automation_turn_off ON pay_reqs_groups.turn_off = pay_automation_turn_off.id " \
-                       "where pay_reqs_groups.id = " + str(id)
+                       "LEFT JOIN pay_api_keys ON pay_reqs_groups.user_id = pay_api_keys.user_id " \
+                       "where pay_reqs_groups.user_id = " + str(user_id)
 
             cur.execute(data)
             data = cur.fetchall()
@@ -218,14 +261,14 @@ async def req_by_filters(payload):
                      "sequence, pay_pay_id, pay_pay.title as pay_title," \
                      "pay_reqs_status.title as pay_status, pay_reqs.value," \
                      "reqs_types_id, pay_reqs_types.title as reqs_types_title," \
-                     "bank_id, banks.title as bank_title, currency_id, currency.symbol as currency_symbol," \
+                     "bank_id, pay_fav_banks.title as bank_title, currency_id, currency.symbol as currency_symbol," \
                      "phone, pay_reqs.date, pay_automation_type.title as pay_automation_type_title, " \
                      "pay_automation_turn_off.title as turn_off_title," \
                      "qty_limit_hour, qty_limit_day, qty_limit_month, sum_limit_hour, sum_limit_day, " \
                      "sum_limit_month, limit_active_orders, other_banks, min_sum_per_transaction, " \
                      "max_sum_per_transaction, max_limit_transaction_sum, max_limit_transaction " \
                      "from pay_reqs " \
-                     "LEFT JOIN banks ON pay_reqs.bank_id = banks.id " \
+                     "LEFT JOIN pay_fav_banks ON pay_reqs.bank_id = pay_fav_banks.id " \
                      "LEFT JOIN currency ON pay_reqs.currency_id = currency.id " \
                      "LEFT JOIN pay_reqs_groups ON pay_reqs.req_group_id = pay_reqs_groups.id " \
                      "LEFT JOIN pay_reqs_status ON pay_reqs.reqs_status_id = pay_reqs_status.id " \
@@ -419,13 +462,15 @@ async def create_reqs_for_user(payload):
         with cnx.cursor(dictionary=True) as cur:
             uuids = await generate_uuid()
             print(payload)
+            if payload.req_group_id is None:
+                payload.req_group_id = 0
             data_string = "INSERT INTO pay_reqs (uuid, user_id, req_group_id, sequence, pay_pay_id, value," \
                           "currency_id, reqs_types_id, reqs_status_id, bank_id, phone, date, qty_limit_hour," \
                           "qty_limit_day, qty_limit_month, sum_limit_hour, sum_limit_day, sum_limit_month," \
                           "title, limit_active_orders, other_banks, min_sum_per_transaction," \
                           "max_sum_per_transaction, max_limit_transaction_sum, max_limit_transaction) " \
                           "VALUES ('" + str(uuids) + "','" + str(payload.user_id) + \
-                          "',0,'" + str(payload.sequence) + "','" + \
+                          "','"+str(payload.req_group_id)+"','" + str(payload.sequence) + "','" + \
                           str(payload.pay_pay_id) + "','" + str(payload.value) + "','" \
                           + str(payload.currency_id) + "','" + str(payload.reqs_types_id) + "','" \
                           + str(payload.reqs_status_id) + "','" + str(payload.bank_id) + "','" \

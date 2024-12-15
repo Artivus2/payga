@@ -20,6 +20,7 @@ class User(BaseModel):
     role_id: int | None = None
     banned: int | None = None
     app_id: int | None = None
+    api_key: str | None = None
 
 
 class JwtTokenSchema(BaseModel):
@@ -126,6 +127,7 @@ class Login(BaseModel):
     email: str
     login: str | None = None
     password: str
+    api_key: str | None = None
 
 
 class Code(BaseModel):

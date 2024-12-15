@@ -2,7 +2,6 @@ from datetime import datetime
 
 import mysql.connector as cpy
 
-
 import config
 import routers.admin.models as admin_models
 from routers.orders.controller import (
@@ -11,12 +10,15 @@ from routers.orders.controller import (
 )
 from routers.user.controller import create_random_key
 import telebot
+
+#from routers.withdraws.controller import send_to_wallet
+
 botgreenavipay = telebot.TeleBot(config.telegram_api)
+
 
 async def check_access(request: admin_models.AuthRoles):
     print("user", request)
     if request.user_id != 1:
-
         return {"Success": False, "data": "Пользователь не имеет прав на выполнение данного метода"}
     return request.user_id
     # user_id_check = False
@@ -69,11 +71,11 @@ async def insert_new_user_banned(**payload):
             if not data:
                 banned_for_submit = 1  # блокируем вход до подтверждения админом
                 data_string = "INSERT INTO user (login, email, password, affiliate_invitation_id, " \
-                              "affiliate_invitation_code, telegram, app_id, banned) " \
+                              "affiliate_invitation_code, telegram, app_id, banned, role_id) " \
                               "VALUES ('" + str(payload['login']) + "','" + str(payload['email']) + \
-                              "','" + str(payload['password']) + "','" + str(ref_id) + "','" + str(
-                    link_gen) + "','" + str(payload['telegram']) + "','" + str(app_id) + "','" + str(
-                    banned_for_submit) + "')"
+                              "','" + str(payload['password']) + "','" + str(ref_id) + "','" + str(link_gen)\
+                              + "','" + str(payload['telegram']) + "','" + str(app_id) + "','" \
+                              + str(banned_for_submit) + "', 0)"
                 cur.execute(data_string)
                 cnx.commit()
                 data_user_id = "SELECT * from user where login = '" + str(payload['login']) + \
@@ -88,7 +90,7 @@ async def insert_new_user_banned(**payload):
                     cnx.commit()
                 cnx.close()
                 # print(comment)
-                message = "Пользователь " + str(payload['email'])\
+                message = "Пользователь " + str(payload['email']) \
                           + " поставлен в очередь на регистрацию " + str(datetime.utcnow())
                 botgreenavipay.send_message(config.pay_main_group, message)
                 return {"Success": True, "data": "Поставлен в очередь на регистрацию. Ожидайте"}
@@ -146,7 +148,7 @@ async def get_all_roles(payload):
                 return {"Success": False, "data": "Роли не доступны или не найдены"}
 
 
-async def crud_roles(crud, payload): # todo -> admin
+async def crud_roles(crud, payload):  # todo -> admin
     """
     id: int | None = None
     title: str | None = None
@@ -167,7 +169,7 @@ async def crud_roles(crud, payload): # todo -> admin
                 except:
                     return {"Success": False, "data": "Роль не создана"}
             if crud == 'set':
-                string = "UPDATE pay_admin_roles set title = '" +str(payload.title) + \
+                string = "UPDATE pay_admin_roles set title = '" + str(payload.title) + \
                          "' where id = " + str(payload.id)
                 cur.execute(string)
                 cnx.commit()
@@ -189,7 +191,7 @@ async def crud_roles(crud, payload): # todo -> admin
                     cnx.close()
                     return {"Success": True, "data": "Не удалось удалить"}
             if crud == 'status':
-                string = "UPDATE pay_admin_roles set status = '"+str(payload.status) \
+                string = "UPDATE pay_admin_roles set status = '" + str(payload.status) \
                          + "' where id = " + str(payload.id)
                 cur.execute(string)
                 cnx.commit()
@@ -212,7 +214,7 @@ async def change_user_role(payload):
                 return {"Success": False, "data": "Не удалось изменить роль пользователя"}
 
 
-async def set_users_any(payload): # эталон для update
+async def set_users_any(payload):  # эталон для update
     with cpy.connect(**config.config) as cnx:
         with cnx.cursor(dictionary=True) as cur:
             data_update = "UPDATE user SET "
@@ -233,7 +235,6 @@ async def set_users_any(payload): # эталон для update
             else:
                 cnx.close()
                 return {"Success": False, "data": "реквизиты пользователя не обновлены"}
-
 
 
 async def create_invoice_data(payload):
@@ -267,7 +268,7 @@ async def create_invoice_data(payload):
     :param payload:
     :return:
     """
-    #data_normalize = payload.get('datain')
+    # data_normalize = payload.get('datain')
     user_sender = await get_user_from_api_key(payload.api_key)
     result_from_invoice = {
         "req_id": payload.req_id,
@@ -277,7 +278,6 @@ async def create_invoice_data(payload):
     response = await create_order_for_user(result_from_invoice)
     print(response)
     return response
-
 
 
 async def create_sms_data(payload):
@@ -310,19 +310,28 @@ async def create_sms_data(payload):
                 data = cur.fetchone()
                 print("order", data)
                 if data:
-                    del_string = "DELETE FROM pay_sms_data WHERE user_id = " + str(payload.get('user_id'))\
+                    del_string = "DELETE FROM pay_sms_data WHERE user_id = " + str(payload.get('user_id')) \
                                  + " and sum_fiat = '" + str(payload.get('sum_fiat')) + "'"
                     cur.execute(del_string)
-
                     if data['date_expiry'] > datetime.now():
                         result = await update_order_by_id(data['id'], 3)
-                        message = "Ордер " + str(data['uuid']) + " \nполучен платеж на сумму "\
+                        message = "Ордер " + str(data['uuid']) + " \nполучен платеж на сумму " \
                                   + str(payload.get('sum_fiat')) + "\nОбработано автоматикой \n(по СБП Сбербанк)"
                         botgreenavipay.send_message(config.pay_main_group, message)
-                        #send usdt
-                        #balance - sum_fiat / course
-
-                        cnx.commit()
+                        string_wallet = "SELECT address FROM pay_wallet where pay_wallet = 1 " \
+                                        "and user_id = " + str(payload.get('user_id'))
+                        cur.execute(string_wallet)
+                        wallet = cur.fetchone()
+                        if wallet:
+                            result = True
+                            #result = send_to_wallet(data['id'], wallet[0])
+                            if result:
+                                #USDT отправлены pending
+                                send = await update_order_by_id(data['id'], 3)
+                                cnx.commit()
+                            else:
+                                # USDT не удалось отправить failed
+                                send = await update_order_by_id(data['id'], 2)
                         return result
                     else:
                         result = await update_order_by_id(data['id'], 2)
@@ -338,12 +347,15 @@ async def create_sms_data(payload):
 async def get_user_from_api_key(payload):
     with cpy.connect(**config.config) as cnx:
         with cnx.cursor(dictionary=True) as cur:
-            string = "SELECT user_id from pay_api_keys where status in (0,1,3) and api_key = '" + str(payload) + "'"
-            print(string)
+
+            string = "SELECT user_id from pay_api_keys where " \
+                     "api_key_expired_date > NOW() and " \
+                     "status in (0,1,3) and api_key = '" + str(payload) + "'"
             cur.execute(string)
             data = cur.fetchone()
-            print(data)
+
             if data:
+                print(data)
                 return {"Success": True, "data": data.get('user_id')}
             else:
                 return {"Success": False, "data": 'api_key не найден'}
@@ -352,7 +364,7 @@ async def get_user_from_api_key(payload):
 async def get_info_for_invoice(payload):
     with cpy.connect(**config.config) as cnx:
         with cnx.cursor(dictionary=True) as cur:
-            #ищем reqs_group_id формируем список из доступных банков
+            # ищем reqs_group_id формируем список из доступных банков
             string = "SELECT * FROM pay_reqs_groups where user_id = " + str(payload)
             cur.execute(string)
             data = cur.fetchall()
@@ -365,7 +377,7 @@ async def get_info_for_invoice(payload):
                     result["id"] = i['id']
                     result["group"] = i['title']
                     # todo логику выбора карт здесь
-                    string2 = "SELECT * FROM pay_reqs where req_group_id = '" + str(i['id'])\
+                    string2 = "SELECT * FROM pay_reqs where req_group_id = '" + str(i['id']) \
                               + "' and reqs_status_id = 1 and user_id = " + str(payload)
                     cur.execute(string2)
                     data2 = cur.fetchall()

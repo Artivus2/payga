@@ -1,5 +1,6 @@
+from fastapi import HTTPException
 from pydantic import BaseModel
-
+from starlette.requests import Request
 
 class ConfirmRegister(BaseModel):
     """
@@ -97,4 +98,7 @@ class Invoice(BaseModel):
     sum_fiat: float | None = None
     api_key: str | None = None
 
+
+class ApiStatus(BaseModel):
+    id: int | None = None
 

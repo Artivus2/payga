@@ -19,7 +19,6 @@ from routers.user.controller import (
 
 )
 from typing import Annotated
-
 from fastapi import Depends, FastAPI
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 
@@ -74,151 +73,119 @@ router = APIRouter(prefix='/api/v1/user', tags=['Пользователи'])
 #     return create_token_pair(user_id)
 
 
-# @router.post("/login")
-# async def login(request: user_models.Login):
-#     """
-#     email
-#     password
-#     :return:
-#     {token}
-#     """
-#     pass
-#     # api_url = f'{config.BASE_URL}/api/user/login'
-#     # headers = {
-#     #     'Content-Type': 'application/json',
-#     #
-#     # }
-#     # payload = {
-#     #     'email': request.email,  # req
-#     #     'password': request.password  # req
-#     # }
-#     # try:
-#     #
-#     #     response = requests.post(api_url, headers=headers, data=json.dumps(payload))
-#     #     print(response)
-#     #     if response.status_code != 200:
-#     #         raise HTTPException(status_code=response.status_code, detail="Не допустимая ошибка")
-#     #     return response.json()
-#     # except:
-#     #     raise HTTPException(status_code=response.status_code, detail="не удалось авторизироваться")
+@router.post("/code")
+async def code(request: user_models.Code):
+    """
+    запрос токена авторизации
+    :param request: email, password, code
+    :return:
+    {access_token}
+    """
+    api_url = f'{config.BASE_URL}/api/user/code'
+    headers = {
+        'Content-Type': 'application/json'
+    }
+    payload = {
+        'email': request.email,  # req
+        'password': request.password,  # req
+        'code': request.code  # req
+    }
+    response = requests.post(api_url, headers=headers, data=json.dumps(payload))
+    print(response)
+    if response.status_code != 200:
+        raise HTTPException(status_code=response.status_code, detail=response.json())
+    return response.json()
 
 
-# @router.post("/code")
-# async def code(request: user_models.Code):
-#     """
-#     запрос токена авторизации
-#     :param request: email, password, code
-#     :return:
-#     {access_token}
-#     """
-#     api_url = f'{config.BASE_URL}/api/user/code'
-#     headers = {
-#         'Content-Type': 'application/json'
-#     }
-#     payload = {
-#         'email': request.email,  # req
-#         'password': request.password,  # req
-#         'code': request.code  # req
-#     }
-#     response = requests.post(api_url, headers=headers, data=json.dumps(payload))
-#     print(response)
-#     if response.status_code != 200:
-#         raise HTTPException(status_code=response.status_code, detail=response.json())
-#     return response.json()
+@router.post("/logout")
+async def logout(request: user_models.Logout):
+    """
+    Логаут
+    :param request:
+    token
+    :return:
+    """
+    api_url = f'{config.BASE_URL}/api/user/logout'
+    headers = {
+        'Content-Type': 'application/json'
+    }
+    payload = {
+        'token': request.token
+    }
+    response = requests.post(api_url, headers=headers, data=json.dumps(payload))
+    if response.status_code != 200:
+        raise HTTPException(status_code=response.status_code, detail=response.json())
+    return response.json()
 
 
-# @router.post("/logout")
-# async def logout(request: user_models.Logout):
-#     """
-#     Логаут
-#     :param request:
-#     token
-#     :return:
-#     """
-#     api_url = f'{config.BASE_URL}/api/user/logout'
-#     headers = {
-#         'Content-Type': 'application/json'
-#     }
-#     payload = {
-#         'token': request.token
-#     }
-#     response = requests.post(api_url, headers=headers, data=json.dumps(payload))
-#     if response.status_code != 200:
-#         raise HTTPException(status_code=response.status_code, detail=response.json())
-#     return response.json()
+@router.post("/two-factor-new")
+async def two_factor_new(request: user_models.Twofa):
+    """
+    token: str
+    user_id: int
+    :param request:
+    :return:
+    """
+    api_url = f'{config.BASE_URL}/api/user/two-factor-new'
+    headers = {
+        'Content-Type': 'application/json',
+        'Authorization': request.token # везде
+    }
+    payload = {
+        'user_id': request.user_id,
+    }
+    response = requests.post(api_url, headers=headers, data=json.dumps(payload))
+    if response.status_code != 200:
+        raise HTTPException(status_code=response.status_code, detail=response.json())
+    return response.json()
 
 
-# @router.post("/two-factor-new")
-# async def two_factor_new(request: user_models.Twofa):
-#     """
-#     token: str
-#     user_id: int
-#     :param request:
-#     :return:
-#     """
-#     api_url = f'{config.BASE_URL}/api/user/two-factor-new'
-#     headers = {
-#         'Content-Type': 'application/json',
-#         'Authorization': request.token # везде
-#     }
-#     payload = {
-#         'user_id': request.user_id,
-#     }
-#     response = requests.post(api_url, headers=headers, data=json.dumps(payload))
-#     if response.status_code != 200:
-#         raise HTTPException(status_code=response.status_code, detail=response.json())
-#     return response.json()
+@router.post("/two-factor")
+async def two_factor(request: user_models.Twofa):
+    """
+    token: str
+    user_id: int
+    :param request:
+    :return:
+    """
+    api_url = f'{config.BASE_URL}/api/user/two-factor'
+    headers = {
+        'Content-Type': 'application/json',
+        'Authorization': request.token
+    }
+    payload = {
+        'user_id': request.user_id,
+        'secret': request.secret
+    }
+    response = requests.post(api_url, headers=headers, data=json.dumps(payload))
+    if response.status_code != 200:
+        raise HTTPException(status_code=response.status_code, detail=response.json())
+    return response.json()
 
 
-# @router.post("/two-factor")
-# async def two_factor(request: user_models.Twofa):
-#     """
-#     token: str
-#     user_id: int
-#     :param request:
-#     :return:
-#     """
-#     api_url = f'{config.BASE_URL}/api/user/two-factor'
-#     headers = {
-#         'Content-Type': 'application/json',
-#         'Authorization': request.token
-#     }
-#     payload = {
-#         'user_id': request.user_id,
-#         'secret': request.secret
-#     }
-#     response = requests.post(api_url, headers=headers, data=json.dumps(payload))
-#     if response.status_code != 200:
-#         raise HTTPException(status_code=response.status_code, detail=response.json())
-#     return response.json()
+@router.post("/two-factor-disable")
+async def disable_2fa(request: user_models.Twofa):
+    """
+    token: str
+    user_id: int
+    :param request:
+    :return:
+    """
+    api_url = f'{config.BASE_URL}/api/user/two-factor-disable'
+    headers = {
+        'Content-Type': 'application/json',
+        'Authorization': request.token,
+    }
+    payload = {
+        'user_id': request.user_id,
+        'secret': request.secret
+    }
+    response = requests.post(api_url, headers=headers, data=json.dumps(payload))
+    if response.status_code != 200:
+        raise HTTPException(status_code=response.status_code, detail=response.json())
+    return response.json()
 
 
-# @router.post("/two-factor-disable")
-# async def disable_2fa(request: user_models.Twofa):
-#     """
-#     token: str
-#     user_id: int
-#     :param request:
-#     :return:
-#     """
-#     api_url = f'{config.BASE_URL}/api/user/two-factor-disable'
-#     headers = {
-#         'Content-Type': 'application/json',
-#         'Authorization': request.token,
-#     }
-#     payload = {
-#         'user_id': request.user_id,
-#         'secret': request.secret
-#     }
-#     response = requests.post(api_url, headers=headers, data=json.dumps(payload))
-#     if response.status_code != 200:
-#         raise HTTPException(status_code=response.status_code, detail=response.json())
-#     return response.json()
-#
-#
-# @router.put("/change-password")
-# async def change_password(request: user_models.User):
-#     pass
 
 @router.post("/register-request")
 async def register_request(request: user_models.User):
@@ -324,14 +291,26 @@ async def login_for_access_token(request: user_models.Login):
 #         }
 #     }
 
-@router.post("/change-password")
+@router.put("/change-password")
 async def change_password(request: user_models.User):
     """
-
+    Смена пароля
     :param request:
     :return:
     """
-    pass
+    api_url = f'{config.BASE_URL}/api/user/change-password'
+    headers = {
+        'Content-Type': 'application/json',
+        'Authorization': request.token,
+    }
+    payload = {
+        'email': request.email,
+        'password': request.password
+    }
+    response = requests.post(api_url, headers=headers, data=json.dumps(payload))
+    if response.status_code != 200:
+        raise HTTPException(status_code=response.status_code, detail=response.json())
+    return response.json()
 
 
 @router.post("/confirm-password")
@@ -453,14 +432,6 @@ async def code(request: user_models.ApiKey):
     return {"access_token": 'd3taikK7bW8oGo8Hye-aFv:APA91bFJkUJe7HqWrqzL27Eyv2gETyDW4pvRI3XtO7k7bGP9G_tjI9rjo77ZAXPu5sMtiZnKNgskaY_FQal3tK6S9VIEnquL-JJv1aXLdz1Nnj6uhbzro10'}
 
 
-@router.post("/logout")
-async def code(request: user_models.ApiKey):
-    """
-    logout
-    :param request:
-    :return:
-    """
-    return {"success": True}
 
 @router.delete("/delete-user-apikey")
 async def delete_user_apikey(request: user_models.ApiKey):

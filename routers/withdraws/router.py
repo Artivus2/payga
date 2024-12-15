@@ -1,62 +1,123 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
+import requests
 
+#
 import config
 import routers.withdraws.models as withdraws_models
-from pprint import pprint
+from routers.withdraws.controller import (
+    get_admin_balance,
+    generate_wallet,
+    get_wallet
+
+)
+
 from tronpy.exceptions import AddressNotFound
 from tronpy import Tron
+from tronpy.keys import PrivateKey
+#
+#
+#
+#
+#
+router = APIRouter(prefix='/api/v1/withdrawals', tags=['Вывод средств'])
+#
+#
+# @router.post("/check-balance")
+# async def get_stats(request: withdraws_models.Withdraws):
+#     pass
+#
+#
+# @router.post("/balance-out")
+# async def get_stats(request: withdraws_models.Withdraws):
+#     pass
+#
+@router.post("/generate-wallet-tron")
+async def get_wallet_tron(request: withdraws_models.WalletAddress):
+    """
+    generate usdt tron wallet
+    :param request:
+    :return:
+    """
+
+    response = await generate_wallet(request)
+    if not response['Success']:
+        raise HTTPException(
+            status_code=400,
+            detail=response
+        )
+    return response
 
 
+@router.get("/get-wallet-address/{user_id}")
+async def get_wallet_users(user_id: int):
+    response = await get_wallet(user_id)
+    return response
 
 
-
-router = APIRouter(prefix='/api/v1/withdraws', tags=['Вывод средств'])
-
-
-@router.post("/check-balance")
-async def get_stats(request: withdraws_models.Withdraws):
-    pass
+@router.get("/get-wallet-balance/{address}")
+async def get_admin_balances(address: str):
+    response = await get_admin_balance()
+    return response
 
 
-@router.post("/check-deposit")
-async def get_stats(request: withdraws_models.Withdraws):
-    pass
+@router.get("/validate_address/{address}")
+async def validate_address(address: str):
+    url = "https://api.shasta.trongrid.io/wallet/validateaddress"
 
+    payload = {
+        "address": address,
+        "visible": True
+    }
+    headers = {
+        "accept": "application/json",
+        "content-type": "application/json"
+    }
 
-@router.post("/balance-out")
-async def get_stats(request: withdraws_models.Withdraws):
-    pass
+    response = requests.post(url, json=payload, headers=headers)
 
-@router.post(("/generate-wallet-tron"))
-async def get_wallet_tron(request: withdraws_models.Withdraws):
+    print(response.text)
+#
+@router.post("/send-to-trx")
+async def send_transaction(request: withdraws_models.Withdraws):
     client = Tron()
-    # {'base58check_address': 'TNYxgm5EkxvDPGBJGuY7TJ41omJhJv1CJD',
-    #  'hex_address': '418a03b3bf5afe0e94b014be2e3929e11150dc601f',
-    #  'private_key': 'b70f4b1c86944dcef14a9c52ceab7c84edddfea640e24fb13588d70246572cb1',
-    #  'public_key': '40a135a3d17d66e07e7d814f83e001f702a1eb5aeeaa3b7534aca1401f3ce73064b0043cd694af35cc2cf6dd1dd9e47898c68c2fbea0bc88d40d1dad87983791'}
-    pprint(client.generate_address())
-    try:
-        balance = client.get_account_balance('TNYxgm5EkxvDPGBJGuY7TJ41omJhJv1CJD')
+    private_key = PrivateKey.fromhex(config.private_key)
+    from_address = config.admin_wallet
+    sender_address = private_key.public_key.to_base58check_address()
 
-    except AddressNotFound:
-        print( "Adress not found..!" )
-
-    print(balance)
-
-
-@router.post(("/send-to-trx"))
-async def get_wallet_tron(request: withdraws_models.Withdraws):
-    # Создаем клиент Tron
-    client = Tron()
-
-    # Ваши учетные данные из бд админа адрес
-    # private_key = 'YOUR_PRIVATE_KEY'
-    # from_address = 'YOUR_ADDRESS'
-    # to_address = 'RECIPIENT_ADDRESS'
-    # amount = 100  # количество USDT для отправки
-
-    # Отправка USDT
-    # tx = client.trx.transfer(to_address, amount).build().sign(private_key)
+    usdt_contract = client.get_contract(config.USDT_CONTRACT_ADDRESS)
+    #all_contraat = client.get_contract_info(from_address)
+    #print(all_contraat)
+    #wallet_balance = get_admin_balance()
+    to_address = 'TM6hy595DEm9NSzEJ1dLq7ogGeM1Kv4bQA'
+    # tx = client.trx.transfer(from_address, to_address, 1).build().sign(private_key)
     # result = tx.broadcast()
     # print(result)
-    #save transaction to db
+    # print(tx.txid)
+    # print(tx.broadcast().wait())
+    try:
+        tx = (
+            usdt_contract.functions.transfer(to_address,
+                                             1 * 10 ** 6)  # умножаем на 10**6, так как USDT TRC20 имеет 6 знаков после запятой
+            .build()
+            .sign(private_key)
+            .broadcast()
+        )
+
+
+        print(f"Транзакция отправлена: {tx['txid']}")
+    except Exception as e:
+        print(f"Ошибка при отправке транзакции: {e}")
+
+
+#
+#
+# @router.post(("/get-transaction-history"))
+# async def get_transactions_by_wallet(request: withdraws_models.Withdraws):
+#     """
+#     USDT TRC20
+#     :param request:
+#     :return:
+#     """
+#     pass
+
+

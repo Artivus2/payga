@@ -27,19 +27,21 @@ async def create_order_for_user(payload):
     with cpy.connect(**config.config) as cnx:
         with cnx.cursor(dictionary=True) as cur:
             uuids = await generate_uuid()
-            course = await get_course()
-            course2 = float(course['data']['amount'])
-            #course2 = 100
-            print(payload)
             string0 = "SELECT * FROM pay_reqs WHERE id = " + str(payload.get('req_id'))
             cur.execute(string0)
             data = cur.fetchone()
             if data:
-                cashback = 1 # todo из pay_percent
+                string_cash = "SELECT value from pay_pay_percent where pay_id = 1 " \
+                              "and pay_status_id = 1 and user_id = " + str(data['user_id']) #payin
+                cur.execute(string_cash)
+                cashback = cur.fetchone()[0]
+                if not cashback:
+                    cashback = 1
+                course = await get_course()
+                course2 = float(course['data']['amount']) * (1 + cashback / 100)
                 currency_id = 1 #todo из sms_data
                 docs_id = 1 # todo из docs после фото документа
-                print(data)
-                summ = float((payload.get('sum_fiat') / course2) * (1 - cashback / 100))
+                summ = float((payload.get('sum_fiat') / course2))
                 data_string = "INSERT INTO pay_orders (uuid, user_id, course, chart_id, sum_fiat, pay_id," \
                               "value, cashback, date, date_expiry, req_id, pay_notify_order_types_id, docs_id) " \
                               "VALUES ('" + str(uuids) + "','" + str(data['user_id']) + \

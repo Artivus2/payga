@@ -2,7 +2,9 @@ import routers.mains.models as mains_models
 from fastapi import APIRouter, HTTPException
 from routers.mains.controller import (
     get_bank,
+    get_fav_bank,
     set_fav_bank,
+    remove_fav_bank,
     get_chart,
     get_curr,
     get_reqs_groups_by_id,
@@ -35,17 +37,18 @@ from routers.mains.controller import (
 
 router = APIRouter(prefix='/api/v1/mains', tags=['Основные'])
 
-@router.get("/get-banks/{id}")
-async def get_bank_by_id(id: str):
+
+@router.get("/get-fav-banks/{user_id}")
+async def get_fav_bank_by_id(user_id: int):
     """
-    Запрос банка
-    :param id:
+    Запрос банка пользователя fav_banks
+    :param user_id:
     :param token:
     :return:
     token
     """
 
-    response = await get_bank(id)
+    response = await get_fav_bank(user_id)
     if not response['Success']:
         raise HTTPException(
             status_code=400,
@@ -57,14 +60,30 @@ async def get_bank_by_id(id: str):
 @router.post("/set-favorite-banks")
 async def set_banks(request: mains_models.BankFavs):
     """
-    Запрос банка
+    Создать список банков для реквизитов
     :param request:
     :param token:
     :return:
     token
     """
-
     response = await set_fav_bank(request)
+    if not response['Success']:
+        raise HTTPException(
+            status_code=400,
+            detail=response
+        )
+    return response
+
+
+@router.post("/remove-favorite-banks")
+async def remove_banks(request: mains_models.BankFavs):
+    """
+    Удалить из списка банков для реквизитов
+    :param request:
+    :param token:
+    :return:
+    """
+    response = await remove_fav_bank(request)
     if not response['Success']:
         raise HTTPException(
             status_code=400,
@@ -138,7 +157,7 @@ async def set_reqs(request: mains_models.Reqs):
     currency_id: int  по умолчанию рубль 1
     reqs_types_id: int       /api/v1/mains/get-pay-reqs-types/{id}  0 - все типы
     reqs_status_id: int      /api/v1/mains/get-pay-reqs-types/{id}  0 - все статусы
-    bank_id: int      /api/v1/mains/get-banks/{id}, 0 - все банки
+    bank_id: int      /api/v1/mains/get-fav-banks/{id}, 0 - все банки
     chart_id: int     /api/v1/mains/get-chart/{id}, 0 - все криптовалют (259 - usdt)
     phone: str  телефон
     qty_limit_hour: int лимиты в час
@@ -223,16 +242,16 @@ async def create_reqs_groups(request: mains_models.ReqGroups):
 
 
 
-@router.get("/get-reqs-groups/{id}")
-async def get_reqs_groups(id: int):
+@router.get("/get-reqs-groups/{user_id}")
+async def get_reqs_groups(user_id: int):
     """
-    Запрос реквизитов группы
+    Запрос реквизитов группы (0 - для админа все)
     :param id:
     :param request:
     :param dict:
     :return:
     """
-    response = await get_reqs_groups_by_id(id)
+    response = await get_reqs_groups_by_id(user_id)
     if not response['Success']:
         raise HTTPException(
             status_code=400,

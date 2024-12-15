@@ -9,7 +9,10 @@ from routers.actives.router import router as router_actives
 from routers.mains.router import router as router_mains
 from routers.roles.router import router as router_roles
 from routers.stats.router import router as router_stats
-from routers.nowpayments.router import router as nowpayements
+from routers.nowpayments.router import router as nowpayments
+from routers.api_merchant.router import router as merchant
+from routers.api_trader.router import router as trader
+from routers.api_operator.router import router as operator
 from routers.withdraws.router import router as withdraws
 
 
@@ -43,6 +46,9 @@ app.add_middleware(
 #     return referral_code
 
 
+app.include_router(merchant)
+app.include_router(trader)
+app.include_router(operator)
 app.include_router(router_user)
 app.include_router(router_orders)
 app.include_router(router_admin)
@@ -50,7 +56,7 @@ app.include_router(router_actives)
 app.include_router(router_mains)
 app.include_router(router_roles)
 app.include_router(router_stats)
-app.include_router(nowpayements)
+app.include_router(nowpayments)
 app.include_router(withdraws)
 # и еще todo
 

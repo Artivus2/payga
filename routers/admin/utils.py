@@ -88,4 +88,5 @@ async def send_email(email):
     pass
 
 
-
+async def get_min_amount():
+    return {"Success": True, "data": {"symbol": "USDT", "min_amount": 10}}

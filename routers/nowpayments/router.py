@@ -6,7 +6,7 @@ import config
 from routers.nowpayments import models
 from routers.nowpayments.controller import get_jwt_token
 
-router = APIRouter(prefix='/np', include_in_schema=True, tags=['NowPayments'])
+router = APIRouter(prefix='/np', include_in_schema=False, tags=['NowPayments'])
 
 
 # List currencies
