@@ -82,7 +82,6 @@ async def set_balance_percent(request: actives_models.PayPercent):
     user_id: int
     pay_id: int
     value: float
-    date: int
     pay_status_id: int
     }
     """

@@ -8,11 +8,14 @@ config = {
             'database': 'greenavi_app',
             'raise_on_warnings': True
         }
+#CREATE USER 'greenavi_user'@'localhost' IDENTIFIED BY 'tb7x3Er5PQ';
+#GRANT ALL PRIVILEGES ON *.* TO 'greenavi_user'@'localhost';
 SECRET_KEY ="_5x99maBZNQ6du_A4l6Hx2WPAW8-EAp6"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 REFRESH_TOKEN_EXPIRES_MINUTES = 15 * 24 * 60  # 15 days
-TIME_ORDER_EXPIRY = 15
+TIME_ORDER_PAYIN_EXPIRY = 15
+TIME_ORDER_PAYOUT_EXPIRY = 240
 api_key_np = '2WMC682-ATF4WCE-NW0HZNC-5E7S427'  # the key that sasha gave
 BSC_API_KEY = 'UDFA4KE6NC32K49T8BXI33JFEUM5NUUU3V'
 base_url_np = 'https://api.nowpayments.io/v1/'

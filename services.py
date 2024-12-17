@@ -1,3 +1,4 @@
+import datetime
 import random
 import uuid
 import mysql.connector as cpy
@@ -9,6 +10,7 @@ from telebot import types
 def check_orders():
     """
     (/set-order-status)
+    '0', 'не принятые ордера'
     '1', 'Получен ордер', '1' /create-order +
     '2', 'Ордер отменен', '1' /order-cancel
     '3', 'Ордер переведен в успех', '1' manual /order-success
@@ -24,19 +26,24 @@ def check_orders():
     '13', 'Реквизиты заблокированы', '1' manual /order-block-reqs
     '14', 'Реквизиты разблокированы', '1' manual /order-unblock-reqs
 
+    '0', 'не принятые ордера'
     '15', 'Получен ордер', '2'
-    '16', 'Закончилось время подтверждения принятия', '2'
-    '17', 'Закончилось время подтверждения оплаты', '2'
+    '16', 'Закончилось время подтверждения принятия', '2' 240 минут в 0
+    '17', 'Закончилось время подтверждения оплаты', '2' сколько времени
     '18', 'Ордер переведен в диспут', '2'
     '19', 'Ордер создан менеджером и переведен в диспут', '2'
     '20', 'Ордер отменен', '2'
     '21', 'Ордер переведен в успех', '2'
-    '22', 'Реквизиты заблокированы', '2'
-    '23', 'Реквизиты разблокированы', '2'
+    '22', 'Недостаточно средств', '2' 20
+    '23', 'Нет возможности соверщить перевод', '2' 20
+    '24', 'Реквизиты заблокированы', '2' 20
+    '25', 'Реквизиты разблокированы', '2'
+    '29', 'Не верно указаные реквизиты'
+    '30', 'Не возможно совершить платеж на указанные реквизиты'
+    '26', 'Реквизиты отключены, если нет доступа к автоматике', '3'
+    '27', 'Автоматизация через телеграм отключена', '3'
+    '28', 'Ордер удален', '3'
 
-    '24', 'Реквизиты отключены, если нет доступа к автоматике', '3'
-    '25', 'Автоматизация через телеграм отключена', '3'
-    '26', 'Ордер удален', '3'
     :return:
     """
     pass
@@ -49,30 +56,101 @@ def check_orders():
     #             print(data)
 
 
-def get_orders_status_cancel_by_time_status_8(time=-15):
+def set_order_status_8_payin(time=-15):
     with cpy.connect(**config.config) as cnx:
         with cnx.cursor(dictionary=True) as cur:
-            string = "UPDATE pay_orders SET pay_notify_order_types_id = 8 where " \
-                     "pay_notify_order_types_id = 4 and " \
-                     "date < DATE_ADD(NOW(), INTERVAL " + str(config.TIME_ORDER_EXPIRY) + " minute)"
+            string = "UPDATE pay_orders SET pay_notify_order_types_id = 5 where " \
+                     "pay_notify_order_types_id = 8 and pay_id = 1 and " \
+                     "date_expiry < UTC_TIMESTAMP()"
             cur.execute(string)
             cnx.commit()
             if cur.rowcount > 0:
-                print("переведен в диспут по истечения срока оплаты")
+                print("PAYIN переведен в диспут по истечения срока оплаты", datetime.datetime.now())
+
             else:
                 print("никаких действий не проведено")
 
 
-def get_orders_status_cancel_by_time_status_9(time=-15):
+def set_order_status_9_payin(time=-15):
     with cpy.connect(**config.config) as cnx:
         with cnx.cursor(dictionary=True) as cur:
             string = "UPDATE pay_orders SET pay_notify_order_types_id = 9 where " \
-                     "pay_notify_order_types_id = 1 and " \
-                     "date < DATE_ADD(NOW(), INTERVAL " + str(time) + " minute)"
+                     "pay_notify_order_types_id = 1 and pay_id = 1 and " \
+                     "date_expiry < UTC_TIMESTAMP()"
             cur.execute(string)
             cnx.commit()
             if cur.rowcount > 0:
-                print("переведены в статус Ордер отменен")
+                print("PAYIN переведены в статус Ордер отменен", datetime.datetime.now())
+            else:
+                print("никаких действий не проведено")
+
+
+def set_order_status_15_payout(time=-240): #ПРИНЯТЬ
+    with cpy.connect(**config.config) as cnx:
+        with cnx.cursor(dictionary=True) as cur:
+            string = "UPDATE pay_orders SET pay_notify_order_types_id = 0 where " \
+                     "pay_notify_order_types_id = 15 and pay_id = 2 and " \
+                     "date_expiry < UTC_TIMESTAMP()"
+            cur.execute(string)
+            cnx.commit()
+            if cur.rowcount > 0:
+                print("PAYOUT Закончилось время подтверждения принятия", datetime.datetime.now())
+            else:
+                print("никаких действий не проведено")
+
+
+def set_order_status_16_payout(time=-240): #ПОДТВЕРДИТЬ
+    with cpy.connect(**config.config) as cnx:
+        with cnx.cursor(dictionary=True) as cur:
+            string = "UPDATE pay_orders SET pay_notify_order_types_id = 17 where " \
+                     "pay_notify_order_types_id = 16 and pay_id = 2 and " \
+                     "date_expiry < UTC_TIMESTAMP()"
+            cur.execute(string)
+            cnx.commit()
+            if cur.rowcount > 0:
+                print("PAYOUT Закончилось время подтверждения оплаты", datetime.datetime.now())
+            else:
+                print("никаких действий не проведено")
+
+
+def set_order_status_17_payout(time=-240): #переведен в диспут
+    with cpy.connect(**config.config) as cnx:
+        with cnx.cursor(dictionary=True) as cur:
+            string = "UPDATE pay_orders SET pay_notify_order_types_id = 18 where " \
+                     "pay_notify_order_types_id = 17 and pay_id = 2 and " \
+                     "date_expiry < UTC_TIMESTAMP()"
+            cur.execute(string)
+            cnx.commit()
+            if cur.rowcount > 0:
+                print("PAYOUT Ордер переведен в диспут")
+            else:
+                print("никаких действий не проведено")
+
+
+def set_order_status_18_payout(time=-240):
+    with cpy.connect(**config.config) as cnx:
+        with cnx.cursor(dictionary=True) as cur:
+            string = "UPDATE pay_orders SET pay_notify_order_types_id = 9 where " \
+                     "pay_notify_order_types_id = 1 and pay_id = 2 and " \
+                     "date_expiry < UTC_TIMESTAMP()"
+            cur.execute(string)
+            cnx.commit()
+            if cur.rowcount > 0:
+                print("PAYOUT переведены в статус Ордер отменен")
+            else:
+                print("никаких действий не проведено")
+
+
+def set_order_status_222324_payout(time=-240):
+    with cpy.connect(**config.config) as cnx:
+        with cnx.cursor(dictionary=True) as cur:
+            string = "UPDATE pay_orders SET pay_notify_order_types_id = 20 where " \
+                     "pay_notify_order_types_id in (22,23,24) and pay_id = 2 and " \
+                     "date_expiry < UTC_TIMESTAMP()"
+            cur.execute(string)
+            cnx.commit()
+            if cur.rowcount > 0:
+                print("PAYOUT переведены в статус Ордер отменен")
             else:
                 print("никаких действий не проведено")
 
@@ -92,9 +170,15 @@ def generate_orders():
 
 
 # generate_orders()
-#get_orders_status_cancel_by_time_status_8()
-#get_orders_status_cancel_by_time_status_9()
+set_order_status_8_payin()
+set_order_status_9_payin()
+set_order_status_15_payout()
+set_order_status_16_payout()
+set_order_status_17_payout()
+set_order_status_18_payout()
+set_order_status_222324_payout()
+
 # check_orders()
-print(len([1]))
+print("ok", datetime.datetime.now())
 
 

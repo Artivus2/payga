@@ -49,9 +49,7 @@ async def crud_balance_percent(crud, payload):  # todo -> admin
                 else:
                     return {"Success": False, "data": "Нет данных"}
             if crud == 'set':
-                string = "UPDATE pay_pay_percent SET value = " + str(payload.value) \
-                         + " where user_id = " + str(payload.user_id) + " and pay_id = " + str(payload.pay_id)
-
+                string = "UPDATE pay_pay_percent SET value = '" + str(payload.value) + "', pay_status_id = 1 where user_id = " + str(payload.user_id) + " and pay_id = " + str(payload.pay_id)
                 cur.execute(string)
                 cnx.commit()
                 if cur.rowcount > 0:

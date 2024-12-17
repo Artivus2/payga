@@ -132,20 +132,26 @@ async def get_curr(id):
 async def set_reqs_by_any(payload):
     with cpy.connect(**config.config) as cnx:
         with cnx.cursor(dictionary=True) as cur:
-            data_update = "UPDATE pay_reqs SET "
-            for k, v in dict(payload).items():
-                if k != 'id':
-                    data_update += str(k) + " = '" + str(v) + "',"
-            data_update = data_update[:-1]
-            data_update += " where id = " + str(payload.get('id'))
-            cur.execute(data_update)
-            cnx.commit()
-            if cur.rowcount > 0:
-                cnx.close()
-                return {"Success": True, "data": "Реквизиты успешно обновлены"}
+            string_orders = "SELECT * FROM orders where req_id = " + payload.get('id')
+            cur.execute(string_orders)
+            orders = cur.fetchall()
+            if not orders:
+                data_update = "UPDATE pay_reqs SET "
+                for k, v in dict(payload).items():
+                    if k != 'id':
+                        data_update += str(k) + " = '" + str(v) + "',"
+                data_update = data_update[:-1]
+                data_update += " where id = " + str(payload.get('id'))
+                cur.execute(data_update)
+                cnx.commit()
+                if cur.rowcount > 0:
+                    cnx.close()
+                    return {"Success": True, "data": "Реквизиты успешно обновлены"}
+                else:
+                    cnx.close()
+                    return {"Success": False, "data": "Реквизиты не обновлены"}
             else:
-                cnx.close()
-                return {"Success": False, "data": "Реквизиты не обновлены"}
+                return {"Success": False, "data": "Редактирование платежной информации невозможно, c реквизитами уже были созданы ордера"}
 
 
 async def remove_reqs_by_id(id):

@@ -54,7 +54,7 @@ async def create_order_for_user(payload):
                               str(payload.get('sum_fiat')) + "','"+str(payload.get('pay_id'))\
                               + "','" + str(round(summ, 2)) + "','" \
                               + str(cashback_value) + "',NOW(), DATE_ADD(NOW(), INTERVAL 15 minute),'" \
-                              + str(data['id']) + "',1,'" + str(docs_id) + "')"
+                              + str(data['id']) + "',0,'" + str(docs_id) + "')"
                 print(data_string)
                 cur.execute(data_string)
                 cnx.commit()
