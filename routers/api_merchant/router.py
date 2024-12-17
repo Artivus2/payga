@@ -11,6 +11,9 @@ from routers.admin.controller import get_user_from_api_key
 from routers.admin.utils import get_min_amount
 from routers.mains.controller import get_chart
 from starlette.requests import Request
+
+from routers.orders.controller import create_order_for_user
+
 router = APIRouter(prefix='/api/v1/merchant',
                    tags=['Мерчант'],
                    dependencies=[Depends(merchant_models.GetApiKey())]
@@ -74,67 +77,11 @@ async def min_amount():
     HEADERS
     x-api-key: {{api-key}}
 
-    (Required) Your NOWPayments API key
+    (Required) Your PayGreenavi API key
     :return:
     """
     response = await get_min_amount()
     return response
-
-
-@router.post("/create-invoice")
-async def create_invoice(request: merchant_models.Invoice):
-    """
-    https://pay.greenavi.com/api/v1/merchant/create-invoice
-    sum_fiat: float
-
-    Creates a payment link. With this method,
-    the customer is required to follow the generated url to complete the payment.
-
-    :return:
-    """
-    print(request)
-    pass
-
-
-@router.post("/create-payment", response_class=HTMLResponse)
-async def create_payment(request: Request, payload: Any = Body(None)):
-    """
-    Creates a payment link. With this method,
-    the customer is required to follow the generated url to complete the payment.
-    "price_amount": 3999.5,
-    "price_currency": "usdt",
-    "ipn_callback_url": "https://pay.greenavi.com",
-    "order_description": "Apple Macbook Pro 2019 x 1"
-    :return:
-     "payment_id": "5745459419",
-      "payment_status": "waiting",
-      "pay_address": "3EZ2uTdVDAMFXTfc6uLDDKR6o8qKBZXVkj",
-      "price_amount": 3999.5,
-      "price_currency": "usd",
-      "pay_amount": 0.17070286,
-      "pay_currency": "btc",
-      "order_id": "RGDBP-21314",
-      "order_description": "Apple Macbook Pro 2019 x 1",
-      "ipn_callback_url": "https://nowpayments.io",
-      "created_at": "2020-12-22T15:00:22.742Z",
-      "updated_at": "2020-12-22T15:00:22.742Z",
-      "purchase_id": "5837122679",
-      "amount_received": null,
-      "payin_extra_id": null,
-      "smart_contract": "",
-      "network": "btc",
-      "network_precision": 8,
-      "time_limit": null,
-      "burning_percent": null,
-      "expiration_estimate_date": "2020-12-23T15:00:22.742Z"
-    """
-    print(request.headers.get('x-api-key'))
-
-    user_id = 638
-    url = 'https://admin.greenavi.com/payment?sum_fiat='\
-          +str(payload.get('sum_fiat'))+'&req_id='+str(payload.get('req_id'))+'&user_id='+str(user_id)
-    print(url)
-    return RedirectResponse(url=url)
 
 
 @router.get("/get-payment-status/{payment_id}")

@@ -24,41 +24,49 @@ async def get_course():
 
 
 async def create_order_for_user(payload):
-    with cpy.connect(**config.config) as cnx:
+    with (cpy.connect(**config.config) as cnx):
         with cnx.cursor(dictionary=True) as cur:
             uuids = await generate_uuid()
-            string0 = "SELECT * FROM pay_reqs WHERE id = " + str(payload.get('req_id'))
+            string0 = "SELECT * FROM pay_reqs WHERE pay_pay_id = '" + str(payload.get('pay_id')) \
+            + "' and id = " + str(payload.get('req_id'))
             cur.execute(string0)
             data = cur.fetchone()
             if data:
-                string_cash = "SELECT value from pay_pay_percent where pay_id = 1 " \
-                              "and pay_status_id = 1 and user_id = " + str(data['user_id']) #payin
+                string_cash = "SELECT value from pay_pay_percent where pay_id = '"+str(payload.get('pay_id'))+"' " \
+                              "and pay_status_id = 1 and user_id = " + str(data['user_id']) #payin / payout
                 cur.execute(string_cash)
-                cashback = cur.fetchone()[0]
+                cashback = cur.fetchone()
+                print(cashback)
                 if not cashback:
-                    cashback = 1
+                    return {"Success": False, "data": "Не установлен процент cashback, обратитесь к администратору"}
                 course = await get_course()
-                course2 = float(course['data']['amount']) * (1 + cashback / 100)
+                cashback_value = float(cashback.get('value',1))
+                print(cashback_value)
+                course2 = float(course['data']['amount']) * (1 + cashback_value / 100)
+                #course2 = float(course) * (1 + cashback / 100) #test
                 currency_id = 1 #todo из sms_data
                 docs_id = 1 # todo из docs после фото документа
-                summ = float((payload.get('sum_fiat') / course2))
+                summ = float(payload.get('sum_fiat')) / course2
                 data_string = "INSERT INTO pay_orders (uuid, user_id, course, chart_id, sum_fiat, pay_id," \
                               "value, cashback, date, date_expiry, req_id, pay_notify_order_types_id, docs_id) " \
                               "VALUES ('" + str(uuids) + "','" + str(data['user_id']) + \
                               "','" + str(round(course2,2)) + "','" + str(currency_id) + "','" + \
-                              str(payload.get('sum_fiat')) + "',1,'" + str(round(summ, 2)) + "','" \
-                              + str(cashback) + "',NOW(), DATE_ADD(NOW(), INTERVAL 15 minute),'" \
+                              str(payload.get('sum_fiat')) + "','"+str(payload.get('pay_id'))\
+                              + "','" + str(round(summ, 2)) + "','" \
+                              + str(cashback_value) + "',NOW(), DATE_ADD(NOW(), INTERVAL 15 minute),'" \
                               + str(data['id']) + "',1,'" + str(docs_id) + "')"
                 print(data_string)
                 cur.execute(data_string)
                 cnx.commit()
                 if cur.rowcount > 0:
-                    message = "Ордер " + str(uuids) + " \nпоставлен в очередь со статусом СОЗДАН, \n"\
-                              + str(datetime.datetime.now()) + "\nна сумму: " + str(payload.get('sum_fiat')) + " руб."
-                    botgreenavipay.send_message(config.pay_main_group, message, parse_mode='HTML')
+                    # message = "Ордер " + str(uuids) + " \nпоставлен в очередь со статусом СОЗДАН, \n"\
+                    #           + str(datetime.datetime.now()) + "\nна сумму: " + str(payload.get('sum_fiat')) + " руб."
+                    # botgreenavipay.send_message(config.pay_main_group, message, parse_mode='HTML')
                     return {"Success": True, "data": "Ордер поставлен в очередь. Ожидайте исполнения"}
                 else:
                     return {"Success": False, "data": "Ордер не может быть создан"}
+            else:
+                return {"Success": False, "data": "Реквизиты не найдены или отключены"}
 
 
 async def get_orders_by_any(payload):
@@ -75,14 +83,15 @@ async def get_orders_by_any(payload):
                          "pay_pay.title as pay_id_title, pay_orders.value, cashback, " \
                          "pay_orders.date, date_expiry, pay_reqs.id as pay_reqs_id, pay_reqs.uuid as pay_reqs_uuid, " \
                          "pay_reqs.phone, pay_reqs_types.title as pay_type, pay_notify_order_types_id, " \
-                         "banks.id as bank_id, banks.title as banks_name, banks.bik, " \
+                         "pay_fav_banks.id as bank_id, pay_fav_banks.title as banks_name, pay_fav_banks.bik, " \
                          "pay_notify_order_types.title as pay_notify_order_types_title, " \
-                         "pay_docs.url as pay_docs_url from pay_orders " \
+                         "pay_docs.url as pay_docs_url " \
+                         "from pay_orders " \
                          "LEFT JOIN chart ON pay_orders.chart_id = chart.id " \
                          "LEFT JOIN pay_pay ON pay_orders.pay_id = pay_pay.id " \
                          "LEFT JOIN pay_reqs ON pay_orders.req_id = pay_reqs.id " \
                          "LEFT JOIN pay_docs ON pay_orders.docs_id = pay_docs.order_id " \
-                         "LEFT JOIN banks ON banks.id = pay_reqs.bank_id " \
+                         "LEFT JOIN pay_fav_banks ON pay_fav_banks.id = pay_reqs.bank_id " \
                          "LEFT JOIN pay_reqs_types ON pay_reqs.reqs_types_id = pay_reqs_types.id " \
                          "LEFT JOIN pay_notify_order_types ON pay_orders.pay_notify_order_types_id = " \
                          "pay_notify_order_types.id " \

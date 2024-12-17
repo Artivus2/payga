@@ -273,7 +273,8 @@ async def create_invoice_data(payload):
     result_from_invoice = {
         "req_id": payload.req_id,
         "sum_fiat": payload.sum_fiat,
-        'user_sender': user_sender['data']
+        'user_sender': user_sender['data'],
+        'pay_id': 1
     }
     response = await create_order_for_user(result_from_invoice)
     print(response)

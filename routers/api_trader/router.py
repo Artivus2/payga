@@ -15,6 +15,7 @@ from starlette.requests import Request
 from routers.admin.controller import get_user_from_api_key, create_sms_data
 from routers.admin.utils import create_access_token, get_min_amount
 from routers.mains.controller import get_chart
+from routers.orders.controller import create_order_for_user
 
 router = APIRouter(prefix='/api/v1/trader',
                    tags=['Трейдер'],
@@ -62,21 +63,73 @@ async def min_amount():
     HEADERS
     x-api-key: {{api-key}}
 
-    (Required) Your NOWPayments API key
+    (Required) Your PayGreenavi API key
     :return:
     """
     response = await get_min_amount()
     return response
 
 
-@router.get("/create-invoice")
-async def create_invoice():
+@router.post("/create-payment")
+async def create_invoice(request: Request):
     """
     Creates a payment link. With this method,
     the customer is required to follow the generated url to complete the payment.
 
     :return:
     """
+    api_key_from_merchant = request.headers.get('x-api-key')
+    print(api_key_from_merchant)
+    reqs = await request.body()
+    string = json.loads(reqs.decode("utf-8"))
+    user_id = await get_user_from_api_key(api_key_from_merchant)
+    result_from_payment = {
+        "req_id": string.get('req_id'),
+        "sum_fiat": string.get('sum_fiat'),
+        'user_id': user_id['data'],
+        'pay_id': 1 # payin
+    }
+    print(result_from_payment)
+    response = await create_order_for_user(result_from_payment)
+    if not response['Success']:
+        raise HTTPException(
+            status_code=400,
+            detail=response
+        )
+    print(response)
+    return response
+
+
+@router.post("/create-payout")
+async def create_payout(request: Request):
+    """
+    Creates a payout for trader. With this method,
+    the customer is required to withdrawals funds.
+
+    :return:
+    """
+    api_key_from_merchant = request.headers.get('x-api-key')
+    print(api_key_from_merchant)
+    reqs = await request.body()
+    string = json.loads(reqs.decode("utf-8"))
+    user_id = await get_user_from_api_key(api_key_from_merchant)
+    result_from_invoice = {
+        "req_id": string.get('req_id'),
+        "sum_fiat": string.get('sum_fiat'),
+        'user_id': user_id['data'],
+        'pay_id': 2,  # payout
+        'phone': string.get('phone')
+
+    }
+    print(result_from_invoice)
+    response = await create_order_for_user(result_from_invoice)
+    if not response['Success']:
+        raise HTTPException(
+            status_code=400,
+            detail=response
+        )
+    print(response)
+    return response
 
 @router.post("/sms-data")
 async def sms_receiver_trader(request: Request):

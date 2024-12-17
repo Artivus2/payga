@@ -66,8 +66,7 @@ async def send_to_wallet(order_id, address):
                     return False
 
 async def generate_wallet(payload):
-    client = Tron()
-    result = client.generate_address()
+
     with cpy.connect(**config.config) as cnx:
         with cnx.cursor(dictionary=True) as cur:
             if payload.user_id is not None:
@@ -75,6 +74,8 @@ async def generate_wallet(payload):
                 cur.execute(string_check)
                 data = cur.fetchone()
                 if not data:
+                    client = Tron()
+                    result = client.generate_address()
                     string = "INSERT into wallet_address (user_id, chain_id, value, private_key, public_key, hex_address)" \
                              " VALUES ('"+str(payload.user_id)+"', 259, '"+str(result['base58check_address'])+"', '" \
                              + str(result['private_key']) + "', '"+str(result['public_key'])+"','" \
@@ -89,6 +90,7 @@ async def generate_wallet(payload):
                     return {"Success": False, "data": "на данном аккаунте уже создан кошелек, обратитесь к администратору"}
             else:
                 return {"Success": False, "data": "Пользователь не найден"}
+
 
 async def get_wallet(payload):
     with cpy.connect(**config.config) as cnx:
