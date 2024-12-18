@@ -15,7 +15,8 @@ from routers.user.controller import (
     delete_user_api_key_by_id,
     get_profile_by_id,
     get_user_by_email,
-    set_user_active
+    set_user_active_token,
+    set_user_active_onoff
 
 )
 from typing import Annotated
@@ -240,7 +241,7 @@ async def login_for_access_token(request: user_models.Login):
                                        expires_delta=config.ACCESS_TOKEN_EXPIRE_MINUTES)
     #
     # Change the active status of the user -->True(1)
-    itog = await set_user_active(user['data']['email'], datetime.datetime.utcnow(), access_token)
+    itog = await set_user_active_token(user['data']['email'], datetime.datetime.utcnow(), access_token)
     if not itog['Success']:
         raise HTTPException(status_code=404,
                             detail=f"Не удалось получить токен")
@@ -389,6 +390,25 @@ async def get_user_apikey(request: user_models.ApiKey):
     #     )
     print("api_key",request.api_key)
     return {"success": True}
+
+
+@router.post("/set-active")
+async def set_user_onoff(request: user_models.User):
+    """
+    образец по user_id{}
+    :param request:
+    :param user_id:
+    :return:
+    response
+    """
+    response = await set_user_active_onoff(request)
+    if not response['Success']:
+        raise HTTPException(
+            status_code=400,
+            detail=response,
+        )
+
+    return response
 
 
 

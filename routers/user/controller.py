@@ -100,7 +100,7 @@ async def get_profile_by_id(user_id):
         with cnx.cursor(dictionary=True) as cur:
             string = "SELECT user.id, login, role_id, email, phone, telegram, created_at as reg_date, telegram_connected, " \
                      "twofa_status, user.verify_status, verify_status.title as verify, user.banned as banned_status," \
-                     "banned_status.title as banned, user.chart_id, chart.symbol as chart, user.currency_id, " \
+                     "banned_status.title as banned, is_active, user.chart_id, chart.symbol as chart, user.currency_id, " \
                      "currency.symbol as currency from user " \
                      "LEFT JOIN verify_status ON user.verify_status = verify_status.id " \
                      "LEFT JOIN banned_status ON user.banned = banned_status.id " \
@@ -128,10 +128,10 @@ async def get_user_by_email(email):
                 return {"Success": False, "data": "Пользователь не найден"}
 
 
-async def set_user_active(email, datenowutc, access_token):
+async def set_user_active_token(email, datenowutc, access_token):
     with cpy.connect(**config.config) as cnx:
         with cnx.cursor(dictionary=True) as cur:
-            string = "UPDATE user SET is_active = 1, token = '"+str(access_token) + \
+            string = "UPDATE user SET token = '"+str(access_token) + \
                      "', last_visit_time = '"+str(datenowutc)+"' " \
                      "where email = '" + str(email) + "'"
             cur.execute(string)
@@ -144,6 +144,20 @@ async def set_user_active(email, datenowutc, access_token):
             else:
                 cnx.close()
                 return {"Success": False, "data": "Ошибка авторизации"}
+
+
+async def set_user_active_onoff(payload):
+    with cpy.connect(**config.config) as cnx:
+        with cnx.cursor(dictionary=True) as cur:
+            string = "UPDATE user SET is_active = "+str(payload.is_active)+" where id = " + str(payload.user_id)
+            cur.execute(string)
+            cnx.commit()
+            if cur.rowcount > 0:
+                cnx.close()
+                return {"Success": True, "data": "Активен"}
+            else:
+                cnx.close()
+                return {"Success": False, "data": "Не активен"}
 
 
 # def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(dbUtil.get_db)):

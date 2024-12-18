@@ -71,11 +71,25 @@ def set_order_status_8_payin(time=-15):
                 print("никаких действий не проведено")
 
 
+def set_order_status_1_payin(time=-15):
+    with cpy.connect(**config.config) as cnx:
+        with cnx.cursor(dictionary=True) as cur:
+            string = "UPDATE pay_orders SET pay_notify_order_types_id = 9, date_expiry = DATE_ADD(UTC_TIMESTAMP(), INTERVAL +15 minutes) where " \
+                     "pay_notify_order_types_id = 1 and pay_id = 1 and " \
+                     "date_expiry < UTC_TIMESTAMP()"
+            cur.execute(string)
+            cnx.commit()
+            if cur.rowcount > 0:
+                print("PAYIN Ордер отменен. Закончилось время подтверждения оплаты", datetime.datetime.now())
+            else:
+                print("никаких действий не проведено")
+
+
 def set_order_status_9_payin(time=-15):
     with cpy.connect(**config.config) as cnx:
         with cnx.cursor(dictionary=True) as cur:
-            string = "UPDATE pay_orders SET pay_notify_order_types_id = 9 where " \
-                     "pay_notify_order_types_id = 1 and pay_id = 1 and " \
+            string = "UPDATE pay_orders SET pay_notify_order_types_id = 0 where " \
+                     "pay_notify_order_types_id = 9 and pay_id = 1 and " \
                      "date_expiry < UTC_TIMESTAMP()"
             cur.execute(string)
             cnx.commit()
