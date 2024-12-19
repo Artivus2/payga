@@ -1,6 +1,9 @@
 import asyncio
+import os
+
 import uvicorn
 from fastapi import FastAPI
+from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from routers.orders.router import router as router_orders
 from routers.user.router import router as router_user
@@ -44,6 +47,12 @@ app.add_middleware(
 #     """
 #     print(referral_code)
 #     return referral_code
+
+@app.get("/files/pay-greenavi.apk")
+def download_file():
+    folder_path = r"files"
+    file_location = f'{folder_path}{os.sep}pay-greenavi.apk'
+    return FileResponse(file_location, media_type='application/octet-stream', filename='pay-greenavi.apk')
 
 
 app.include_router(merchant)

@@ -1,4 +1,6 @@
-from datetime import datetime
+import re
+import datetime
+from cgi import print_form
 
 import mysql.connector as cpy
 
@@ -273,7 +275,7 @@ async def create_invoice_data(payload):
     result_from_invoice = {
         "req_id": payload.req_id,
         "sum_fiat": payload.sum_fiat,
-        'user_sender': user_sender['data'],
+        'user_id': user_sender['data'],
         'pay_id': 1
     }
     response = await create_order_for_user(result_from_invoice)
@@ -289,60 +291,57 @@ async def create_sms_data(payload):
     'user_id': user_id,
                 'sender': sender,
                 'sum_fiat': suma,
-                'datain': datetime.datetime.strptime(datein + " " + time, '%d.%m.%Y %H:%M'),
-                'currency': valuta
     """
     with cpy.connect(**config.config) as cnx:
         with cnx.cursor(dictionary=True) as cur:
             # сравнить на полное совпадение
-            data_string = "INSERT INTO pay_sms_data (user_id, date, sum_fiat, currency, sender) " \
-                          "VALUES ('" + str(payload.get('user_id')) + "','" + str(payload.get('datain')) \
-                          + "','" + str(payload.get('sum_fiat')) + "','" + str(payload.get('currency')) \
-                          + "','" + str(payload.get('sender')) + "')"
-            cur.execute(data_string)
-            cnx.commit()
-            if cur.rowcount > 0:
+            check_string = "SELECT id, uuid, sum_fiat, user_id, date_expiry FROM pay_orders where user_id = '" \
+                           + str(payload.get('user_id')) + "' and pay_notify_order_types_id = 0 " \
+                                                           "and sum_fiat = '" + str(payload.get('sum_fiat')) + "'"
+            cur.execute(check_string)
+            data = cur.fetchone()
+            print("order", data)
+            if data:
                 # проверяем ордер пришло зачисление
-
-                check_string = "SELECT id, uuid, sum_fiat, user_id, date_expiry FROM pay_orders where user_id = '" \
-                               + str(payload.get('user_id')) + "' and pay_notify_order_types_id = 1 " \
-                                                               "and sum_fiat = '" + str(payload.get('sum_fiat')) + "'"
-                cur.execute(check_string)
-                data = cur.fetchone()
-                print("order", data)
-                if data:
-                    del_string = "DELETE FROM pay_sms_data WHERE user_id = " + str(payload.get('user_id')) \
-                                 + " and sum_fiat = '" + str(payload.get('sum_fiat')) + "'"
-                    cur.execute(del_string)
-                    if data['date_expiry'] > datetime.now():
-                        result = await update_order_by_id(data['id'], 3)
-                        message = "Ордер " + str(data['uuid']) + " \nполучен платеж на сумму " \
-                                  + str(payload.get('sum_fiat')) + "\nОбработано автоматикой \n(по СБП Сбербанк)"
-                        botgreenavipay.send_message(config.pay_main_group, message)
-                        string_wallet = "SELECT address FROM pay_wallet where pay_wallet = 1 " \
-                                        "and user_id = " + str(payload.get('user_id'))
-                        cur.execute(string_wallet)
-                        wallet = cur.fetchone()
-                        if wallet:
-                            result = True
-                            #result = send_to_wallet(data['id'], wallet[0])
-                            if result:
-                                #USDT отправлены pending
-                                send = await update_order_by_id(data['id'], 3)
-                                cnx.commit()
-                            else:
-                                # USDT не удалось отправить failed
-                                send = await update_order_by_id(data['id'], 2)
-                        return result
+                if data['date_expiry'] > datetime.datetime.utcnow():
+                    #cnx.commit()
+                    result = await update_order_by_id(data['id'], 3)
+                    message = "Ордер " + str(data['uuid']) + " \nполучен платеж на сумму " \
+                              + str(payload.get('sum_fiat')) + "\nОбработано автоматикой"
+                    botgreenavipay.send_message(config.pay_main_group, message)
+                    string_wallet = "SELECT address FROM pay_wallet where wallet_status_id = 1 " \
+                                    "and user_id = " + str(payload.get('user_id'))
+                    cur.execute(string_wallet)
+                    print(string_wallet)
+                    wallet = cur.fetchone()
+                    if wallet:
+                        result = True
+                        #result = send_to_wallet(data['id'], wallet[0])
+                        if result:
+                            #USDT отправлены pending
+                            send = await update_order_by_id(data['id'], 3)
+                            data_string = "INSERT INTO pay_sms_data (user_id, date, sum_fiat, sender, text) " \
+                                          "VALUES ('" + str(payload.get('user_id')) + "','" + str(payload.get('datain')) \
+                                          + "','" + str(payload.get('sum_fiat')) + "','" + str(payload.get('sender')) \
+                                          + "','" + str(payload.get('text')) + "')"
+                            cur.execute(data_string)
+                            cnx.commit()
+                            if cur.rowcount > 0:
+                                return {"Success": True, "data": 'sms data добавлена, ордер обработан и выполнен'}
+                        else:
+                            # USDT не удалось отправить отправить вручную
+                            send = await update_order_by_id(data['id'], 4)
+                            return {"Success": False, "data": 'sms data добавлена, не удалось отправить USDT, ручная отправка'}
                     else:
-                        result = await update_order_by_id(data['id'], 2)
-                        cnx.commit()
-                        return result
+                        return {"Success": False,
+                                "data": 'не найден кошелек или не активирован, обратитесь к администратору'}
                 else:
-                    cnx.commit()
-                    return {"Success": False, "data": 'sms data не добавлена'}
+                    #ордер просрочен
+                    result2 = await update_order_by_id(data['id'], 2)
+                    return {"Success": False, "data": 'sms data не добавлена, ордер просрочен'}
             else:
-                return {"Success": False, "data": 'sms data не добавлена'}
+                return {"Success": False, "data": 'sms data не добавлена, ордер не найден'}
+
 
 
 async def get_user_from_api_key(payload):
@@ -391,3 +390,43 @@ async def get_info_for_invoice(payload):
                 return {"Success": True, "data": all}
             else:
                 return {"Success": False}
+
+
+async def get_pattern(sender, text):
+    """
+
+    :return:
+    """
+
+    pattern_sber_sbp = [r'СБП\s+(\d+)\s*р', r'Перевод\s+(\d+)\s*р',r'Зачисление \s+(\d+)\s*р'] #сбер
+    pattern_tinkoff_sbp = r''
+    pattern_coalmet_sbp = r"(\d+\,\d+)\s+(RUB)\s*"
+    pattern_vtb_sbp = r''
+    senders = {
+        '900':pattern_sber_sbp,
+        'Tinkoff': pattern_tinkoff_sbp,
+        'Coalmetbank': pattern_coalmet_sbp,
+        'VTB': pattern_vtb_sbp,
+        '...': 'any'
+    }
+    print(senders[sender])
+    matches = None
+    for i in senders[sender]:
+        matches = re.search(i, text, re.VERBOSE)
+        print("matches",matches)
+        if matches:
+            break
+        print(matches)
+    # data = re.search(pattern2, text, re.VERBOSE)
+    if matches:
+        # schet = matches.group(1)
+        suma = matches.group(1).split(" ")
+        print(float(suma[0]))
+        result = {
+            'Success': True,
+            'sender': sender,
+            'sum_fiat': float(suma[0]),
+            'datain': datetime.datetime.now(),
+            'text': text
+        }
+        return result

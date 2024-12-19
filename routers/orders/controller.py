@@ -47,21 +47,25 @@ async def create_order_for_user(payload):
                 currency_id = 1 #todo из sms_data
                 docs_id = 1 # todo из docs после фото документа
                 summ = float(payload.get('sum_fiat')) / course2
+                if int(payload.get('pay_id')) == 1:
+                    interval_order = config.TIME_ORDER_PAYIN_EXPIRY
+                else:
+                    interval_order = config.TIME_ORDER_PAYOUT_EXPIRY
                 data_string = "INSERT INTO pay_orders (uuid, user_id, course, chart_id, sum_fiat, pay_id," \
                               "value, cashback, date, date_expiry, req_id, pay_notify_order_types_id, docs_id) " \
                               "VALUES ('" + str(uuids) + "','" + str(data['user_id']) + \
                               "','" + str(round(course2,2)) + "','" + str(currency_id) + "','" + \
                               str(payload.get('sum_fiat')) + "','"+str(payload.get('pay_id'))\
                               + "','" + str(round(summ, 2)) + "','" \
-                              + str(cashback_value) + "',NOW(), DATE_ADD(NOW(), INTERVAL 15 minute),'" \
+                              + str(cashback_value) + "',UTC_TIMESTAMP(), DATE_ADD(UTC_TIMESTAMP(), INTERVAL " + str(interval_order) + " minute ),'" \
                               + str(data['id']) + "',0,'" + str(docs_id) + "')"
                 print(data_string)
                 cur.execute(data_string)
                 cnx.commit()
                 if cur.rowcount > 0:
-                    # message = "Ордер " + str(uuids) + " \nпоставлен в очередь со статусом СОЗДАН, \n"\
-                    #           + str(datetime.datetime.now()) + "\nна сумму: " + str(payload.get('sum_fiat')) + " руб."
-                    # botgreenavipay.send_message(config.pay_main_group, message, parse_mode='HTML')
+                    message = "Ордер " + str(uuids) + " \nпоставлен в очередь со статусом СОЗДАН, \n"\
+                              + str(datetime.datetime.now()) + "\nна сумму: " + str(payload.get('sum_fiat')) + " руб."
+                    botgreenavipay.send_message(config.pay_main_group, message, parse_mode='HTML')
                     return {"Success": True, "data": "Ордер поставлен в очередь. Ожидайте исполнения"}
                 else:
                     return {"Success": False, "data": "Ордер не может быть создан"}

@@ -155,29 +155,33 @@ def set_order_status_18_payout(time=-240):
                 print("никаких действий не проведено")
 
 
-def set_order_status_222324_payout(time=-240):
-    with cpy.connect(**config.config) as cnx:
-        with cnx.cursor(dictionary=True) as cur:
-            string = "UPDATE pay_orders SET pay_notify_order_types_id = 20 where " \
-                     "pay_notify_order_types_id in (22,23,24) and pay_id = 2 and " \
-                     "date_expiry < UTC_TIMESTAMP()"
-            cur.execute(string)
-            cnx.commit()
-            if cur.rowcount > 0:
-                print("PAYOUT переведены в статус Ордер отменен")
-            else:
-                print("никаких действий не проведено")
+# def set_order_status_222324_payout(time=-240):
+#     with cpy.connect(**config.config) as cnx:
+#         with cnx.cursor(dictionary=True) as cur:
+#             string = "UPDATE pay_orders SET pay_notify_order_types_id = 20 where " \
+#                      "pay_notify_order_types_id in (22,23,24) and pay_id = 2 and " \
+#                      "date_expiry < UTC_TIMESTAMP()"
+#             cur.execute(string)
+#             cnx.commit()
+#             if cur.rowcount > 0:
+#                 print("PAYOUT переведены в статус Ордер отменен")
+#             else:
+#                 print("никаких действий не проведено")
 
 
 def generate_orders():
     with cpy.connect(**config.config) as cnx:
         with cnx.cursor(dictionary=True) as cur:
             uuids = uuid.uuid4()
+            pay_id = 1 #payin
+            pay_notify_order_types_id = 0
+            req_id = 17
+            user_id=628
             data_string = "INSERT INTO pay_orders (uuid, user_id, course, chart_id, sum_fiat, pay_id," \
                           "value, cashback, date, date_expiry, req_id, pay_notify_order_types_id, docs_id) " \
-                          "VALUES ('" + str(uuids) + "', 638,'" + str(random.randint(97, 105)) + "',259,'" + \
-                          str(random.randint(97, 105) * 100) + "',1,'" + str(random.randint(97, 105) * 100) + "','" \
-                          + str(random.randint(1, 10)) + "',NOW(), DATE_ADD(NOW(), INTERVAL 15 minute), 0, 1, 1)"
+                          "VALUES ('" + str(uuids) + "', '"+str(user_id)+"','" + str(random.randint(97, 105)) + "',259,'" + \
+                          str(random.randint(97, 105) * 100) + "','"+str(pay_id)+"','" + str(random.randint(97, 105) * 100) + "','" \
+                          + str(random.randint(1, 10)) + "',UTC_TIMESTAMP(), DATE_ADD(UTC_TIMESTAMP(), INTERVAL 15 minute), '"+str(req_id)+"', '"+str(pay_notify_order_types_id)+"', 1)"
             print(data_string)
             cur.execute(data_string)
             cnx.commit()
@@ -190,7 +194,7 @@ set_order_status_15_payout()
 set_order_status_16_payout()
 set_order_status_17_payout()
 set_order_status_18_payout()
-set_order_status_222324_payout()
+#set_order_status_222324_payout()
 
 # check_orders()
 print("ok", datetime.datetime.now())

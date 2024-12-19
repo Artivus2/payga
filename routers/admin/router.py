@@ -18,7 +18,8 @@ from routers.admin.controller import (
     create_invoice_data,
     create_sms_data,
     get_user_from_api_key,
-    get_info_for_invoice
+    get_info_for_invoice,
+    get_pattern
 
 )
 from routers.admin.utils import (
@@ -310,51 +311,26 @@ async def sms_receiver(request: Request):
     reqs = await request.body()
     string = json.loads(reqs.decode("utf-8"))
     text = string.get('text',0)
-    sender = string.get('from1',0)
-    api_key_from_merchant = string.get('api_key', 0)
-    print(api_key_from_merchant)
-    #data_receive = 0
-    print(text)
-    #coalmet
+    sender = string.get('sms_from',0)
+    api_key_from_merchant = request.headers.get('x-api-key', 0)
     user_id = await get_user_from_api_key(api_key_from_merchant)
-    if user_id['data'] > 0:
+    if user_id['Success']:
         #сбер
-        pattern = r'СБП\s+(\d+)\s*р'
-        #colmet
-        #pattern = r"(\d+\,\d+)\s+(RUB)\s*"
-        #pattern2 = r"(\d{2}\.\d{2}\.\d{4})\s+(\d{2}:\d{2})"
-
-        matches = re.search(pattern, text, re.VERBOSE)
-        print(matches)
-        #data = re.search(pattern2, text, re.VERBOSE)
-        if matches:
-            #schet = matches.group(1)
-            suma = matches.group(1).split(" ")
-            print(float(suma[0]))
-
-            valuta = "RUB"
-            # otpravitel = matches.group(4)
-            #datein = data.group(1)
-            #time = data.group(2)
-            # print(f"Счет: {schet}")
-            # print(f"Сумма: {suma} {valuta}")
-            # print(f"Отправитель: {otpravitel}")
-            # print(f"Дата: {datein}")
-            # print(f"Время: {time}")
-            result = {
-                'user_id': user_id['data'],
-                'sender': sender,
-                'sum_fiat': float(suma[0]),
-                #'datain': datetime.datetime.strptime(datein + " " + time, '%d.%m.%Y %H:%M'),
-                'datain': datetime.datetime.now(),
-                'currency': valuta
-            }
+        result = await get_pattern(sender, text)
+        print(result)
+        if result['Success']:
+            result["user_id"] = user_id['data']
+            print(result)
             response = await create_sms_data(result)
             return response
+    else:
+        raise HTTPException(
+            status_code=400,
+            detail="Пользователь не найден"
+        )
 
-        else:
-            print("Совпадений не найдено.")
-            return {"Success": False, "data": "Данные не получены"}
+
+
 
 
 
