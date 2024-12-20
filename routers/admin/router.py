@@ -19,7 +19,8 @@ from routers.admin.controller import (
     create_sms_data,
     get_user_from_api_key,
     get_info_for_invoice,
-    get_pattern
+    get_pattern,
+    check_order_by_id
 
 )
 from routers.admin.utils import (
@@ -249,54 +250,54 @@ async def get_allowed_status(id: int):
     :return:
     """
     pass
+#
+# @router.get("/get-info-for-invoice/{user_id}")
+# async def get_info(user_id: int):
+#     """
+#     req_group_id: list
+#     sum_fiat: float
+#     bank_id: int
+#     :param request:
+#     :return:
+#     """
+#     response = await get_info_for_invoice(user_id)
+#     if not response['Success']:
+#         raise HTTPException(
+#             status_code=400,
+#             detail=response,
+#         )
+#     return response
 
-@router.get("/get-info-for-invoice/{user_id}")
-async def get_info(user_id: int):
-    """
-    req_group_id: list
-    sum_fiat: float
-    bank_id: int
-    :param request:
-    :return:
-    """
-    response = await get_info_for_invoice(user_id)
-    if not response['Success']:
-        raise HTTPException(
-            status_code=400,
-            detail=response,
-        )
-    return response
 
 
-
-@router.post("/create-invoice")
-async def create_invoice(request: admin_models.Invoice):
-    """
-
-    :param request:
-    :return:
-    """
-    response = await create_invoice_data(request)
-    if not response['Success']:
-        raise HTTPException(
-            status_code=400,
-            detail=response,
-        )
-    return response
-
-@router.post("/confirm-invoice")
-async def update_order(request: orders_models.Orders):
-    """
-    Подтвердить поступление средств статус 3
-    :return:
-    """
-    response = await update_order_by_id(request.id, 3)
-    if not response['Success']:
-        raise HTTPException(
-            status_code=400,
-            detail=response
-        )
-    return response
+# @router.post("/create-invoice")
+# async def create_invoice(request: admin_models.Invoice):
+#     """
+#
+#     :param request:
+#     :return:
+#     """
+#     response = await create_invoice_data(request)
+#     if not response['Success']:
+#         raise HTTPException(
+#             status_code=400,
+#             detail=response,
+#         )
+#     return response
+#
+# @router.post("/confirm-invoice")
+# async def update_order(request: orders_models.Orders):
+#     """
+#     Подтвердить поступление средств статус 3
+#     :return:
+#     """
+#     response = await update_order_by_id(request.id, 3)
+#     if not response['Success']:
+#         raise HTTPException(
+#             status_code=400,
+#             detail=response
+#         )
+#     return response
 
 
 
@@ -315,14 +316,22 @@ async def sms_receiver(request: Request):
     api_key_from_merchant = request.headers.get('x-api-key', 0)
     user_id = await get_user_from_api_key(api_key_from_merchant)
     if user_id['Success']:
-        #сбер
         result = await get_pattern(sender, text)
-        print(result)
         if result['Success']:
             result["user_id"] = user_id['data']
-            print(result)
             response = await create_sms_data(result)
+            if not response['Success']:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Операция не выполнена, " + str(response['data'])
+                )
             return response
+        else:
+            #перевести в статус 4 ? не знаем № ордера
+            raise HTTPException(
+                status_code=400,
+                detail="Автоматизация не проведена. пропускаем ордер"
+            )
     else:
         raise HTTPException(
             status_code=400,
@@ -330,6 +339,23 @@ async def sms_receiver(request: Request):
         )
 
 
+@router.post("/check-payin-order")
+async def check_order(request: orders_models.Orders):
+    """
+    подтверждение заявки или отмена payin
+    id
+    pay_notify_order_types_id отказ 2 подтверждение 3
+    :param request:
+    :return:
+    """
+    print(request)
+    response = await check_order_by_id(request)
+    if not response['Success']:
+        raise HTTPException(
+            status_code=400,
+            detail=response
+        )
+    return response
 
 
 

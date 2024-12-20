@@ -1,3 +1,5 @@
+import json
+
 from fastapi import APIRouter, HTTPException
 import requests
 
@@ -80,11 +82,16 @@ async def validate_address(address: str):
 @router.post("/send-to-trx")
 async def send_transaction(request: withdraws_models.Withdraws):
     client = Tron()
+    with open('abi.json', 'r') as f:  # Замените 'usdt_abi.json' на имя вашего файла
+        usdt_abi = json.load(f)
+    contract_address = config.USDT_CONTRACT_ADDRESS  # Адрес контракта USDT TRC20
+    #usdt_contract = client.get_contract(usdt_abi, contract_address)
     private_key = PrivateKey.fromhex(config.private_key)
     from_address = config.admin_wallet
     sender_address = private_key.public_key.to_base58check_address()
 
-    usdt_contract = client.get_contract(config.USDT_CONTRACT_ADDRESS)
+    #usdt_contract = client.get_contract(config.USDT_CONTRACT_ADDRESS)
+    #usdt_contract = client.contract(usdt_abi, contract_address)
     #all_contraat = client.get_contract_info(from_address)
     #print(all_contraat)
     #wallet_balance = get_admin_balance()
@@ -94,19 +101,35 @@ async def send_transaction(request: withdraws_models.Withdraws):
     # print(result)
     # print(tx.txid)
     # print(tx.broadcast().wait())
+    # tx_hash = client.trx.transfer(to_address, 1, 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t',
+    #                             fee_limit=10000000)
+    # print(tx_hash)
+    # try:
+    #     tx = (
+    #         usdt_contract.functions.transfer(to_address,
+    #                                          1 * 10 ** 6)  # умножаем на 10**6, так как USDT TRC20 имеет 6 знаков после запятой
+    #         .build()
+    #         .sign(private_key)
+    #         .broadcast()
+    #     )
+    #
+    #
+    #     print(f"Транзакция отправлена: {tx['txid']}")
+    # except Exception as e:
+    #     print(f"Ошибка при отправке транзакции: {e}")
+    contract = client.get_contract(config.USDT_CONTRACT_ADDRESS)
+    contract.abi = usdt_abi
+    tx = (contract.functions.transfer(to_address, 260000)
+          .with_owner(private_key.public_key.to_base58check_address())
+          .fee_limit(20000000)
+          .build()
+          .sign(private_key))
+    broadcasted_tx = tx.broadcast().wait()
     try:
-        tx = (
-            usdt_contract.functions.transfer(to_address,
-                                             1 * 10 ** 6)  # умножаем на 10**6, так как USDT TRC20 имеет 6 знаков после запятой
-            .build()
-            .sign(private_key)
-            .broadcast()
-        )
+        return broadcasted_tx['result'], broadcasted_tx['id']
+    except:
+        return False, False
 
-
-        print(f"Транзакция отправлена: {tx['txid']}")
-    except Exception as e:
-        print(f"Ошибка при отправке транзакции: {e}")
 
 
 #

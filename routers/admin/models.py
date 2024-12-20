@@ -99,6 +99,12 @@ class Invoice(BaseModel):
     api_key: str | None = None
 
 
+class Parsers(BaseModel):
+    id: int | None = None
+    shablons: str | None = None
+    sender: str | None = None
+
+
 class ApiStatus(BaseModel):
     id: int | None = None
 

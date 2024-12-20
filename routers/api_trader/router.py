@@ -5,7 +5,7 @@ import sqlite3
 
 import routers.roles.models as roles_models
 import requests
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, UploadFile, File
 import routers.api_trader.models as trader_models
 import routers.user.models as user_models
 import routers.admin.models as admin_models
@@ -71,7 +71,7 @@ async def min_amount():
 
 
 @router.post("/create-payment")
-async def create_invoice(request: Request):
+async def create_payment_for_trader(request: Request):
     """
     Creates a payment link. With this method,
     the customer is required to follow the generated url to complete the payment.
@@ -101,7 +101,7 @@ async def create_invoice(request: Request):
 
 
 @router.post("/create-payout")
-async def create_payout(request: Request):
+async def create_payout_for_trader(request: Request):
     """
     Creates a payout for trader. With this method,
     the customer is required to withdrawals funds.
@@ -116,9 +116,10 @@ async def create_payout(request: Request):
     result_from_invoice = {
         "req_id": string.get('req_id'),
         "sum_fiat": string.get('sum_fiat'),
+        'phone': string.get('phone'),
         'user_id': user_id['data'],
         'pay_id': 2,  # payout
-        'phone': string.get('phone')
+
 
     }
     print(result_from_invoice)

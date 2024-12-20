@@ -82,7 +82,9 @@ async def update_order(request: orders_models.Orders):
     Обновить статус ордера по id и pay_notify_order_types_id
     :return:
     """
-    response = await update_order_by_id(request.id, request.pay_notify_order_types_id)
+    if request.docs_id is None:
+        request.docs_id = 0
+    response = await update_order_by_id(request.id, request.pay_notify_order_types_id, request.docs_id)
     if not response['Success']:
         raise HTTPException(
             status_code=400,
@@ -111,22 +113,22 @@ async def delete_order(request: orders_models.Orders):
 
 
 @router.post("/order-docs-load")
-async def store(order_id: int = Form(...), image: UploadFile = File(...)):
+async def store(order_uuid: int = Form(...), image: UploadFile = File(...)):
     """
-    Записываем urls платежек по order_id
+    Записываем urls платежек по order_uuid
     :param order_id:
     :param image:
     :return:
     """
     #files: List[UploadFile] = File(...)
     #[file.filename for file in files]
-    images = []
+    #images = []
     file_location = f"files/{image.filename}"
     with open(file_location, "wb+") as file_object:
         shutil.copyfileobj(image.file, file_object)
         full_path_url = str(image.filename) + "/" + str(file_location)
-        images.append(full_path_url)
-        response = await insert_docs(order_id, full_path_url)
+        #images.append(full_path_url)
+        response = await insert_docs(order_uuid, full_path_url)
         if not response['Success']:
             raise HTTPException(
                 status_code=400,
