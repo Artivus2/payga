@@ -45,7 +45,7 @@ async def create_order_for_user(payload):
                 course2 = float(course['data']['amount']) * (1 + cashback_value / 100)
                 #course2 = float(course) * (1 + cashback / 100) #test
                 currency_id = 1 #todo из sms_data
-                docs_id = get_docs_id(uuids)
+                docs_id = 0
                 summ = float(payload.get('sum_fiat')) / course2
                 if int(payload.get('pay_id')) == 1:
                     interval_order = config.TIME_ORDER_PAYIN_EXPIRY
@@ -66,6 +66,10 @@ async def create_order_for_user(payload):
                     message = "Ордер " + str(uuids) + " \nпоставлен в очередь со статусом СОЗДАН, \n"\
                               + str(datetime.datetime.now()) + "\nна сумму: " + str(payload.get('sum_fiat')) + " руб."
                     botgreenavipay.send_message(config.pay_main_group, message, parse_mode='HTML')
+                    #прикрепили ли платежку?
+                    string_find_doc = "SELECT id from pay_orders where uuid = " + str(uuids)
+                    cur.execute(string_find_doc)
+
                     return {"Success": True, "data": "Ордер поставлен в очередь. Ожидайте исполнения"}
                 else:
                     return {"Success": False, "data": "Ордер не может быть создан"}
@@ -94,7 +98,7 @@ async def get_orders_by_any(payload):
                          "LEFT JOIN chart ON pay_orders.chart_id = chart.id " \
                          "LEFT JOIN pay_pay ON pay_orders.pay_id = pay_pay.id " \
                          "LEFT JOIN pay_reqs ON pay_orders.req_id = pay_reqs.id " \
-                         "LEFT JOIN pay_docs ON pay_orders.uuid = pay_docs.order_uuid " \
+                         "LEFT JOIN pay_docs ON pay_orders.id = pay_docs.order_id " \
                          "LEFT JOIN pay_fav_banks ON pay_fav_banks.id = pay_reqs.bank_id " \
                          "LEFT JOIN pay_reqs_types ON pay_reqs.reqs_types_id = pay_reqs_types.id " \
                          "LEFT JOIN pay_notify_order_types ON pay_orders.pay_notify_order_types_id = " \
@@ -163,23 +167,32 @@ async def delete_order_by_id(id):
                 return {"Success": False, "data": "Статус не может быть изменен"}
 
 
-async def insert_docs(order_uuid, images):
+async def insert_docs(order_id, images):
     with cpy.connect(**config.config) as cnx:
         with cnx.cursor(dictionary=True) as cur:
             #for i in images:
-            data_string = "INSERT into pay_docs (order_uuid, url) " \
-                          "VALUES ('" + str(order_uuid) + "','" + str(i) + "')"
-            cur.execute(data_string)
-            cnx.commit()
-            cnx.close()
+            string_check = "select * from pay_docs where order_id = " + str(order_id)
+            cur.execute(string_check)
+            data = cur.fetchall()
+            if not data:
+                insert_string = "INSERT into pay_docs (order_id, url) " \
+                              "VALUES ('" + str(order_id) + "','" + str(images) + "')"
+                cur.execute(insert_string)
+                cnx.commit()
+            else:
+                update_string = "UPDATE pay_docs SET url = '" + str(images) + "' where order_id = " + str(order_id)
+                cur.execute(update_string)
+                cnx.commit()
             if cur.rowcount > 0:
-                check = "SELECT id from pay_docs where order_uuid = '" + str(order_uuid) + "'"
-                cur.execute(check)
-                data = cur.fetchone()
+                string_check = "select id from pay_docs where order_id = " + str(order_id)
+                cur.execute(string_check)
+                data = cur.fetchall()
                 if data:
-                    return {"Success": True, "data": data['id']}
+                    return {"Success": True, "data": data[0].get('id')}
                 else:
                     return {"Success": False, "data": "Платежки не добавлены"}
+
+
 
 
 async def get_docs_urls(order_id):
@@ -189,10 +202,8 @@ async def get_docs_urls(order_id):
             cur.execute(data_check)
             check = cur.fetchall()
             if check:
-                cnx.close()
                 return {"Success": True, "data": check}
             else:
-                cnx.close()
                 return {"Success": False, "data": "Платежки не найдены"}
 
 

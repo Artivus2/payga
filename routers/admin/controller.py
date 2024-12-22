@@ -358,7 +358,34 @@ async def create_sms_data(payload):
         return {"Success": False, "data": 'Включите прием платежей'}
 
 
-async def check_order_by_id(payload):
+async def check_order_by_id_payin(payload):
+    """
+    проверка ордеров админом менеджером
+    :param payload:
+    :return:
+    """
+    order_id = payload.id
+    notify = payload.pay_notify_order_types_id
+    with cpy.connect(**config.config) as cnx:
+        with cnx.cursor(dictionary=True) as cur:
+            string = "SELECT * from pay_orders where id = '" + str(order_id) \
+                     + "' and pay_id = 1 and pay_notify_order_types_id = 5"
+            cur.execute(string)
+            data = cur.fetchone()
+            print(data)
+            if data:
+                if int(notify) == 3:
+                    result = await update_order_by_id(order_id, notify)
+                    # receive RUB auto
+                    return {"Success": True, "data": "Ордер подтвержден"}
+                elif int(notify) == 2:
+                    result = await update_order_by_id(order_id, notify)
+                    return {"Success": True, "data": "Ордер отменен"}
+            else:
+                return {"Success": False, "data": "Ордер не найден"}
+
+
+async def check_order_by_id_payout(payload):
     """
     проверка ордеров админом менеджером
     :param payload:
@@ -369,16 +396,16 @@ async def check_order_by_id(payload):
     with cpy.connect(**config.config) as cnx:
         with cnx.cursor(dictionary=True) as cur:
             string = "SELECT * from pay_orders where id = '" + str(order_id)\
-                     + "' and pay_notify_order_types_id = 5"
+                     + "' and pay_id = 2 and pay_notify_order_types_id = 18"
             cur.execute(string)
             data = cur.fetchone()
             print(data)
             if data:
-                if int(notify) == 3:
+                if int(notify) == 21:
                     result = await update_order_by_id(order_id, notify)
                     # send usdt auto
                     return {"Success": True, "data": "Ордер подтвержден"}
-                elif int(notify) == 2:
+                elif int(notify) == 20:
                     result = await update_order_by_id(order_id, notify)
                     return {"Success": True, "data": "Ордер отменен"}
             else:

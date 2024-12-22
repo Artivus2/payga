@@ -4,6 +4,7 @@ import os
 import uvicorn
 from fastapi import FastAPI
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from routers.orders.router import router as router_orders
 from routers.user.router import router as router_user
@@ -21,7 +22,8 @@ from routers.withdraws.router import router as withdraws
 
 app = FastAPI()
 
-
+#app.mount("/files", StaticFiles(directory="/var/www/html/payga/files"), name="files")
+#IMAGES_DIR = "/var/www/html/payga/files"
 # Добавляем middleware для CORS
 app.add_middleware(
     CORSMiddleware,

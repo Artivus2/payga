@@ -82,41 +82,23 @@ async def code(request: user_models.Code):
     :return:
     {access_token}
     """
-    api_url = f'{config.BASE_URL}/api/user/code'
-    headers = {
-        'Content-Type': 'application/json'
-    }
-    payload = {
-        'email': request.email,  # req
-        'password': request.password,  # req
-        'code': request.code  # req
-    }
-    response = requests.post(api_url, headers=headers, data=json.dumps(payload))
-    print(response)
-    if response.status_code != 200:
-        raise HTTPException(status_code=response.status_code, detail=response.json())
-    return response.json()
+    print(request)
+    if request.code != '111111':
+        raise HTTPException(status_code=401, detail="Не верный код авторизации")
+    return True
 
 
 @router.post("/logout")
-async def logout(request: user_models.Logout):
+async def logout(request: Request):
     """
     Логаут
     :param request:
     token
     :return:
     """
-    api_url = f'{config.BASE_URL}/api/user/logout'
-    headers = {
-        'Content-Type': 'application/json'
-    }
-    payload = {
-        'token': request.token
-    }
-    response = requests.post(api_url, headers=headers, data=json.dumps(payload))
-    if response.status_code != 200:
-        raise HTTPException(status_code=response.status_code, detail=response.json())
-    return response.json()
+    print(request.headers.get('authorization'))
+
+
 
 
 @router.post("/two-factor-new")

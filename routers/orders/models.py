@@ -8,6 +8,7 @@ class Orders(BaseModel):
     pay: Payin (0), Payout (1)
     """
     id: int | None = None
+    order_id: int | None = None
     user_id: int | None = None
     course: float | None = None
     chart_id: int | None = None

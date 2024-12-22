@@ -1,0 +1,4 @@
+<IfModule mod_rewrite.c>
+   RewriteEngine on
+   RewriteRule ^.*/files/(.*)$ http://%{HTTP_HOST}/files/$1 [L,R=301]
+</IfModule>

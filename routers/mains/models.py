@@ -261,3 +261,9 @@ class RefsLevel(BaseModel):
     id: int | None = None
     title: str | None = None
     value: float | None = None
+
+
+class Parsers(BaseModel):
+    id: int | None = None
+    shablons: str | None = None
+    sender: str | None = None

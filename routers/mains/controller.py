@@ -662,3 +662,16 @@ async def get_pay_refs_by_user(payload):
                 return {"Success": True, "data": check}
             else:
                 return {"Success": False, "data": "Рефералы не найдены"}
+
+
+async def get_all_parsers():
+    with cpy.connect(**config.config) as cnx:
+        with cnx.cursor(dictionary=True) as cur:
+            string = "select * from pay_parsers"
+            cur.execute(string)
+            data = cur.fetchall()
+            if data:
+                return {"Success": True, "data": data}
+            else:
+                return {"Success": False, "data": "Парсеры не найдены"}
+

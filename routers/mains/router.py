@@ -30,6 +30,7 @@ from routers.mains.controller import (
     get_pay_refs_levels_by_id,
     update_pay_refs_level_by_id,
     get_pay_refs_by_user,
+    get_all_parsers
 
 
 
@@ -576,4 +577,35 @@ async def delete_pay_refs_level(request: mains_models.RefsLevel):
     :return:
     """
     pass
+
+
+@router.get("/add-parsers")
+async def get_parsers(request: mains_models.Parsers):
+    """
+    получить все парсеры по банкам
+    :param id:
+    :return:
+    """
+    response = await get_all_parsers()
+    if not response['Success']:
+        raise HTTPException(
+            status_code=400,
+            detail=response
+        )
+    return response
+
+@router.get("/get-parsers")
+async def get_parsers():
+    """
+    получить все парсеры по банкам
+    :param id:
+    :return:
+    """
+    response = await get_all_parsers()
+    if not response['Success']:
+        raise HTTPException(
+            status_code=400,
+            detail=response
+        )
+    return response
 

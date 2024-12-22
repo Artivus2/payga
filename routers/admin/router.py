@@ -20,7 +20,8 @@ from routers.admin.controller import (
     get_user_from_api_key,
     get_info_for_invoice,
     get_pattern,
-    check_order_by_id
+    check_order_by_id_payin,
+    check_order_by_id_payout
 
 )
 from routers.admin.utils import (
@@ -338,7 +339,6 @@ async def sms_receiver(request: Request):
             detail="Пользователь не найден"
         )
 
-
 @router.post("/check-payin-order")
 async def check_order(request: orders_models.Orders):
     """
@@ -349,7 +349,26 @@ async def check_order(request: orders_models.Orders):
     :return:
     """
     print(request)
-    response = await check_order_by_id(request)
+    response = await check_order_by_id_payin(request)
+    if not response['Success']:
+        raise HTTPException(
+            status_code=400,
+            detail=response
+        )
+    return response
+
+
+@router.post("/check-payout-order")
+async def check_order(request: orders_models.Orders):
+    """
+    подтверждение заявки или отмена payout
+    id
+    pay_notify_order_types_id отказ 20 подтверждение 21
+    :param request:
+    :return:
+    """
+    print(request)
+    response = await check_order_by_id_payout(request)
     if not response['Success']:
         raise HTTPException(
             status_code=400,

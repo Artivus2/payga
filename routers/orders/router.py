@@ -1,7 +1,11 @@
+import os
 import shutil
 from typing import Annotated
 from fastapi import APIRouter, Response, Depends, UploadFile, File, HTTPException, Form, Body, Query
+from fastapi.responses import StreamingResponse, JSONResponse
+from fastapi.responses import FileResponse
 import routers.orders.models as orders_models
+import base64
 from routers.orders.controller import (
     create_order_for_user,
     get_orders_by_any,
@@ -84,6 +88,7 @@ async def update_order(request: orders_models.Orders):
     """
     if request.docs_id is None:
         request.docs_id = 0
+    print(request)
     response = await update_order_by_id(request.id, request.pay_notify_order_types_id, request.docs_id)
     if not response['Success']:
         raise HTTPException(
@@ -115,7 +120,7 @@ async def delete_order(request: orders_models.Orders):
 @router.post("/order-docs-load")
 async def store(order_uuid: int = Form(...), image: UploadFile = File(...)):
     """
-    Записываем urls платежек по order_uuid
+    Записываем urls платежек по order_id
     :param order_id:
     :param image:
     :return:
@@ -126,9 +131,9 @@ async def store(order_uuid: int = Form(...), image: UploadFile = File(...)):
     file_location = f"files/{image.filename}"
     with open(file_location, "wb+") as file_object:
         shutil.copyfileobj(image.file, file_object)
-        full_path_url = str(image.filename) + "/" + str(file_location)
+        full_path_url = "/" + str(file_location)
         #images.append(full_path_url)
-        response = await insert_docs(order_uuid, full_path_url)
+        response = await insert_docs(order_uuid, image.filename)
         if not response['Success']:
             raise HTTPException(
                 status_code=400,
@@ -141,7 +146,7 @@ async def store(order_uuid: int = Form(...), image: UploadFile = File(...)):
 
 
 
-@router.post("/get-orders-docs-ids/{order_id}")
+@router.get("/get-orders-docs-ids/{order_id}")
 async def get_docs(order_id: int):
     """
     получаем список платежек по id ордера
@@ -154,8 +159,16 @@ async def get_docs(order_id: int):
             status_code=400,
             detail=response
         )
-    print(response)
-    return response
+    filename = response["data"][0]['url']
+    print(filename)
+    if response["data"][0]['url'].endswith((".jpg", ".jpeg", ".png", ".gif")):
+        file_path = os.path.join("\\files", filename)
+        #image_url = f"c:\\projects\\payga{file_path}" #wtest
+        image_url = f"/var/www/html/psyga{file_path}" #prod
+        print(FileResponse(image_url, media_type="image/png"))
+        return FileResponse(image_url)
+
+
 
 
 @router.post("/create-cashback")
