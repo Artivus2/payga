@@ -78,6 +78,7 @@ async def crud_balance(crud, payload):  # todo -> admin
     with cpy.connect(**config.config) as cnx:
         with cnx.cursor(dictionary=True) as cur:
             if crud == 'create':
+                #todo проверить есть уже баланс insert or update
                 data_string = "INSERT INTO pay_balance (user_id, value, chart_id, baldep_status_id, " \
                               "baldep_types_id, frozen) " \
                               "VALUES ('" + str(payload.user_id) + "','" + str(payload.value) + \
@@ -111,7 +112,6 @@ async def crud_balance(crud, payload):  # todo -> admin
             if crud == 'set':
                 data_update = "UPDATE pay_balance SET "
                 payload2 = {}
-
                 for k, v in dict(payload).items():
                     if v is not None:
                         payload2[k] = v
@@ -122,10 +122,24 @@ async def crud_balance(crud, payload):  # todo -> admin
                 cur.execute(data_update)
                 cnx.commit()
                 if cur.rowcount > 0:
-                    cnx.close()
-                    return {"Success": True, "data": "Успешно изменен"}
-                else:
-                    return {"Success": False, "data": "Не удалось изменить баланс"}
+                    get_balance_id = "SELECT * from pay_balance where user_id = " + str(payload.user_id)
+                    cur.execute(get_balance_id)
+                    data = cur.fetchone()
+                    if data:
+                        balance_history_status_id = 1 # todo откуда берутся статусы узнать
+                        string_history = "INSERT INTO pay_balance_history (user_id, balance_id, chart_id, " \
+                                          "date, value, frozen, balance_history_status_id, description) " \
+                                          "VALUES ('"+str(payload.user_id)+"','"+str(data.get('id')) \
+                                          +"','"+str(data.get('chart_id'))+"',UTC_TIMESTAMP(),'"+str(data.get('value')) \
+                                          + "','" + str(data.get('frozen')) + "','" \
+                                          + str(balance_history_status_id) + "','" \
+                                          + str(data.get('description')) + "')"
+                        cur.execute(string_history)
+                        cnx.commit()
+                        if cur.rowcount > 0:
+                            return {"Success": True, "data": "Успешно изменен"}
+                        else:
+                            return {"Success": False, "data": "Не удалось изменить баланс"}
             if crud == 'remove':
                 string = "DELETE from pay_balance " \
                          "where id = " + str(payload.id)
@@ -176,6 +190,20 @@ async def crud_balance(crud, payload):  # todo -> admin
                         return {"Success": False, "data": "Не удалось изменить доступные средства баланса"}
                 else:
                     return {"Success": False, "data": "Недостаточно средств на балансе"}
+
+
+async def get_balance_history_statuses():
+    with cpy.connect(**config.config) as cnx:
+        with cnx.cursor(dictionary=True) as cur:
+            string = "select id, title from pay_balance_history_status "
+            cur.execute(string)
+            data = cur.fetchall()
+            if data:
+                return {"Success": True, "data": data}
+            else:
+                return {"Success": False, "data": "не удалось выполнить операцию"}
+
+
 
 async def crud_deposit(crud, payload):  # todo -> admin
     """

@@ -13,7 +13,7 @@ import routers.admin.models as admin_models
 import config
 from starlette.requests import Request
 
-from routers.admin.controller import get_user_from_api_key, create_sms_data
+from routers.admin.controller import get_user_from_api_key, create_sms_data, get_info_for_invoice
 from routers.admin.utils import create_access_token, get_min_amount
 from routers.mains.controller import get_chart
 from routers.orders.controller import create_order_for_user, insert_docs
@@ -69,6 +69,49 @@ async def min_amount():
     """
     response = await get_min_amount()
     return response
+
+@router.get("/get-info-for-invoice")
+async def get_info(request: Request):
+    """
+    req_group_id: list
+    sum_fiat: float
+    bank_id: int
+    :param request:
+    :return:
+    """
+    api_key = request.headers.get('x-api-key')
+    response = await get_info_for_invoice(api_key)
+    if not response['Success']:
+        raise HTTPException(
+            status_code=400,
+            detail=response,
+        )
+    return response
+
+#
+# @router.get("/send-crypted/{uuid}")
+# async def send_crypt(request: str):
+#     """
+#     crypt
+#     """
+#     payload = {}
+#
+#
+#
+# @router.post("/receive-crypted")
+# async def receive_crypt(request: Request):
+#     """
+#     decrypt
+#     """
+#     reqs = await request.body()
+#     string = json.loads(reqs.decode("utf-8"))
+#     text = string.get('uuids')
+#     to_encode = {"user_id": user_id,
+#                  "role": role,
+#                  "expiration": (datetime.now() + timedelta(minutes=expires_delta)).strftime("%Y-%m-%d %H:%M:%S")}
+#
+#     encoded_jwt = jwt.encode(to_encode, config.SECRET_KEY, algorithm=config.ALGORITHM)
+
 
 
 @router.post("/create-payment")

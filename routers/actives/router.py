@@ -15,7 +15,8 @@ from routers.actives.controller import (
     get_baldep_status_by_id,
     get_pay_status_by_id,
     get_pay_type_by_id,
-    crud_transfer
+    crud_transfer,
+    get_balance_history_statuses
 
 )
 
@@ -274,7 +275,7 @@ async def change_balance_frozen(request: actives_models.Balance):
 @router.post("/create-deposit")
 async def create_deposit(request: actives_models.Deposit):
     """
-    :param request:
+    :param request: only for admin
     :return:
     {
     id: int
@@ -318,7 +319,7 @@ async def get_deposit(request: actives_models.Deposit):
 @router.post("/set-deposit")
 async def set_deposit(request: actives_models.Deposit):
     """
-    :param request:
+    :param request: only for admin
     :return:
     {
     user_id: int
@@ -350,6 +351,15 @@ async def remove_deposit(request: actives_models.Deposit):
             detail=response
         )
     return response
+
+
+
+@router.post("/withdrawals-from-deposit")
+async def from_deposit(request: actives_models.Deposit):
+    """
+    вывод с депозита после не менее 1 месяца после 1 пополнения баланса (из истории)
+    """
+    pass
 
 
 @router.post("/change-deposit-status")
@@ -517,8 +527,8 @@ async def get_balance_history(request: actives_models.BalanceHistory):
     chart: str
     date: int
     value: float
-    balance_status_id: int
-    balance_types_id: int
+    frozen: float
+    balance_history_status_id: int
     description: str
     }
     """
@@ -526,7 +536,7 @@ async def get_balance_history(request: actives_models.BalanceHistory):
 
 
 @router.get("/get-balance-history-statuses")
-async def get_balance_history_statuses(request: actives_models.BalanceHistoryStatus):
+async def get_balance_history_status():
     """
     :param request:
     :return:
@@ -535,7 +545,13 @@ async def get_balance_history_statuses(request: actives_models.BalanceHistorySta
     title: str
     }
     """
-    pass
+    response = await get_balance_history_statuses()
+    if not response['Success']:
+        raise HTTPException(
+            status_code=400,
+            detail=response
+        )
+    return response
 
 
 @router.put("/set-balance-history")
@@ -550,8 +566,8 @@ async def set_balance_history(request: actives_models.BalanceHistory):
     chart: str
     date: int
     value: float
-    balance_status_id: int
-    balance_types_id: int
+    frozen: float
+    balance_history_status_id: int
     description: str
     }
     """
@@ -566,13 +582,6 @@ async def remove_balance_history(request: actives_models.BalanceHistory):
     {
     id: int
     user_id: int
-    balance_id: int
-    chart: str
-    date: int
-    value: float
-    balance_status_id: int
-    balance_types_id: int
-    description: str
     }
     """
     pass
@@ -768,4 +777,6 @@ async def get_transfer_status(status_id: int):
             detail=response
         )
     return response
+
+
 

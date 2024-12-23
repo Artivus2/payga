@@ -435,32 +435,34 @@ async def get_user_from_api_key(payload):
 async def get_info_for_invoice(payload):
     with cpy.connect(**config.config) as cnx:
         with cnx.cursor(dictionary=True) as cur:
-            # ищем reqs_group_id формируем список из доступных банков
-            string = "SELECT * FROM pay_reqs_groups where user_id = " + str(payload)
-            cur.execute(string)
-            data = cur.fetchall()
-            if data:
-                print(len(data))
-                all = []
+            data0 = await get_user_from_api_key(payload)
+            if data0:
+                # ищем reqs_group_id формируем список из доступных банков
+                string = "SELECT * FROM pay_reqs_groups where user_id = " + str(data0['data'])
+                cur.execute(string)
+                data = cur.fetchall()
+                if data:
+                    print(len(data))
+                    all = []
 
-                for i in data:
-                    result = {}
-                    result["id"] = i['id']
-                    result["group"] = i['title']
-                    # todo логику выбора карт здесь
-                    string2 = "SELECT * FROM pay_reqs where req_group_id = '" + str(i['id']) \
-                              + "' and reqs_status_id = 1 and user_id = " + str(payload)
-                    cur.execute(string2)
-                    data2 = cur.fetchall()
-                    if data2:
-                        result["reqs"] = data2
-                    else:
-                        result["reqs"] = []
-                    all.append(result)
-                print(all)
-                return {"Success": True, "data": all}
-            else:
-                return {"Success": False}
+                    for i in data:
+                        result = {}
+                        result["id"] = i['id']
+                        result["group"] = i['title']
+                        # todo логику выбора карт здесь
+                        string2 = "SELECT * FROM pay_reqs where req_group_id = '" + str(i['id']) \
+                                  + "' and reqs_status_id = 1 and user_id = " + str(data0['data'])
+                        cur.execute(string2)
+                        data2 = cur.fetchall()
+                        if data2:
+                            result["reqs"] = data2
+                        else:
+                            result["reqs"] = []
+                        all.append(result)
+                    print(all)
+                    return {"Success": True, "data": all}
+                else:
+                    return {"Success": False}
 
 
 def get_pattern_from_bd(sender):

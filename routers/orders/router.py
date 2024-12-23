@@ -162,9 +162,10 @@ async def get_docs(order_id: int):
     filename = response["data"][0]['url']
     print(filename)
     if response["data"][0]['url'].endswith((".jpg", ".jpeg", ".png", ".gif")):
-        file_path = os.path.join("\\files", filename)
+        #file_path = os.path.join("\\files", filename)
+        file_path = os.path.join("/files", filename)
         #image_url = f"c:\\projects\\payga{file_path}" #wtest
-        image_url = f"/var/www/html/psyga{file_path}" #prod
+        image_url = f"/var/www/html/payga{file_path}" #prod
         print(FileResponse(image_url, media_type="image/png"))
         return FileResponse(image_url)
 

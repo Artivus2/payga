@@ -87,15 +87,15 @@ class BalanceHistory(BaseModel):
         description - Основание
     """
 
-    id: int
-    user_id: int
-    balance_id: int
-    chart: str
-    date: str
-    value: float
-    baldep_status_id: int
-    baldep_types_id: int
-    description: str
+    id: int | None = None
+    user_id: int | None = None
+    balance_id: int | None = None
+    chart_id: int | None = None
+    date: str | None = None
+    value: float | None = None
+    frozen: float | None = None
+    balance_history_status_id: int | None = None
+    description: str | None = None
 
 
 class Deposit(BaseModel):
