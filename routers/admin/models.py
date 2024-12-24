@@ -108,3 +108,9 @@ class Parsers(BaseModel):
 class ApiStatus(BaseModel):
     id: int | None = None
 
+
+class Settings(BaseModel):
+    __table_name__ = "pay_main_admin_settings"
+    id: int
+    var: str
+    exp: str

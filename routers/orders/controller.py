@@ -67,8 +67,9 @@ async def create_order_for_user(payload):
                               + str(datetime.datetime.now()) + "\nна сумму: " + str(payload.get('sum_fiat')) + " руб."
                     botgreenavipay.send_message(config.pay_main_group, message, parse_mode='HTML')
                     #прикрепили ли платежку?
-                    string_find_doc = "SELECT id from pay_orders where uuid = " + str(uuids)
-                    cur.execute(string_find_doc)
+                    print("здесьь")
+                    # string_find_doc = "SELECT id from pay_orders where uuid = '" + str(uuids) + "'"
+                    # cur.execute(string_find_doc)
 
                     return {"Success": True, "data": "Ордер поставлен в очередь. Ожидайте исполнения"}
                 else:
@@ -89,7 +90,9 @@ async def get_orders_by_any(payload):
             data_check = "select pay_orders.id, pay_orders.uuid, pay_orders.user_id, course, pay_orders.chart_id, " \
                          "chart.symbol as chart_symbol, sum_fiat, pay_pay.id as pay_id, " \
                          "pay_pay.title as pay_id_title, pay_orders.value, cashback, " \
-                         "pay_orders.date, date_expiry, pay_reqs.id as pay_reqs_id, pay_reqs.uuid as pay_reqs_uuid, " \
+                         "DATE_FORMAT(pay_orders.date, "+str(config.date_format_all)+") as date, " \
+                         "DATE_FORMAT(pay_orders.date_expiry, "+str(config.date_format_all)+") as date_expiry, " \
+                         "pay_reqs.id as pay_reqs_id, pay_reqs.uuid as pay_reqs_uuid, " \
                          "pay_reqs.phone, pay_reqs_types.title as pay_type, pay_notify_order_types_id, " \
                          "pay_fav_banks.id as bank_id, pay_fav_banks.title as banks_name, pay_fav_banks.bik, " \
                          "pay_notify_order_types.title as pay_notify_order_types_title, " \

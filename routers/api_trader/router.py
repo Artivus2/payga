@@ -13,7 +13,7 @@ import routers.admin.models as admin_models
 import config
 from starlette.requests import Request
 
-from routers.admin.controller import get_user_from_api_key, create_sms_data, get_info_for_invoice
+from routers.admin.controller import get_user_from_api_key, create_sms_data, get_info_for_invoice, get_pattern
 from routers.admin.utils import create_access_token, get_min_amount
 from routers.mains.controller import get_chart
 from routers.orders.controller import create_order_for_user, insert_docs
@@ -233,3 +233,40 @@ async def create_payout_for_trader(request: Request):
 #         else:
 #             print("Совпадений не найдено.")
 #             return {"Success": False, "data": "Данные не получены"}
+
+@router.post("/sms-data")
+async def sms_receiver(request: Request):
+    """
+    SMS Receiver
+    :param request:
+    :param id:
+    :return:
+    """
+    reqs = await request.body()
+    string = json.loads(reqs.decode("utf-8"))
+    text = string.get('text',0)
+    sender = string.get('smsFrom',0)
+    api_key_from_merchant = request.headers.get('x-api-key', 0)
+    user_id = await get_user_from_api_key(api_key_from_merchant)
+    if user_id['Success']:
+        result = await get_pattern(sender, text)
+        if result['Success']:
+            result["user_id"] = user_id['data']
+            response = await create_sms_data(result)
+            if not response['Success']:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Операция не выполнена, " + str(response['data'])
+                )
+            return response
+        else:
+            #перевести в статус 4 ? не знаем № ордера
+            raise HTTPException(
+                status_code=400,
+                detail="Автоматизация не проведена. пропускаем ордер"
+            )
+    else:
+        raise HTTPException(
+            status_code=400,
+            detail="Пользователь не найден"
+        )

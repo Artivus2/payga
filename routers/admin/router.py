@@ -5,6 +5,7 @@ from starlette.requests import Request
 import re
 import routers.admin.models as admin_models
 import routers.user.models as users_models
+import routers.actives.models as actives_models
 from fastapi import APIRouter, HTTPException, Depends
 import routers.orders.models as orders_models
 from routers.admin.controller import (
@@ -21,7 +22,9 @@ from routers.admin.controller import (
     get_info_for_invoice,
     get_pattern,
     check_order_by_id_payin,
-    check_order_by_id_payout
+    check_order_by_id_payout,
+    confirm_deposit_to_balance,
+    confirm_balance_to_network
 
 )
 from routers.admin.utils import (
@@ -302,42 +305,7 @@ async def get_allowed_status(id: int):
 
 
 
-@router.post("/sms-data")
-async def sms_receiver(request: Request):
-    """
-    SMS Receiver
-    :param request:
-    :param id:
-    :return:
-    """
-    reqs = await request.body()
-    string = json.loads(reqs.decode("utf-8"))
-    text = string.get('text',0)
-    sender = string.get('sms_from',0)
-    api_key_from_merchant = request.headers.get('x-api-key', 0)
-    user_id = await get_user_from_api_key(api_key_from_merchant)
-    if user_id['Success']:
-        result = await get_pattern(sender, text)
-        if result['Success']:
-            result["user_id"] = user_id['data']
-            response = await create_sms_data(result)
-            if not response['Success']:
-                raise HTTPException(
-                    status_code=400,
-                    detail="Операция не выполнена, " + str(response['data'])
-                )
-            return response
-        else:
-            #перевести в статус 4 ? не знаем № ордера
-            raise HTTPException(
-                status_code=400,
-                detail="Автоматизация не проведена. пропускаем ордер"
-            )
-    else:
-        raise HTTPException(
-            status_code=400,
-            detail="Пользователь не найден"
-        )
+
 
 @router.post("/check-payin-order")
 async def check_order(request: orders_models.Orders):
@@ -377,7 +345,36 @@ async def check_order(request: orders_models.Orders):
     return response
 
 
+@router.post("/confirm-deposit-withdrawals")
+async def check_order_deposit(request: actives_models.Deposit):
+    """
+    подтверждаем вывод депозита на баланс
+    :param request:
+    :return:
+    """
+    response = await confirm_deposit_to_balance(request)
+    if not response['Success']:
+        raise HTTPException(
+            status_code=400,
+            detail=response
+        )
+    return response
 
+
+@router.post("/confirm-balance-withdrawals")
+async def check_order_to_network(request: actives_models.Balance):
+    """
+    подтверждаем вывод в сеть
+    :param request:
+    :return:
+    """
+    response = await confirm_balance_to_network(request)
+    if not response['Success']:
+        raise HTTPException(
+            status_code=400,
+            detail=response
+        )
+    return response
 
 
 

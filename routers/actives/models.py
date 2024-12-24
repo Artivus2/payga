@@ -112,6 +112,30 @@ class Deposit(BaseModel):
     baldep_types_id: int | None = None
     frozen: float | None = None
     description: str | None = None
+    min_deposit: float | None = None
+
+
+class DepositHistory(BaseModel):
+    __table_name__ = "pay_deposit_history"
+    """
+    история выводов и вводов
+    """
+    id: int | None = None
+    user_id: int | None = None
+    date: str | None = None
+    balordep: int | None = None # 1 - баланс, 2 - депозит
+    value: float | None = None
+    withdrawal_status_id: int | None = None
+
+
+class DepositHistoryStatus(BaseModel):
+    __table_name__ = "pay_deposit_history_status"
+    """
+    статус: 1 успешно, 2 отменено, 0 в ожидании
+    """
+    id: int
+    title: str
+
 
 
 class WalletStatus(BaseModel):

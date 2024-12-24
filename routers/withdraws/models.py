@@ -17,3 +17,5 @@ class WalletAddress(BaseModel):
     private_key: str | None = None
     public_key: str | None = None
     hex_address: str | None = None
+
+

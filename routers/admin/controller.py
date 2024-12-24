@@ -318,7 +318,7 @@ async def create_sms_data(payload):
                 if data:
                     # проверяем ордер пришло зачисление
                     if data['date_expiry'] > datetime.datetime.utcnow():
-                        result = await update_order_by_id(data['id'], 3)
+                        result = await update_order_by_id(data.get('id'), 3)
                         message = "Ордер " + str(data['uuid']) + " \nполучен платеж на сумму " \
                                   + str(payload.get('sum_fiat')) + "\nОбработано автоматикой"
                         botgreenavipay.send_message(config.pay_main_group, message)
@@ -331,7 +331,7 @@ async def create_sms_data(payload):
                             #result = send_to_wallet(data['id'], wallet[0])
                             if result:
                                 #USDT отправляет менеджер
-                                send = await update_order_by_id(data['id'], 5)
+                                send = await update_order_by_id(data.get('id'), 5)
                                 data_string = "INSERT INTO pay_sms_data (user_id, date, sum_fiat, sender, text) " \
                                               "VALUES ('" + str(payload.get('user_id')) + "','" + str(payload.get('datain')) \
                                               + "','" + str(payload.get('sum_fiat')) + "','" + str(payload.get('sender')) \
@@ -342,17 +342,17 @@ async def create_sms_data(payload):
                                     return {"Success": True, "data": 'ордер обработан и отпраавлен на проверку менджеру'}
                             else:
                                 # USDT не удалось отправить, ручная отправка
-                                await update_order_by_id(data['id'], 4)
+                                await update_order_by_id(data.get('id'), 4)
                                 return {"Success": False, "data": 'не удалось отправить USDT, ручная отправка'}
                         else:
                             return {"Success": False,
                                     "data": 'не найден кошелек или не активирован, обратитесь к администратору'}
                     else:
                         #ордер просрочен
-                        result2 = await update_order_by_id(data['id'], 2)
+                        result2 = await update_order_by_id(data.get('id'), 2)
                         return {"Success": False, "data": 'sms data не добавлена, ордер просрочен'}
                 else:
-                    await update_order_by_id(data['id'], 4)
+                    await update_order_by_id(data.get('id'), 4)
                     return {"Success": False, "data": 'Автоматизация не проведена, ордер переведен в ручной режим'}
     else:
         return {"Success": False, "data": 'Включите прием платежей'}
@@ -469,7 +469,7 @@ def get_pattern_from_bd(sender):
     with cpy.connect(**config.config) as cnx:
         with cnx.cursor(dictionary=True) as cur:
             # ищем reqs_group_id формируем список из доступных банков
-            string = "SELECT shablon FROM pay_parsers where sender = '" + str(sender) + "'"
+            string = "SELECT shablon FROM pay_parsers where sender = 'Tinkoff'"
             cur.execute(string)
             data = cur.fetchall()
             print("parsers", data)
@@ -486,7 +486,7 @@ async def get_pattern(sender, text):
     for i in parsers:
         matches = re.search(i["shablon"], text, re.VERBOSE)
         if matches:
-            #print("совпадение найдено,", matches)
+            print("совпадение найдено,", matches)
             break
     if matches:
         suma = matches.group(1).split(" ")
@@ -502,3 +502,89 @@ async def get_pattern(sender, text):
         return result
     else:
         return {'Success': False}
+
+async def confirm_balance_to_network(payload):
+    with cpy.connect(**config.config) as cnx:
+        with cnx.cursor(dictionary=True) as cur:
+            check_string = "SELECT value, frozen FROM pay_balance where baldep_status_id = 1 " \
+                           "and baldep_types_id = 1 and " \
+                           "frozen > 0 and user_id = " + str(payload.user_id)
+            cur.execute(check_string)
+            data = cur.fetchone()
+            if data:
+                value = data.get('frozen')
+                update_balance = "UPDATE pay_balance set frozen = 0 where user_id = " + str(payload.user_id)
+                cur.execute(update_balance)
+                cnx.commit()
+                if cur.rowcount > 0:
+                    # todo add status to history
+                    result = await set_deposit_history_status(payload.user_id, 1)
+                    if result:
+                        #send transaction to trx
+                        wallet = "UBObjOBb"
+
+                        return {"Success": True, "data": str(value) + ' USDT отправлено на кошелек: ' + str(wallet)}
+                    else:
+                        return {"Success": False, "data": 'Не удалось отправить средства. Обратитесь к администратору'}
+            else:
+                return {"Success": False, "data": 'Недостаточно средств на балансе'}
+
+
+async def confirm_deposit_to_balance(payload):
+    with cpy.connect(**config.config) as cnx:
+        with cnx.cursor(dictionary=True) as cur:
+            check_string = "SELECT frozen FROM pay_deposit where baldep_status_id = 1 and baldep_types_id = 1 and " \
+                           "frozen > 0 and user_id = " + str(payload.user_id)
+            cur.execute(check_string)
+            data = cur.fetchone()
+            if data:
+                check_balance = "SELECT value from pay_balance where baldep_status_id = 1 and baldep_types_id = 1 and " \
+                                "user_id = " + str(payload.user_id)
+                cur.execute(check_balance)
+                data_bal = cur.fetchone()
+                print(data_bal)
+                if not data_bal:
+                    return {"Success": False, "data": 'Вывод не может быть осуществлен'}
+                else:
+                    current_value = data_bal.get('value',0)
+                    update_balance = "UPDATE pay_balance set value = '" +str(current_value + data.get('frozen')) + "' " \
+                                     "where user_id = " + str(payload.user_id)
+                    cur.execute(update_balance)
+                    cnx.commit()
+                    if cur.rowcount > 0:
+                        update_deposit = "UPDATE pay_deposit set frozen = 0 " \
+                                         "where user_id = " + str(payload.user_id)
+                        cur.execute(update_deposit)
+                        cnx.commit()
+                        if cur.rowcount > 0:
+                            #todo add status to history
+                            result = await set_deposit_history_status(payload.user_id, 1)
+                            print(result)
+                            if result:
+                                return {"Success": True, "data": 'Вывод с депозита подтвержден. Оформляйте заявку на вывод с баланса'}
+                            else:
+                                return {"Success": False, "data": 'Не удалось обновить депозит. Обратитесь к администратору'}
+                    else:
+                        return {"Success": False, "data": 'Не удалось обновить баланс. Обратитесь к администратору'}
+            else:
+                return {"Success": False, "data": 'Не найдены параметры баланса. Обратитесь к администратору'}
+
+
+async def set_deposit_history_status(user_id, id):
+    with cpy.connect(**config.config) as cnx:
+        with cnx.cursor(dictionary=True) as cur:
+            find_history = "select * from pay_deposit_history where withdrawal_status_id = 0 " \
+                           "and user_id = " + str(user_id)
+            cur.execute(find_history)
+            data = cur.fetchone()
+            if data:
+                update_history = "UPDATE pay_deposit_history set withdrawal_status_id = '"+str(id)+"'" \
+                                 " where user_id = " + str(user_id)
+                cur.execute(update_history)
+                cnx.commit()
+                if cur.rowcount > 0:
+                    return True
+                else:
+                    return False
+            else:
+                return False
