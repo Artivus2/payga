@@ -330,8 +330,7 @@ async def crud_deposit(crud, payload):  # todo -> admin
                     return {"Success": False, "data": "Не удалось имзенить статус"}
             if crud == 'type':
                 string = "UPDATE pay_deposit SET baldep_types_id = '" + str(payload.baldep_types_id) + "' " \
-                                                                                                       "where user_id = " + str(
-                    payload.user_id)
+                         "where user_id = " + str(payload.user_id)
                 cur.execute(string)
                 cnx.commit()
                 if cur.rowcount > 0:
@@ -427,6 +426,8 @@ async def dep_withdrawal_check(payload):
                     else:
                         return {"Success": False, "data":
                             result["data"] + ". Вывод не может быть осуществлен. Обратитесь к администратору"}
+                return {"Success": False, "data":
+                    result["data"] + ". Вывод не может быть осуществлен. Обратитесь к администратору"}
 
 
 async def bal_withdrawal_check(payload):
@@ -451,7 +452,8 @@ async def bal_withdrawal_check(payload):
                         return {"Success": True, "data": result['data'] + ". Успешно."}
                     else:
                         return {"Success": False, "data": result['data'] + ". Не выполнено."}
-
+                else:
+                    return {"Success": False, "data": result['data'] + ". Не найдено."}
 
 async def bal_refunds_check(payload):
     with cpy.connect(**config.config) as cnx:

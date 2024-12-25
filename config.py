@@ -9,8 +9,6 @@ config = {
             'database': 'greenavi_app',
             'raise_on_warnings': True
         }
-#CREATE USER 'greenavi_user'@'localhost' IDENTIFIED BY 'tb7x3Er5PQ';
-#GRANT ALL PRIVILEGES ON *.* TO 'greenavi_user'@'localhost';
 SECRET_KEY ="_5x99maBZNQ6du_A4l6Hx2WPAW8-EAp6"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30

@@ -226,7 +226,7 @@ async def change_balance_status(request: actives_models.Balance):
     :return:
     {
     user_id: int
-    balance_status_id: int
+    baldep_status_id: int
     }
     """
     response = await crud_balance('status', request)
@@ -447,7 +447,6 @@ async def change_deposit_status(request: actives_models.Deposit):
     :return:
     {
     user_id: int
-    frozen: int
     }
     """
     response = await crud_deposit('status', request)
