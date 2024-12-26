@@ -134,7 +134,7 @@ async def create_payment_for_trader(request: Request):
         'pay_id': 1, # payin,
         'docs_id': string.get('docs_id', 0)
     }
-    print(result_from_payment)
+
     response = await create_order_for_user(result_from_payment)
     if not response['Success']:
         raise HTTPException(

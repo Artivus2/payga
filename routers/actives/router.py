@@ -39,8 +39,7 @@ async def create_balance_percent(request: actives_models.PayPercent):
     user_id: int
     pay_id: int
     value: float
-    date: int
-    pay_status_id: int
+
     }
     """
     print(request)
@@ -91,6 +90,7 @@ async def set_balance_percent(request: actives_models.PayPercent):
     pay_status_id: int
     }
     """
+
     response = await crud_balance_percent('set', request)
     if not response['Success']:
         raise HTTPException(
@@ -127,12 +127,7 @@ async def create_balance(request: actives_models.Balance):
     :param request:
     :return:
     {
-    id: int
     user_id: int
-    value: float
-    chart_id: int
-    baldep_status_id: int
-    baldep_types_id: int
     }
     """
 

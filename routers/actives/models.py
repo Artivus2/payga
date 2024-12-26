@@ -97,6 +97,7 @@ class BalanceHistory(BaseModel):
     frozen: float | None = None
     balance_history_status_id: int | None = None
     description: str | None = None
+    order_id: int | None = None
 
 
 class Deposit(BaseModel):
@@ -114,6 +115,7 @@ class Deposit(BaseModel):
     frozen: float | None = None
     description: str | None = None
     min_deposit: float | None = None
+    withdrawals: float | None = None
 
 
 class DepositHistory(BaseModel):

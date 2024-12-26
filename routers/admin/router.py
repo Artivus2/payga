@@ -24,7 +24,8 @@ from routers.admin.controller import (
     check_order_by_id_payin,
     check_order_by_id_payout,
     confirm_deposit_to_balance,
-    confirm_balance_to_network
+    confirm_balance_to_network,
+    confirm_bal_or_dep_funds
 
 )
 from routers.admin.utils import (
@@ -368,6 +369,22 @@ async def check_out_to_network(request: actives_models.Balance):
     :return:
     """
     response = await confirm_balance_to_network(request)
+    if not response['Success']:
+        raise HTTPException(
+            status_code=400,
+            detail=response
+        )
+    return response
+
+
+@router.post("/confirm-balance-refunds")
+async def check_in_funds(request: actives_models.Balance):
+    """
+    подтверждаем ввод на баланс или депозит
+    :param request: user_id
+    :return:
+    """
+    response = await confirm_bal_or_dep_funds(request)
     if not response['Success']:
         raise HTTPException(
             status_code=400,
