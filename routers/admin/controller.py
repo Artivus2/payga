@@ -8,7 +8,7 @@ import config
 import routers.admin.models as admin_models
 from routers.orders.controller import (
     create_order_for_user,
-    update_order_by_id
+    update_order_by_any
 )
 from routers.user.controller import create_random_key
 import telebot
@@ -318,10 +318,7 @@ async def create_sms_data(payload):
                 if data:
                     # проверяем ордер пришло зачисление
                     if data['date_expiry'] > datetime.datetime.utcnow():
-                        result = await update_order_by_id(data.get('id'), 3)
-                        message = "Ордер " + str(data['uuid']) + " \nполучен платеж на сумму " \
-                                  + str(payload.get('sum_fiat')) + "\nОбработано автоматикой"
-                        botgreenavipay.send_message(config.pay_main_group, message)
+                        await update_order_by_any({'id': data.get('id'), 'pay_notify_order_types_id': 3})
                         string_wallet = "SELECT address FROM pay_wallet where wallet_status_id = 1 " \
                                         "and user_id = " + str(payload.get('user_id'))
                         cur.execute(string_wallet)
@@ -331,7 +328,7 @@ async def create_sms_data(payload):
                             #result = send_to_wallet(data['id'], wallet[0])
                             if result:
                                 #USDT отправляет менеджер
-                                send = await update_order_by_id(data.get('id'), 5)
+                                send = await update_order_by_any({'id': data.get('id'), 'pay_notify_order_types_id': 5})
                                 data_string = "INSERT INTO pay_sms_data (user_id, date, sum_fiat, sender, text) " \
                                               "VALUES ('" + str(payload.get('user_id')) + "','" + str(payload.get('datain')) \
                                               + "','" + str(payload.get('sum_fiat')) + "','" + str(payload.get('sender')) \
@@ -339,21 +336,27 @@ async def create_sms_data(payload):
                                 cur.execute(data_string)
                                 cnx.commit()
                                 if cur.rowcount > 0:
-                                    return {"Success": True, "data": 'ордер обработан и отпраавлен на проверку менджеру'}
+                                    message = "Ордер " + str(data['uuid']) + " \nполучен платеж на сумму " \
+                                              + str(payload.get('sum_fiat')) + "\nОбработано автоматикой\n" \
+                                              + str(payload.get('text')) + "\n"
+                                    botgreenavipay.send_message(config.pay_main_group, message)
+                                    #todo block balance
+                                    return {"Success": True, "data": 'ордер обработан и отправлен на проверку менеджеру'}
                             else:
                                 # USDT не удалось отправить, ручная отправка
-                                await update_order_by_id(data.get('id'), 4)
+                                await update_order_by_any({'id': data.get('id'), 'pay_notify_order_types_id': 4})
                                 return {"Success": False, "data": 'не удалось отправить USDT, ручная отправка'}
                         else:
+                            await update_order_by_any({'id': data.get('id'), 'pay_notify_order_types_id': 8})
                             return {"Success": False,
                                     "data": 'не найден кошелек или не активирован, обратитесь к администратору'}
                     else:
-                        #ордер просрочен
-                        result2 = await update_order_by_id(data.get('id'), 2)
+                        #ордер просрочен переведен в диспут
+                        await update_order_by_any({'id': data.get('id'), 'pay_notify_order_types_id': 8})
                         return {"Success": False, "data": 'sms data не добавлена, ордер просрочен'}
                 else:
-                    await update_order_by_id(data.get('id'), 4)
-                    return {"Success": False, "data": 'Автоматизация не проведена, ордер переведен в ручной режим'}
+                    await update_order_by_any({'id': data.get('id'), 'pay_notify_order_types_id': 5})
+                    return {"Success": False, "data": 'Автоматизация не проведена, ордер переведен в диспут'}
     else:
         return {"Success": False, "data": 'Включите прием платежей'}
 
@@ -375,12 +378,14 @@ async def check_order_by_id_payin(payload):
             print(data)
             if data:
                 if int(notify) == 3:
-                    result = await update_order_by_id(order_id, notify)
+                    result = await update_order_by_any({'id': data.get('id'), 'pay_notify_order_types_id': notify})
                     # receive RUB auto
                     return {"Success": True, "data": "Ордер подтвержден"}
                 elif int(notify) == 2:
-                    result = await update_order_by_id(order_id, notify)
+                    result = await update_order_by_any({'id': data.get('id'), 'pay_notify_order_types_id': notify})
                     return {"Success": True, "data": "Ордер отменен"}
+                else:
+                    return {"Success": False, "data": "Не верно указан статус PAYIN ордера"}
             else:
                 return {"Success": False, "data": "Ордер не найден"}
 
@@ -393,6 +398,7 @@ async def check_order_by_id_payout(payload):
     """
     order_id = payload.id
     notify = payload.pay_notify_order_types_id
+    print(order_id)
     with cpy.connect(**config.config) as cnx:
         with cnx.cursor(dictionary=True) as cur:
             string = "SELECT * from pay_orders where id = '" + str(order_id)\
@@ -402,12 +408,14 @@ async def check_order_by_id_payout(payload):
             print(data)
             if data:
                 if int(notify) == 21:
-                    result = await update_order_by_id(order_id, notify)
+                    result = await update_order_by_any({'id': data.get('id'), 'pay_notify_order_types_id': notify})
                     # send usdt auto
                     return {"Success": True, "data": "Ордер подтвержден"}
                 elif int(notify) == 20:
-                    result = await update_order_by_id(order_id, notify)
+                    result = await update_order_by_any({'id': data.get('id'), 'pay_notify_order_types_id': notify})
                     return {"Success": True, "data": "Ордер отменен"}
+                else:
+                    return {"Success": False, "data": "Не верно указан статус PAYOUT ордера"}
             else:
                 return {"Success": False, "data": "Ордер не найден"}
 
@@ -438,7 +446,7 @@ async def get_info_for_invoice(payload):
             data0 = await get_user_from_api_key(payload)
             if data0:
                 # ищем reqs_group_id формируем список из доступных банков
-                string = "SELECT * FROM pay_reqs_groups where user_id = " + str(data0['data'])
+                string = "SELECT * FROM pay_reqs_groups where user_id = " + str(data0.get('data'))
                 cur.execute(string)
                 data = cur.fetchall()
                 if data:

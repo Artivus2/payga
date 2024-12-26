@@ -10,7 +10,7 @@ from routers.orders.controller import (
     create_order_for_user,
     get_orders_by_any,
     delete_order_by_id,
-    update_order_by_id,
+    update_order_by_any,
     insert_docs,
     get_docs_urls,
     create_new_cashback_for_group,
@@ -83,13 +83,14 @@ async def order_filters(request: orders_models.Orders):
 @router.post("/set-order-status")
 async def update_order(request: orders_models.Orders):
     """
-    Обновить статус ордера по id и pay_notify_order_types_id
+    Обновить статус ордера по любым параметрам
     :return:
     """
-    if request.docs_id is None:
-        request.docs_id = 0
-    print(request)
-    response = await update_order_by_id(request.id, request.pay_notify_order_types_id, request.docs_id)
+    payload = {}
+    for k, v in request:
+        if v is not None:
+            payload[k] = v
+    response = await update_order_by_any(payload)
     if not response['Success']:
         raise HTTPException(
             status_code=400,

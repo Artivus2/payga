@@ -30,7 +30,7 @@ from routers.admin.controller import (
 from routers.admin.utils import (
     send_email,
 )
-from routers.orders.controller import update_order_by_id
+from routers.orders.controller import update_order_by_any
 
 router = APIRouter(prefix='/api/v1/admin', tags=['Администратор'])
 
@@ -335,7 +335,6 @@ async def check_order(request: orders_models.Orders):
     :param request:
     :return:
     """
-    print(request)
     response = await check_order_by_id_payout(request)
     if not response['Success']:
         raise HTTPException(
@@ -346,7 +345,7 @@ async def check_order(request: orders_models.Orders):
 
 
 @router.post("/confirm-deposit-withdrawals")
-async def check_order_deposit(request: actives_models.Deposit):
+async def check_out_deposit(request: actives_models.Deposit):
     """
     подтверждаем вывод депозита на баланс
     :param request:
@@ -362,7 +361,7 @@ async def check_order_deposit(request: actives_models.Deposit):
 
 
 @router.post("/confirm-balance-withdrawals")
-async def check_order_to_network(request: actives_models.Balance):
+async def check_out_to_network(request: actives_models.Balance):
     """
     подтверждаем вывод в сеть
     :param request:

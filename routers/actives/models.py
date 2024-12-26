@@ -69,6 +69,7 @@ class Balance(BaseModel):
     baldep_status_id: int | None = None
     baldep_types_id: int | None = None
     frozen: float | None = None
+    withdrawals: float | None = None
 
 
 class BalanceHistoryStatus(BaseModel):

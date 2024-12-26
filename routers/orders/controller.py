@@ -67,7 +67,6 @@ async def create_order_for_user(payload):
                               + str(datetime.datetime.now()) + "\nна сумму: " + str(payload.get('sum_fiat')) + " руб."
                     botgreenavipay.send_message(config.pay_main_group, message, parse_mode='HTML')
                     #прикрепили ли платежку?
-                    print("здесьь")
                     # string_find_doc = "SELECT id from pay_orders where uuid = '" + str(uuids) + "'"
                     # cur.execute(string_find_doc)
 
@@ -141,14 +140,16 @@ async def get_orders_by_any(payload):
                 return {"Success": False, "data": "Ордера не найдены"}
 
 
-async def update_order_by_id(id, pay_notify_order_types_id, docs_id=0):
+async def update_order_by_any(payload):
     with cpy.connect(**config.config) as cnx:
         with cnx.cursor(dictionary=True) as cur:
-            # def check_status
-            string = "UPDATE pay_orders SET pay_notify_order_types_id = '" \
-                     "" + str(pay_notify_order_types_id) + \
-                     "', docs_id = '"+str(docs_id)+"' where id = " + str(id)
-            cur.execute(string)
+            data_update = "UPDATE pay_orders SET "
+            for k, v in dict(payload).items():
+                if k != 'id':
+                    data_update += str(k) + " = '" + str(v) + "',"
+            data_update = data_update[:-1]
+            data_update += " where id = " + str(payload.get('id'))
+            cur.execute(data_update)
             cnx.commit()
             if cur.rowcount > 0:
                 return {"Success": True, "data": "Статус успешно изменен"}
@@ -159,7 +160,7 @@ async def update_order_by_id(id, pay_notify_order_types_id, docs_id=0):
 async def delete_order_by_id(id):
     with cpy.connect(**config.config) as cnx:
         with cnx.cursor(dictionary=True) as cur:
-            string = "UPDATE pay_orders SET pay_notify_order_types_id = 26 where id = " + str(id)
+            string = "UPDATE pay_orders SET pay_notify_order_types_id = 28 where id = " + str(id)
             cur.execute(string)
             cnx.commit()
             if cur.rowcount > 0:

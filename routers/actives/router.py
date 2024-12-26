@@ -264,10 +264,29 @@ async def change_balance_frozen(request: actives_models.Balance):
     :return:
     {
     user_id: int
-    frozen: float
+    value: float
     }
     """
     response = await crud_balance('frozen', request)
+    if not response['Success']:
+        raise HTTPException(
+            status_code=400,
+            detail=response
+        )
+    return response
+
+
+@router.post("/change-balance-unfrozen")
+async def change_balance_unfrozen(request: actives_models.Balance):
+    """
+    :param request:
+    :return:
+    {
+    user_id: int
+    value: float
+    }
+    """
+    response = await crud_balance('unfrozen', request)
     if not response['Success']:
         raise HTTPException(
             status_code=400,
@@ -283,13 +302,7 @@ async def create_deposit(request: actives_models.Deposit):
     :param request: only for admin
     :return:
     {
-    id: int
-    value: float
     user_id: int
-    baldep_status_id: int
-    baldep_types_id: int
-    frozen: float
-    description: str
     }
     """
     response = await crud_deposit('create', request)
