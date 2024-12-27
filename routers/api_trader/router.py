@@ -80,6 +80,7 @@ async def get_info(request: Request):
     :return:
     """
     api_key = request.headers.get('x-api-key')
+
     response = await get_info_for_invoice(api_key)
     if not response['Success']:
         raise HTTPException(
@@ -128,9 +129,9 @@ async def create_payment_for_trader(request: Request):
     string = json.loads(reqs.decode("utf-8"))
     user_id = await get_user_from_api_key(api_key_from_merchant)
     result_from_payment = {
-        "req_id": string.get('req_id'),
+        "req_id": string.get('req_id'), #user_id_trader из reqs
         "sum_fiat": string.get('sum_fiat'),
-        'user_id': user_id['data'],
+        'user_id': user_id['data'], #user_merch
         'pay_id': 1, # payin,
         'docs_id': string.get('docs_id', 0)
     }

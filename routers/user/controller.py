@@ -12,26 +12,30 @@ botgreenavipay = telebot.TeleBot(config.telegram_api)
 
 async def insert_generated_api_key(user_id):
     with cpy.connect(**config.config) as cnx:
-        with cnx.cursor() as cur:
-            api_key = await create_random_key(45)
-            string = "SELECT * from user where app_id = 3 and banned = 0 and id = " + str(user_id)
-            cur.execute(string)
-            data1 = cur.fetchone()
-            if data1:
-                string = "SELECT * from pay_api_keys where status = 1 and id = " + str(user_id)
+        with cnx.cursor(dictionary=True) as cur:
+            string0 = "SELECT * FROM pay_api_keys where user_id = " + str(user_id)
+            cur.execute(string0)
+            data0 = cur.fetchall()
+            if not data0:
+                api_key = await create_random_key(45)
+                string = "SELECT * from user where app_id = 3 and banned = 0 and id = " + str(user_id)
                 cur.execute(string)
-                data2 = cur.fetchone()
-                if not data2:
-                    data_str = "INSERT INTO pay_api_keys (user_id, api_key, api_key_begin_date, api_key_expired_date, " \
-                               "status) " \
-                               "VALUES ('" + str(user_id) + "','" + str(api_key) + \
-                               "', NOW(),NOW() + interval " + str(config.API_KEY_EXPIRATION_PERIOD) + ", 1)"
-                    cur.execute(data_str)
-                    cnx.commit()
-                    cnx.close()
-                    return {"Success": True, "data": api_key}
-                else:
-                    return {"Success": False, "data": 'не создан'}
+                data1 = cur.fetchone()
+                if data1:
+                    string = "SELECT * from pay_api_keys where status = 1 and id = " + str(user_id)
+                    cur.execute(string)
+                    data2 = cur.fetchone()
+                    if not data2:
+                        data_str = "INSERT INTO pay_api_keys (user_id, api_key, api_key_begin_date, api_key_expired_date, " \
+                                   "status) " \
+                                   "VALUES ('" + str(user_id) + "','" + str(api_key) + \
+                                   "', NOW(),NOW() + interval " + str(config.API_KEY_EXPIRATION_PERIOD) + ", 1)"
+                        cur.execute(data_str)
+                        cnx.commit()
+                        cnx.close()
+                        return {"Success": True, "data": api_key}
+                    else:
+                        return {"Success": False, "data": 'не создан'}
             else:
                 return {"Success": False,
                         "data": 'у вас есть действующий ключ, обратитесь к администратору для смены ключа'}
@@ -149,16 +153,66 @@ async def set_user_active_token(email, datenowutc, access_token):
 async def set_user_active_onoff(payload):
     with cpy.connect(**config.config) as cnx:
         with cnx.cursor(dictionary=True) as cur:
-            string = "UPDATE user SET is_active = "+str(payload.is_active)+" where id = " + str(payload.user_id)
-            cur.execute(string)
-            cnx.commit()
-            if cur.rowcount > 0:
-                cnx.close()
-                return {"Success": True, "data": "Активен"}
+            string_active = "SELECT * from user where role_id = 2 and id = " + str(payload.user_id)
+            cur.execute(string_active)
+            data_active = cur.fetchone()
+            if data_active:
+                if data_active.get('is_active') == 0:
+                    string0 = "SELECT * from pay_balance where value > 0 and user_id = " + str(payload.user_id)
+                    cur.execute(string0)
+                    data0 = cur.fetchall()
+                    if data0:
+                        string1 = "SELECT * from pay_deposit where value > 0 and user_id = " + str(payload.user_id)
+                        cur.execute(string1)
+                        data1 = cur.fetchall()
+                        if data1:
+                            string2 = "SELECT * from pay_reqs where reqs_status_id = 1 and user_id = " + str(payload.user_id)
+                            cur.execute(string2)
+                            data2 = cur.fetchall()
+                            if data2:
+                                string3 = "SELECT * from pay_reqs_groups where user_id = " + str(payload.user_id)
+                                cur.execute(string3)
+                                data3 = cur.fetchall()
+                                if data3:
+                                    string4 = "SELECT * from pay_fav_banks where user_id = " + str(payload.user_id)
+                                    cur.execute(string4)
+                                    data4 = cur.fetchall()
+                                    if data4:
+                                        string5 = "SELECT * from pay_api_keys where status = 1 and user_id = " + str(payload.user_id)
+                                        cur.execute(string5)
+                                        data5 = cur.fetchall()
+                                        if data5:
+                                            string = "UPDATE user SET is_active = "+str(payload.is_active)+" where id = " + str(payload.user_id)
+                                            cur.execute(string)
+                                            cnx.commit()
+                                            if cur.rowcount > 0:
+                                                return {"Success": True, "data": "Активен. Можете принимать ордера"}
+                                            else:
+                                                return {"Success": False, "data": "Не активен"}
+                                        else:
+                                            return {"Success": False, "data": "Отсутствует активный АПИ ключ"}
+                                    else:
+                                        return {"Success": False, "data": "Не выбраны банки для приема платежей"}
+                                else:
+                                    return {"Success": False, "data": "Не выбраны группы автоматизации"}
+                            else:
+                                return {"Success": False, "data": "Не заполнены реквизиты. Нет активных реквизитов"}
+                        else:
+                            return {"Success": False, "data": "Недостаточно средств на депозите"}
+                    else:
+                        return {"Success": False, "data": "Недостаточно средств на балансе"}
+                else:
+                    string = "UPDATE user SET is_active = " + str(payload.is_active) + " where id = " + str(payload.user_id)
+                    cur.execute(string)
+                    cnx.commit()
+                    if cur.rowcount > 0:
+                        cnx.close()
+                        return {"Success": True, "data": "Не активен. Прием ордеров остановлен"}
+                    else:
+                        cnx.close()
+                        return {"Success": False, "data": "Не удалось выключить. Обратитесь к администратору"}
             else:
-                cnx.close()
-                return {"Success": False, "data": "Не активен"}
-
+                return {"Success": False, "data": "Пользователь не найден"}
 
 # def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(dbUtil.get_db)):
 #     credentials_exception = HTTPException(

@@ -3,32 +3,48 @@ import config
 from routers.orders.utils import generate_uuid
 
 
-async def get_bank(id):
-    """
-    Найти банк по id, 0 - все банки todo fav_banks
-    :param id:
-    :return:
-    """
+# async def get_bank(id):
+#     """
+#     Найти банк по id, 0 - все банки todo fav_banks
+#     :param id:
+#     :return:
+#     """
+#     with cpy.connect(**config.config) as cnx:
+#         with cnx.cursor(dictionary=True) as cur:
+#             if int(id) == 0:
+#                 data = "SELECT id, title from banks where title not like ''"
+#             else:
+#                 data = "SELECT id, title from banks where title not like '' and id = " + str(id)
+#             cur.execute(data)
+#             data = cur.fetchall()
+#             if data:
+#                 cnx.close()
+#                 return {"Success": True, "data": data}
+#             else:
+#                 cnx.close()
+#                 return {"Success": False, "data": 'банк не найден'}
+
+
+async def get_banks():
     with cpy.connect(**config.config) as cnx:
         with cnx.cursor(dictionary=True) as cur:
-            if int(id) == 0:
-                data = "SELECT id, title from banks where title not like ''"
-            else:
-                data = "SELECT id, title from banks where title not like '' and id = " + str(id)
-            cur.execute(data)
+            select_banks = "SELECT * FROM pay_admin_banks where active = 1"
+            cur.execute(select_banks)
             data = cur.fetchall()
             if data:
-                cnx.close()
                 return {"Success": True, "data": data}
             else:
-                cnx.close()
-                return {"Success": False, "data": 'банк не найден'}
+                return {"Success": False, "data": 'банки не найдены'}
+
 
 
 async def get_fav_bank(user_id):
     with cpy.connect(**config.config) as cnx:
         with cnx.cursor(dictionary=True) as cur:
-            data = "SELECT id, title, bik from pay_fav_banks where user_id = " + str(user_id)
+            data = "SELECT pay_fav_banks.id, pay_admin_banks.title, pay_admin_banks.bik, pay_fav_banks.active " \
+                   "from pay_fav_banks " \
+                   "LEFT JOIN pay_admin_banks ON pay_fav_banks.bank_id = pay_admin_banks.id  " \
+                   "where pay_fav_banks.active = 1 and user_id = " + str(user_id)
             cur.execute(data)
             data = cur.fetchall()
             if data:
@@ -43,31 +59,28 @@ async def set_fav_bank(payload): #todo fav_banks
     with cpy.connect(**config.config) as cnx:
         with cnx.cursor(dictionary=True) as cur:
             check_string = "SELECT * from pay_fav_banks where " \
-                           "user_id = " + str(payload.user_id) + " and title = '" + str(payload.title) + "'"
+                           "user_id = " + str(payload.user_id) + " and bank_id = '" + str(payload.bank_id) + "'"
             cur.execute(check_string)
             fav_banks = cur.fetchall()
             if fav_banks:
-                insert_string = "UPDATE pay_fav_banks set " \
-                                "title = '" + str(payload.title) + "', bik = '" + str(payload.bik) + "'"
-                cur.execute(insert_string)
+                update_string = "UPDATE pay_fav_banks set " \
+                                "active = '" + str(payload.active) + "' where user_id = " + str(payload.user_id)\
+                                + " and bank_id = " + str(payload.bank_id)
+                cur.execute(update_string)
                 cnx.commit()
                 if cur.rowcount > 0:
-                    cnx.close()
-                    return {"Success": True, "data": "Успешно изменен в группе избранных банков"}
+                    return {"Success": True, "data": "Статус активности изменен"}
                 else:
-                    cnx.close()
                     return {"Success": False, "data": "банк не изменен"}
             else:
-                insert_string = "INSERT INTO pay_fav_banks (user_id, title, bik) " \
+                insert_string = "INSERT INTO pay_fav_banks (user_id, bank_id, active) " \
                                 "VALUES (" + str(payload.user_id) +\
-                                ",'" + str(payload.title) + "','" + str(payload.bik) + "')"
+                                ",'" + str(payload.bank_id) + "', 1)"
                 cur.execute(insert_string)
                 cnx.commit()
                 if cur.rowcount > 0:
-                    cnx.close()
                     return {"Success": True, "data": "Успешно добавлен в группу избранных банков"}
                 else:
-                    cnx.close()
                     return {"Success": False, "data": "банк в группу не добавлен"}
 
 
@@ -437,7 +450,7 @@ async def create_reqs_for_user(payload):
       value: 'sdfsdfsdf',
       currency_id: 1,
       reqs_types_id: 1,
-      reqs_status_id: 1,
+      reqs_status_id: 0,
       bank_id: 142,
       chart_id: 259,
       phone: '+545674567',
@@ -478,8 +491,8 @@ async def create_reqs_for_user(payload):
                           "VALUES ('" + str(uuids) + "','" + str(payload.user_id) + \
                           "','"+str(payload.req_group_id)+"','" + str(payload.sequence) + "','" + \
                           str(payload.pay_pay_id) + "','" + str(payload.value) + "','" \
-                          + str(payload.currency_id) + "','" + str(payload.reqs_types_id) + "','" \
-                          + str(payload.reqs_status_id) + "','" + str(payload.bank_id) + "','" \
+                          + str(payload.currency_id) + "','" + str(payload.reqs_types_id) + "',0,'" \
+                          + str(payload.bank_id) + "','" \
                           + str(payload.phone) + "',NOW(),'" + str(payload.qty_limit_hour) \
                           + "','" + str(payload.qty_limit_day) + "','" + str(payload.qty_limit_month) \
                           + "','" + str(payload.sum_limit_hour) + "','" + str(payload.sum_limit_day) \
@@ -534,21 +547,29 @@ async def add_reqs_by_id_to_group(payload):
         with cnx.cursor(dictionary=True) as cur:
             if isinstance(payload.id_reqs, list):
                 for i in list(payload.id_reqs):
+                    check_blocked_or_inactive = "SELECT * from pay_reqs where reqs_status_id = 1 and id = " + str(i)
+                    cur.execute(check_blocked_or_inactive)
+                    data0 = cur.fetchone()
+                    if data0:
+                        string = "UPDATE pay_reqs SET req_group_id = '" + str(payload.id_group) \
+                                 + "' where id = " + str(i)
+                        cur.execute(string)
+                        cnx.commit()
+            else:
+                check_blocked_or_inactive = "SELECT * from pay_reqs where " \
+                                            "reqs_status_id = 1 and id = " + str(payload.id_reqs)
+                cur.execute(check_blocked_or_inactive)
+                data0 = cur.fetchone()
+                if data0:
                     string = "UPDATE pay_reqs SET req_group_id = '" + str(payload.id_group) \
-                             + "' where id = " + str(i)
+                             + "' where id = " + str(payload.id_reqs)
                     cur.execute(string)
                     cnx.commit()
-            else:
-                string = "UPDATE pay_reqs SET req_group_id = '" + str(payload.id_group) \
-                         + "' where id = " + str(payload.id_reqs)
-                cur.execute(string)
-                cnx.commit()
             if cur.rowcount > 0:
-                cnx.close()
                 return {"Success": True, "data": "Успешно добавлен в группу"}
             else:
-                cnx.close()
-                return {"Success": False, "data": "Реквизиты в группу не добавлены"}
+                return {"Success": False, "data": "Реквизиты в группу не добавлены. "
+                                                  "Реквизиты не активны или заблокированы"}
 
 
 async def remove_reqs_by_id_from_group(payload):

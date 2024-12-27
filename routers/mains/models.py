@@ -60,7 +60,6 @@ class Bank(BaseModel):
     id: int
     bik: str | None = None
     title: str | None = None
-    address: str | None = None
     active: int | None = None
 
 
@@ -71,8 +70,8 @@ class BankFavs(BaseModel):
     """
     id: int | None = None
     user_id: int | None = None
-    title: str | None = None
-    bik: str | None = None
+    bank_id: int | None = None
+    active: int | None = None
 
 
 

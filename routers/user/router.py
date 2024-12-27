@@ -332,9 +332,9 @@ async def generate_user_apikey(request: user_models.ApiKey):
     if not response['Success']:
         raise HTTPException(
             status_code=400,
-            detail=response.json(),
+            detail=response,
         )
-    return response.json()
+    return response
 
 
 @router.get("/get-user-apikey/{user_id}")

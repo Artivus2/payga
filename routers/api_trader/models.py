@@ -7,7 +7,6 @@ from routers.admin.controller import get_user_from_api_key
 
 class GetApiKey:
     async def __call__(self, request: Request):
-        print(request.headers.get('x-api-key'))
         response = await get_user_from_api_key(request.headers.get('x-api-key'))
         if not response['Success']:
             raise HTTPException(

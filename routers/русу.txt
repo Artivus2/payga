@@ -1,0 +1,272 @@
+   // =========================проверка включения приема платежей трейдер========================================================
+    // const headers = {'Content-Type': 'application/json','x-api-key': 'trader'}
+    // axios.post('http://localhost:8000/api/v1/user/set-active',{
+    //   user_id:638,
+    //   is_active: 1,
+    //   }, headers)
+    //   .then(function (response) {console.log(response);})
+    //   .catch(function (error) {console.log(error);}); 
+
+
+
+    // =========================merchant регистрация============================
+    // axios.post('http://localhost:8000/api/v1/user/register-request',{
+    //   login: 'merchant1',
+    //   email: 'artivus3@mail.ru',
+    //   telegram: '@artivus',
+    //   password: 'QWer1234'
+    //   })
+    //   .then(function (response) {console.log(response);})
+    //   .catch(function (error) {console.log(error);}); 
+
+    // =========================trader регистрация============================
+
+    // =========================trader авторизация============================
+    // axios.post('http://localhost:8000/api/v1/user/login',{
+    //   email: 'artivus2@gmail.com',
+    //   password: 'Adm142!@'
+    //   })
+    //   .then(function (response) {console.log(response);})
+    //   .catch(function (error) {console.log(error);}); 
+
+    // =========================admin потвердил регистрацию трейдеру============================
+    
+    // =========================admin потвердил регистрацию мерчанту============================
+    
+    // =========================создал апи ключ трейдер============================
+    // =========================создал апи ключ мерчант============================
+    // const headers = {'Content-Type': 'application/json','authorization': 'trader'}
+    // axios.post('http://localhost:8000/api/v1/user/generate-user-apikey',{
+    //   user_id:628
+    //   }, headers)
+    //   .then(function (response) {console.log(response);})
+    //   .catch(function (error) {console.log(error);}); 
+
+
+    // =========================admin создал деп и баланс 0, активировал============================
+    // const headers = {'Content-Type': 'application/json','x-api-key': 'admin'}
+    // axios.post('http://localhost:8000/api/v1/actives/create-balance',{
+    //   user_id:638       
+    //   }, headers)
+    //   .then(function (response) {console.log(response);})
+    //   .catch(function (error) {console.log(error);}); 
+    // axios.post('http://localhost:8000/api/v1/actives/create-deposit',{
+    //   user_id:628       
+    //   }, headers)
+    // .then(function (response) {console.log(response);})
+    // .catch(function (error) {console.log(error);}); 
+
+
+    // =========================admin создал % PAYIN, PAYOUT============================
+    // const headers = {'Content-Type': 'application/json','x-api-key': 'admin'}
+    // axios.post('http://localhost:8000/api/v1/actives/create-balance-percent',{
+    //   user_id:628,
+    //   pay_id: 1, //payin
+    //   value: 5
+    //   }, headers)
+    //   .then(function (response) {console.log(response);})
+    //   .catch(function (error) {console.log(error);}); 
+    // axios.post('http://localhost:8000/api/v1/actives/create-balance-percent',{
+    //   user_id:628,
+    //   pay_id: 2, //payout
+    //   value: 4
+    //   }, headers)
+    //   .then(function (response) {console.log(response);})
+    //   .catch(function (error) {console.log(error);}); 
+
+    // =========================admin установил лимит депозита трейдеру===================
+    // const headers = {'Content-Type': 'application/json','x-api-key': 'admin'}
+    // axios.post('http://localhost:8000/api/v1/actives/set-min-deposit',{
+    //   user_id:638,
+    //   value: 2000
+    //   }, headers)
+    //   .then(function (response) {console.log(response);})
+    //   .catch(function (error) {console.log(error);}); 
+
+    // =========================admin сгенерировал кошелек сети tron или ввел вручную===============
+    // const headers = {'Content-Type': 'application/json','x-api-key': 'admin'}
+    // axios.post('http://localhost:8000/api/v1/withdrawals/generate-wallet-tron',{
+    //   user_id:638,
+    //   value: 2000
+    //   }, headers)
+    //   .then(function (response) {console.log(response);})
+    //   .catch(function (error) {console.log(error);}); 
+
+
+
+    //=========================заявка на пополнение баланса трейдера по сети=======================
+    // const headers1 = {'Content-Type': 'application/json','x-api-key': 'trader'}
+    // axios.post('http://localhost:8000/api/v1/actives/refunds-balance',{
+    //   user_id:638,
+    //   value: 2500
+    //   }, headers1)
+    //   .then(function (response) {console.log(response);})
+    //   .catch(function (error) {console.log(error);}); 
+
+    //=========================пополнил баланс мерчант по сети============================
+    // const headers2 = {'Content-Type': 'application/json','x-api-key': 'merchant'}
+    // axios.post('http://localhost:8000/api/v1/actives/refunds-balance',{
+    //   user_id:628,
+    //   value: 4000
+    //   }, headers2)
+    //   .then(function (response) {console.log(response);})
+    //   .catch(function (error) {console.log(error);}); 
+
+    //=========================подтверждение пополнения баланса трейдера============================
+    // const headers1 = {'Content-Type': 'application/json','x-api-key': 'admin'}
+    // axios.post('http://localhost:8000/api/v1/admin/confirm-balance-refunds',{
+    //   user_id:638
+    //   }, headers1)
+    //   .then(function (response) {console.log(response);})
+    //   .catch(function (error) {console.log(error);}); 
+
+    //=========================подтверждение пополнения баланса мерчант============================
+    // const headers2 = {'Content-Type': 'application/json','x-api-key': 'admin'}
+    // axios.post('http://localhost:8000/api/v1/admin/confirm-balance-refunds',{
+    //   user_id:628
+    //   }, headers2)
+    //   .then(function (response) {console.log(response);})
+    //   .catch(function (error) {console.log(error);}); 
+
+// ========================= банки на прием для всех============================
+    // const headers = {'Content-Type': 'application/json','x-api-key': 'admin'}
+    // axios.get('http://localhost:8000/api/v1/mains/get-admin-banks', headers)
+    //   .then(function (response) {console.log(response);})
+    //   .catch(function (error) {console.log(error);});
+
+  // ========================= банки мерчанта============================
+  // const headers = {'Content-Type': 'application/json','x-api-key': 'merchant'}
+  //   axios.get('http://localhost:8000/api/v1/mains/get-fav-banks/628', headers)
+  //     .then(function (response) {console.log(response);})
+  //     .catch(function (error) {console.log(error);});
+
+    // =========================создать банки на прием для всех============================
+    // const headers = {'Content-Type': 'application/json','x-api-key': 'admin'}
+    // axios.post('http://localhost:8000/api/v1/mains/set-favorite-banks',{
+    //   user_id: 628,
+    //   bank_id: 3 //из /get-admin-banks
+    //   }, headers)
+    //   .then(function (response) {console.log(response);})
+    //   .catch(function (error) {console.log(error);});
+
+
+    // =========================поменять активность банка============================
+    // const headers = {'Content-Type': 'application/json','x-api-key': 'admin'}
+    // axios.post('http://localhost:8000/api/v1/mains/set-favorite-banks',{
+    //   user_id: 628,
+    //   bank_id: 3, //из /get-admin-banks
+    //   active: 0
+    //   }, headers)
+    //   .then(function (response) {console.log(response);})
+    //   .catch(function (error) {console.log(error);});
+
+    // =========================ввод реквизитов payin trader по умолчанию не активные============================
+    // const headers = {'Content-Type': 'application/json','x-api-key': 'trader'}
+    // axios.post('http://localhost:8000/api/v1/mains/create-reqs',{
+    //   title: 'Сбер дроп 2',
+    //   user_id: 638,
+    //   sequence: 100,
+    //   req_group_id:0,
+    //   pay_pay_id: 1,
+    //   value: '2200122332212204',
+    //   currency_id: 1,
+    //   reqs_types_id: 1,
+    //   reqs_status_id: 1,
+    //   bank_id: 1, //из /get-fav-banks/628
+    //   chart_id: 259,
+    //   phone: '+79199990002',
+    //   qty_limit_hour: 0,
+    //   qty_limit_day: 0,
+    //   qty_limit_month: 0,
+    //   sum_limit_hour: 0,
+    //   sum_limit_day: 0,
+    //   sum_limit_month: 0,
+    //   limit_active_orders: 0,
+    //   other_banks: 0,
+    //   min_sum_per_transaction:0,
+    //   max_sum_per_transaction:0,
+    //   max_limit_transaction_sum:0,
+    //   max_limit_transaction: 0
+    //   }, headers)
+    //   .then(function (response) {console.log(response);})
+    //   .catch(function (error) {console.log(error);}); 
+
+    // =========================изменение реквизитов payin trader установить активным============================
+    // const headers = {'Content-Type': 'application/json','x-api-key': 'admin'}
+    // axios.post('http://localhost:8000/api/v1/mains/set-reqs',{
+    //   id: 1,
+    //   reqs_status_id: 1
+    //   }, headers)
+    //   .then(function (response) {console.log(response);})
+    //   .catch(function (error) {console.log(error);});
+
+      // =========================ввод реквизитов payout trader============================
+    // const headers = {'Content-Type': 'application/json','x-api-key': 'trader'}
+    // axios.post('http://localhost:8000/api/v1/mains/create-reqs',{
+    //   title: '-',
+    //   user_id: 638,
+    //   sequence: 0,
+    //   req_group_id:0,
+    //   pay_pay_id: 2,
+    //   value: '-',
+    //   currency_id: 1,
+    //   reqs_types_id: 1,
+    //   reqs_status_id: 1,
+    //   bank_id: 0,
+    //   chart_id: 259,
+    //   phone: '-',
+    //   qty_limit_hour: 1,
+    //   qty_limit_day: 10,
+    //   qty_limit_month: 100,
+    //   sum_limit_hour: 1000,
+    //   sum_limit_day: 10000,
+    //   sum_limit_month: 100000,
+    //   limit_active_orders: 1,
+    //   other_banks: 0,
+    //   min_sum_per_transaction:1000,
+    //   max_sum_per_transaction:10000,
+    //   max_limit_transaction_sum:10000,
+    //   max_limit_transaction: 1
+    //   }, headers)
+    //   .then(function (response) {console.log(response);})
+    //   .catch(function (error) {console.log(error);}); 
+
+// =========================ввод реквизитов групп payin trader============================
+    // const headers = {'Content-Type': 'application/json','x-api-key': 'trader'}
+    //   axios.post('http://localhost:8000/api/v1/mains/create-reqs-groups',{
+    //   title: 'Сбер СБП',
+    //   user_id: 638,
+    //   types_automate_id: 2,
+    //   turn_off: 1
+    //   ,
+    //   }, headers)
+    //   .then(function (response) {console.log(response);})
+    //   .catch(function (error) {console.log(error);});
+
+// =========================добавить реквизиты в группу payin trader============================
+// const headers = {'Content-Type': 'application/json','x-api-key': 'trader'}
+//       axios.post('http://localhost:8000/api/v1/mains/add-reqs-to-group',{
+//       id_group: 1,
+//       id_reqs: [3,4]
+//       ,
+//       }, headers)
+//       .then(function (response) {console.log(response);})
+//       .catch(function (error) {console.log(error);});
+
+  // ===========================готовы принимать ордера========================================
+
+// ===========================выбираем доступные реки трейдеров========================================
+const headers = {'Content-Type': 'application/json','x-api-key': 'SNr0i0iNIFTncQYcKndcHevdpa6iYK1eiUOKb5r1edJM5'}
+      axios.get('http://localhost:8000/api/v1/trader/get-info-for-invoice', {headers})
+      .then(function (response) {console.log(response);})
+      .catch(function (error) {console.log(error);});
+
+  // ======ссылка для пополнения в рублях от мерчанта, выбор доступных способов оплаты из =============================
+// const headers = {'Content-Type': 'application/json','x-api-key': 'SNr0i0iNIFTncQYcKndcHevdpa6iYK1eiUOKb5r1edJM5'}
+//       axios.post('http://localhost:8000/api/v1/trader/create-payment',{
+//       sum_fiat: 1000,
+//       docs_id: 1
+//       ,
+//       }, headers)
+//       .then(function (response) {console.log(response);})
+//       .catch(function (error) {console.log(error);});

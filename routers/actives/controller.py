@@ -19,10 +19,8 @@ async def crud_balance_percent(crud, payload):  # todo -> admin
                 cur.execute(string0)
                 data0 = cur.fetchall()
                 if not data0:
-                    data_str = "INSERT INTO pay_pay_percent (user_id, pay_id, value, DATE_FORMAT(date, " + str(
-                        config.date_format_all) + ") as date, pay_status_id) " \
-                                                  "VALUES ('" + str(payload.user_id) + "','" + str(
-                        payload.pay_id) + "','" \
+                    data_str = "INSERT INTO pay_pay_percent (user_id, pay_id, value, date, pay_status_id) " \
+                               "VALUES ('" + str(payload.user_id) + "','" + str(payload.pay_id) + "','" \
                                + str(payload.value) + "', UTC_TIMESTAMP() , 1)"
                     cur.execute(data_str)
                     cnx.commit()
@@ -87,7 +85,7 @@ async def crud_balance(crud, payload):  # todo -> admin
                 # todo проверить есть уже баланс insert or update
                 data_string = "INSERT INTO pay_balance (user_id, value, chart_id, baldep_status_id, " \
                               "baldep_types_id, date, frozen, withdrawals) " \
-                              "VALUES ('" + str(payload.user_id) + "',0,'" + str(payload.chart_id) + "',1,1,UTC_TIMESTAMP(), 0, 0)"
+                              "VALUES ('" + str(payload.user_id) + "',0,259,1,1,UTC_TIMESTAMP(), 0, 0)"
 
                 cur.execute(data_string)
                 cnx.commit()
@@ -566,7 +564,6 @@ async def bal_withdrawal_check(payload):
                     #переводим с value на withdrawals
                     result = await crud_balance("withdrawals", payload)
                     if result["Success"]:
-                        # todo add to history balance
                         insert_string = "INSERT into pay_deposit_history (user_id, date, " \
                                         "balordep, value, status_id) VALUES ('" + str(payload.user_id) + "', " \
                                         + "UTC_TIMESTAMP(), 2, '" + str(payload.value) + "',0)"
@@ -588,32 +585,45 @@ async def bal_withdrawal_check(payload):
 async def bal_refunds_check(payload):
     with cpy.connect(**config.config) as cnx:
         with cnx.cursor(dictionary=True) as cur:
-            history_check = "select * from pay_deposit_history where status_id in (0,6) " \
-                            "and user_id = " + str(payload.user_id)
-            cur.execute(history_check)
-            data0 = cur.fetchall()
-            if not data0:
-                check_string = "SELECT value FROM pay_balance where baldep_status_id = 1" \
-                               " and baldep_types_id = 1 and " \
-                               "user_id = " + str(payload.user_id)
-                cur.execute(check_string)
-                data = cur.fetchone()
-                if data:
-                    # запоминаем сумму ввода в истории
-                    insert_string = "INSERT into pay_deposit_history (user_id, date, " \
-                                    "balordep, value, status_id) VALUES ('" + str(payload.user_id) + "', " \
-                                    + "UTC_TIMESTAMP(), 2, '" + str(payload.value) + "',6)"
-                    cur.execute(insert_string)
-                    cnx.commit()
-                    if cur.rowcount > 0:
-                        return {"Success": True,
-                                "data": "Ожидайте подтверждение пополенения администратором."}
+            print(payload)
+            bal_check = "select * from pay_balance where user_id = " + str(payload.user_id)
+            cur.execute(bal_check)
+            data_bal = cur.fetchone()
+            if data_bal:
+                dep_check = "select * from pay_deposit where min_deposit > 0 and user_id = " + str(payload.user_id)
+                cur.execute(dep_check)
+                data_dep = cur.fetchone()
+                if data_dep:
+                    history_check = "select * from pay_deposit_history where status_id in (0,6) " \
+                                    "and user_id = " + str(payload.user_id)
+                    cur.execute(history_check)
+                    data0 = cur.fetchall()
+                    if not data0:
+                        check_string = "SELECT value FROM pay_balance where baldep_status_id = 1" \
+                                       " and baldep_types_id = 1 and " \
+                                       "user_id = " + str(payload.user_id)
+                        cur.execute(check_string)
+                        data = cur.fetchone()
+                        if data:
+                            # запоминаем сумму ввода в истории
+                            insert_string = "INSERT into pay_deposit_history (user_id, date, " \
+                                            "balordep, value, status_id) VALUES ('" + str(payload.user_id) + "', " \
+                                            + "UTC_TIMESTAMP(), 2, '" + str(payload.value) + "',6)"
+                            cur.execute(insert_string)
+                            cnx.commit()
+                            if cur.rowcount > 0:
+                                return {"Success": True,
+                                        "data": "Ожидайте подтверждение пополенения администратором."}
+                            else:
+                                return {"Success": False, "data": "Не удалось создать заявку на ввод средств"}
+                        else:
+                            return {"Success": False, "data": "Операция не может быть выполнена"}
                     else:
-                        return {"Success": False, "data": "Не удалось создать заявку на ввод средств"}
+                        return {"Success": False, "data": "У вас есть не обработанные заявки на ввод / вывод"}
                 else:
-                    return {"Success": False, "data": "Операция не может быть выполнена"}
+                    return {"Success": False, "data": "Не установлен лимит депозита. Обратитесь к администратрору"}
             else:
-                return {"Success": False, "data": "У вас есть не обработанные заявки на ввод / вывод"}
+                return {"Success": False, "data": "Баланс не найден. Обратитесь к администратрору"}
 
 
 

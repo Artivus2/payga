@@ -1,7 +1,7 @@
 import routers.mains.models as mains_models
 from fastapi import APIRouter, HTTPException
 from routers.mains.controller import (
-    get_bank,
+    get_banks,
     get_fav_bank,
     set_fav_bank,
     remove_fav_bank,
@@ -37,6 +37,24 @@ from routers.mains.controller import (
 )
 
 router = APIRouter(prefix='/api/v1/mains', tags=['Основные'])
+
+@router.get("/get-admin-banks")
+async def get_admin_fav():
+    """
+    Запрос банков админа
+    :param user_id:
+    :param token:
+    :return:
+    token
+    """
+
+    response = await get_banks()
+    if not response['Success']:
+        raise HTTPException(
+            status_code=400,
+            detail=response
+        )
+    return response
 
 
 @router.get("/get-fav-banks/{user_id}")

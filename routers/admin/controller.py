@@ -430,13 +430,12 @@ async def get_user_from_api_key(payload):
         with cnx.cursor(dictionary=True) as cur:
 
             string = "SELECT user_id from pay_api_keys where " \
-                     "api_key_expired_date > NOW() and " \
+                     "api_key_expired_date > UTC_TIMESTAMP() and " \
                      "status in (0,1,3) and api_key = '" + str(payload) + "'"
             cur.execute(string)
             data = cur.fetchone()
 
             if data:
-                print(data)
                 return {"Success": True, "data": data.get('user_id')}
             else:
                 return {"Success": False, "data": 'api_key не найден'}
@@ -445,34 +444,115 @@ async def get_user_from_api_key(payload):
 async def get_info_for_invoice(payload):
     with cpy.connect(**config.config) as cnx:
         with cnx.cursor(dictionary=True) as cur:
+            #достаем user_id мерчанта из апи кей
+
             data0 = await get_user_from_api_key(payload)
             if data0:
-                # ищем reqs_group_id формируем список из доступных банков
-                string = "SELECT * FROM pay_reqs_groups where user_id = " + str(data0.get('data'))
-                cur.execute(string)
-                data = cur.fetchall()
-                if data:
-                    print(len(data))
-                    all = []
 
-                    for i in data:
-                        result = {}
-                        result["id"] = i['id']
-                        result["group"] = i['title']
-                        # todo логику выбора карт здесь
-                        string2 = "SELECT * FROM pay_reqs where req_group_id = '" + str(i['id']) \
-                                  + "' and reqs_status_id = 1 and user_id = " + str(data0['data'])
-                        cur.execute(string2)
-                        data2 = cur.fetchall()
-                        if data2:
-                            result["reqs"] = data2
-                        else:
-                            result["reqs"] = []
-                        all.append(result)
-                    print(all)
+                user_id_merchant = data0.get('data')
+
+                # в кабине мерчанта смотрим активные банки для приема платежей от пользователей из fav_banks id
+                select_banks = "SELECT * from pay_fav_banks where active = 1 and user_id = " + str(user_id_merchant)
+                cur.execute(select_banks)
+                merch_banks = cur.fetchall()
+                if merch_banks:
+
+                    result = {}
+                    all = []
+                    for i in merch_banks:
+                        # #ищем доступных трейдеров #todo доделать
+                        traders = "SELECT pay_reqs_groups.id as pay_reqs_groups_id, pay_reqs.value, pay_reqs.phone, " \
+                                  "pay_reqs_groups.title as pay_reqs_groups_title from user " \
+                                  "LEFT JOIN pay_reqs ON user.id = pay_reqs.user_id " \
+                                  "LEFT JOIN pay_reqs_groups ON pay_reqs.req_group_id = pay_reqs_groups.id " \
+                                  "where user.is_active = 1 and pay_reqs.req_group_id > 0 and " \
+                                  "pay_reqs.pay_pay_id = 1 " \
+                                  "and pay_reqs.reqs_status_id = 1 and " \
+                                  "user.role_id = 2 and pay_reqs.bank_id = " + str(i.get('bank_id'))
+                        cur.execute(traders)
+                        avail_traders = cur.fetchall()
+                        all.append(avail_traders)
+                        print(avail_traders)
+                    # all_reselt =[]
+                    # for j in all:
+                    #     result_all = {}
+                    #     result_all['id'] = j[0]['pay_reqs_groups_id']
+                    #     result_all['title'] = j[0]['pay_reqs_groups_title']
+                    #     for x in j:
+                    #         print(x)
+                    #         result_all['reqs'] = x['reqs_id']
+                    #     all_reselt.append(result_all)
+                    #
+                    # print(all_reselt)
+
+
+                    # if avail_traders:
+                    #     result = []
+                    #     for i in all:
+                    #
+                    #         # result["id"] = i.get('req_group_id')
+                    #         # result["group"] = i['pay_reqs_groups_title']
+                    #         # all.append(result)
+                    #         # for j in i:
+                    #         #     print(j['reqs_id'])
+                    #         #     #result["reqs"] = j.get('reqs_id')
+                    #
                     return {"Success": True, "data": all}
                 else:
                     return {"Success": False}
+
+
+                        #
+                        #     for j in avail_traders:
+                        #         result = {}
+                        #         result["id"] = j['req_group_id']
+                        #         result["group"] = j['title']
+                        #         string2 = "SELECT * FROM pay_reqs where req_group_id = '" + str(j['req_group_id']) \
+                        #                   + "' and user_id = " + str(j['user_id'])
+                        #         cur.execute(string2)
+                        #         data2 = cur.fetchall()
+                        #         if data2:
+                        #             result["reqs"] = data2
+                        #         else:
+                        #             result["reqs"] = []
+                        #         all.append(result)
+                        #     print(all)
+                        #     return {"Success": True, "data": all}
+                        # else:
+                        #     return {"Success": False}
+
+                # #ищем доступных трейдеров
+                # #смотрим кто активен, у кого доступны реки
+                # #проверяем количество активных ордеров у трейдеров
+                # #
+                #
+                #
+                # # ищем reqs_group_id формируем список из доступных банков
+                # string = "SELECT * FROM pay_reqs_groups where user_id = " + str(data0.get('data'))
+                # cur.execute(string)
+                # data = cur.fetchall()
+                # if data:
+                #     print(len(data))
+                #     all = []
+                #
+                #     for i in data:
+                #         result = {}
+                #         result["id"] = i['id']
+                #         result["group"] = i['title']
+                #         # todo логику выбора карт здесь
+                #         string2 = "SELECT * FROM pay_reqs where req_group_id = '" + str(i['id']) \
+                #                   + "' and reqs_status_id = 1 and user_id = " + str(data0['data'])
+                #         cur.execute(string2)
+                #         data2 = cur.fetchall()
+                #         if data2:
+                #             result["reqs"] = data2
+                #         else:
+                #             result["reqs"] = []
+                #         all.append(result)
+                #     print(all)
+                #     return {"Success": True, "data": all}
+                # else:
+                #     return {"Success": False}
 
 
 def get_pattern_from_bd(sender):
