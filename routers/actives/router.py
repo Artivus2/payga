@@ -68,7 +68,7 @@ async def get_balance_percent(request: actives_models.PayPercent):
     pay_status_id: int
     }
     """
-    response = await crud_balance_percent('get', request.user_id)
+    response = await crud_balance_percent('get', request)
     if not response['Success']:
         raise HTTPException(
             status_code=400,

@@ -23,6 +23,7 @@ class Orders(BaseModel):
     docs_id: int | list | None = None
     date_start: str | None = None
     date_end: str | None = None
+    user_pay: int | None = None
 
 
 

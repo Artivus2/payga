@@ -63,6 +63,17 @@ class Bank(BaseModel):
     active: int | None = None
 
 
+class BankAdm(BaseModel):
+    __table_name__ = "pay_admin_banks"
+    """
+    from banks
+    """
+    id: int | None = None
+    title: str | None = None
+    bik: str | None = None
+    active: int | None = None
+
+
 class BankFavs(BaseModel):
     __table_name__ = "pay_fav_banks"
     """

@@ -153,7 +153,7 @@ async def set_user_active_token(email, datenowutc, access_token):
 async def set_user_active_onoff(payload):
     with cpy.connect(**config.config) as cnx:
         with cnx.cursor(dictionary=True) as cur:
-            string_active = "SELECT * from user where role_id = 2 and id = " + str(payload.user_id)
+            string_active = "SELECT * from user where role_id = 4 and id = " + str(payload.user_id)
             cur.execute(string_active)
             data_active = cur.fetchone()
             if data_active:

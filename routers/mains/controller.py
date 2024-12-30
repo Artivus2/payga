@@ -25,10 +25,13 @@ from routers.orders.utils import generate_uuid
 #                 return {"Success": False, "data": 'банк не найден'}
 
 
-async def get_banks():
+async def get_banks(id):
     with cpy.connect(**config.config) as cnx:
         with cnx.cursor(dictionary=True) as cur:
-            select_banks = "SELECT * FROM pay_admin_banks where active = 1"
+            if id == 0:
+                select_banks = "SELECT * FROM pay_admin_banks"
+            else:
+                select_banks = "SELECT * FROM pay_admin_banks where active = 1"
             cur.execute(select_banks)
             data = cur.fetchall()
             if data:
@@ -41,18 +44,51 @@ async def get_banks():
 async def get_fav_bank(user_id):
     with cpy.connect(**config.config) as cnx:
         with cnx.cursor(dictionary=True) as cur:
-            data = "SELECT pay_fav_banks.id, pay_admin_banks.title, pay_admin_banks.bik, pay_fav_banks.active " \
+
+            data_string = "SELECT pay_fav_banks.id, pay_admin_banks.title, pay_admin_banks.bik, pay_fav_banks.active " \
                    "from pay_fav_banks " \
                    "LEFT JOIN pay_admin_banks ON pay_fav_banks.bank_id = pay_admin_banks.id  " \
-                   "where pay_fav_banks.active = 1 and user_id = " + str(user_id)
-            cur.execute(data)
+                   "where pay_admin_banks.active = 1 and user_id = " + str(user_id)
+            cur.execute(data_string)
+
             data = cur.fetchall()
             if data:
-                cnx.close()
                 return {"Success": True, "data": data}
             else:
-                cnx.close()
                 return {"Success": False, "data": 'банк не найден'}
+
+async def set_admin_bank(payload):
+    with cpy.connect(**config.config) as cnx:
+        with cnx.cursor(dictionary=True) as cur:
+            check_string = "SELECT * from pay_admin_banks where " \
+                           "id = " + str(payload.get('id',0))
+            cur.execute(check_string)
+            adm_banks = cur.fetchall()
+            if adm_banks:
+                data_update = "UPDATE pay_admin_banks SET "
+                for k, v in dict(payload).items():
+                    print(k,v)
+                    if k != 'id':
+                        data_update += str(k) + " = '" + str(v) + "',"
+                data_update = data_update[:-1]
+                data_update += " where id = " + str(payload.get('id'))
+                cur.execute(data_update)
+                cnx.commit()
+                if cur.rowcount > 0:
+                    return {"Success": True, "data": "Банк изменен"}
+                else:
+                    return {"Success": False, "data": "банк не изменен"}
+
+            else:
+                insert_string = "INSERT INTO pay_admin_banks (title, bik, active) " \
+                                "VALUES ('" + str(payload.get('title')) + \
+                                "','" + str(payload.get('bik')) + "', 1)"
+                cur.execute(insert_string)
+                cnx.commit()
+                if cur.rowcount > 0:
+                    return {"Success": True, "data": "Банк успешно добавлен"}
+                else:
+                    return {"Success": False, "data": "банк не добавлен"}
 
 
 async def set_fav_bank(payload): #todo fav_banks
@@ -84,12 +120,26 @@ async def set_fav_bank(payload): #todo fav_banks
                     return {"Success": False, "data": "банк в группу не добавлен"}
 
 
+async def remove_admin_bank(payload):
+    with cpy.connect(**config.config) as cnx:
+        with cnx.cursor(dictionary=True) as cur:
+            delete_string = "DELETE FROM pay_admin_banks where " \
+                            "id = '" + str(payload.id) + "'"
+            cur.execute(delete_string)
+            cnx.commit()
+            if cur.rowcount > 0:
+                cnx.close()
+                return {"Success": True, "data": "Успешно удален из admin банков"}
+            else:
+                cnx.close()
+                return {"Success": False, "data": "банк не найден"}
 
-async def remove_fav_bank(payload): #todo fav_banks
+
+async def remove_fav_bank(payload):
     with cpy.connect(**config.config) as cnx:
         with cnx.cursor(dictionary=True) as cur:
             delete_string = "DELETE FROM pay_fav_banks where " \
-                            "user_id = '"+str(payload.user_id)+"' and title = '" + str(payload.title) + "'"
+                            "id = '"+str(payload.id) + "'"
             cur.execute(delete_string)
             cnx.commit()
             if cur.rowcount > 0:
@@ -145,7 +195,7 @@ async def get_curr(id):
 async def set_reqs_by_any(payload):
     with cpy.connect(**config.config) as cnx:
         with cnx.cursor(dictionary=True) as cur:
-            string_orders = "SELECT * FROM orders where req_id = " + payload.get('id')
+            string_orders = "SELECT * FROM pay_orders where req_id = " + str(payload.get('id'))
             cur.execute(string_orders)
             orders = cur.fetchall()
             if not orders:
@@ -280,7 +330,7 @@ async def req_by_filters(payload):
                      "sequence, pay_pay_id, pay_pay.title as pay_title," \
                      "pay_reqs_status.title as pay_status, pay_reqs.value," \
                      "reqs_types_id, pay_reqs_types.title as reqs_types_title," \
-                     "bank_id, pay_fav_banks.title as bank_title, currency_id, currency.symbol as currency_symbol," \
+                     "pay_fav_banks.id as bank_id, pay_admin_banks.title as bank_title, currency_id, currency.symbol as currency_symbol," \
                      "phone, pay_reqs.date, pay_automation_type.title as pay_automation_type_title, " \
                      "pay_automation_turn_off.title as turn_off_title," \
                      "qty_limit_hour, qty_limit_day, qty_limit_month, sum_limit_hour, sum_limit_day, " \
@@ -288,6 +338,7 @@ async def req_by_filters(payload):
                      "max_sum_per_transaction, max_limit_transaction_sum, max_limit_transaction " \
                      "from pay_reqs " \
                      "LEFT JOIN pay_fav_banks ON pay_reqs.bank_id = pay_fav_banks.id " \
+                     "LEFT JOIN pay_admin_banks ON pay_admin_banks.id = pay_fav_banks.bank_id " \
                      "LEFT JOIN currency ON pay_reqs.currency_id = currency.id " \
                      "LEFT JOIN pay_reqs_groups ON pay_reqs.req_group_id = pay_reqs_groups.id " \
                      "LEFT JOIN pay_reqs_status ON pay_reqs.reqs_status_id = pay_reqs_status.id " \

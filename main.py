@@ -27,10 +27,12 @@ app = FastAPI()
 # Добавляем middleware для CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Разрешаем все источники
+    allow_origins=["https://admin.greenavi.com", "http://localhost:3000"],  # Разрешаем все источники
     allow_credentials=True,
     allow_methods=["*"],  # Разрешаем все методы
     allow_headers=["*"],  # Разрешаем все заголовки
+    #allowed_hosts=['greenavi.com', '*.greenavi.com'],
+
 )
 
 # @app.get("/")

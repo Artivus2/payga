@@ -2,9 +2,11 @@ import routers.mains.models as mains_models
 from fastapi import APIRouter, HTTPException
 from routers.mains.controller import (
     get_banks,
+    set_admin_bank,
     get_fav_bank,
     set_fav_bank,
     remove_fav_bank,
+    remove_admin_bank,
     get_chart,
     get_curr,
     get_reqs_groups_by_id,
@@ -38,8 +40,8 @@ from routers.mains.controller import (
 
 router = APIRouter(prefix='/api/v1/mains', tags=['Основные'])
 
-@router.get("/get-admin-banks")
-async def get_admin_fav():
+@router.get("/get-admin-banks/{active}")
+async def get_admin_fav(active: int):
     """
     Запрос банков админа
     :param user_id:
@@ -48,7 +50,7 @@ async def get_admin_fav():
     token
     """
 
-    response = await get_banks()
+    response = await get_banks(active)
     if not response['Success']:
         raise HTTPException(
             status_code=400,
@@ -76,10 +78,32 @@ async def get_fav_bank_by_id(user_id: int):
     return response
 
 
-@router.post("/set-favorite-banks")
-async def set_banks(request: mains_models.BankFavs):
+@router.post("/set-admin-banks")
+async def set_admin_banks(request: mains_models.BankAdm):
     """
-    Создать список банков для реквизитов
+    Создать список банков для реквизитов админа
+    :param request:
+    :param token:
+    :return:
+    token
+    """
+    payload = {}
+    for k, v in request:
+        if v is not None:
+            payload[k] = v
+    response = await set_admin_bank(payload)
+    if not response['Success']:
+        raise HTTPException(
+            status_code=400,
+            detail=response
+        )
+    return response
+
+
+@router.post("/set-favorite-banks")
+async def set_fav_banks(request: mains_models.BankFavs):
+    """
+    Создать список банков для реквизитов из админа ACTIVE = 1 / 0
     :param request:
     :param token:
     :return:
@@ -103,6 +127,23 @@ async def remove_banks(request: mains_models.BankFavs):
     :return:
     """
     response = await remove_fav_bank(request)
+    if not response['Success']:
+        raise HTTPException(
+            status_code=400,
+            detail=response
+        )
+    return response
+
+
+@router.post("/remove-admin-banks")
+async def remove_banks(request: mains_models.BankAdm):
+    """
+    Удалить из списка банков админа для реквизитов
+    :param request:
+    :param token:
+    :return:
+    """
+    response = await remove_admin_bank(request)
     if not response['Success']:
         raise HTTPException(
             status_code=400,

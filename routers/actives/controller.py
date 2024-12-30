@@ -38,10 +38,10 @@ async def crud_balance_percent(crud, payload):  # todo -> admin
                          "from pay_pay_percent " \
                          "LEFT JOIN pay_pay ON pay_pay_percent.pay_id = pay_pay.id " \
                          "LEFT JOIN pay_pay_status ON pay_pay_percent.pay_status_id = pay_pay_status.id "
-                if int(payload) == 0:  # todo left join
+                if int(payload.user_id) == 0:  # todo left join
                     dop = ""
                 else:
-                    dop = "where user_id = " + str(payload)
+                    dop = "where pay_id = "+str(payload.pay_id)+" and user_id = " + str(payload.user_id)
                 string += dop
                 cur.execute(string)
                 data = cur.fetchall()
@@ -78,7 +78,7 @@ async def crud_balance(crud, payload):  # todo -> admin
     :param payload:
     :return:
     """
-    print(payload)
+
     with (cpy.connect(**config.config) as cnx):
         with cnx.cursor(dictionary=True) as cur:
             if crud == 'create':
@@ -186,42 +186,48 @@ async def crud_balance(crud, payload):  # todo -> admin
                     return {"Success": False, "data": "У вас уже есть необработанные заявки на вывод"}
 
             if crud == 'frozen':
-                string0 = "SELECT value, frozen FROM pay_balance where user_id = " + str(payload.user_id)
+
+                user_id = payload.get('user_id')
+                value = float(payload.get('value'))
+                string0 = "SELECT value, frozen FROM pay_balance where user_id = " + str(user_id)
                 cur.execute(string0)
                 data0 = cur.fetchone()
-                current_value = float(data0.get('value', 0))
-                current_frozen = float(data0.get('frozen', 0))
-                if current_frozen == 0:
-                    if current_value > payload.value:
-                        string = "UPDATE pay_balance set value = '" + str(current_value - payload.value) + \
-                                 "', frozen = '" + str(current_frozen + payload.value) + \
-                                 "' where user_id = " + str(payload.user_id)
+                if data0:
+
+                    current_value = float(data0.get('value', 0))
+                    current_frozen = float(data0.get('frozen', 0))
+                    if current_value > value:
+                        string = "UPDATE pay_balance set value = '" + str(current_value - value) + \
+                                 "', frozen = '" + str(current_frozen + value) + \
+                                 "' where user_id = " + str(user_id)
                         cur.execute(string)
                         cnx.commit()
                         if cur.rowcount > 0:
-                            return {"Success": True, "data": "Средства баланса заморожены: " + str(payload.value) + " USDT"}
+                            return {"Success": True, "data": "Средства баланса заморожены: " + str(value) + " USDT"}
                         else:
                             return {"Success": False, "data": "Не удалось изменить доступные средства баланса"}
                     else:
                         return {"Success": False, "data": "Недостаточно средств на балансе"}
                 else:
-                    return {"Success": False, "data": "У вас уже есть необработанные заявки на вывод"}
+                    return {"Success": False, "data": "Отсутствует информация о балансе отправителя"}
             if crud == 'unfrozen':
-                string0 = "SELECT value, frozen FROM pay_balance where user_id = " + str(payload.user_id)
+                user_id = payload.get('user_id')
+                value = float(payload.get('value'))
+                string0 = "SELECT value, frozen FROM pay_balance where user_id = " + str(user_id)
                 cur.execute(string0)
                 data0 = cur.fetchone()
                 current_value = float(data0.get('value', 0))
                 current_frozen = float(data0.get('frozen', 0))
                 if current_frozen == 0:
-                    if current_frozen > payload.value:
-                        string = "UPDATE pay_balance set value = '" + str(current_value + payload.value) + \
-                                 "', frozen = '" + str(current_frozen - payload.value) + \
-                                 "' where user_id = " + str(payload.user_id)
+                    if current_frozen > value:
+                        string = "UPDATE pay_balance set value = '" + str(current_value + value) + \
+                                 "', frozen = '" + str(current_frozen - value) + \
+                                 "' where user_id = " + str(user_id)
                         cur.execute(string)
                         cnx.commit()
                         if cur.rowcount > 0:
                             return {"Success": True,
-                                    "data": "Средства баланса разморожены: " + str(payload.value) + " USDT"}
+                                    "data": "Средства баланса разморожены: " + str(value) + " USDT"}
                         else:
                             return {"Success": False, "data": "Не удалось изменить frozen средства"}
                     else:
@@ -809,13 +815,15 @@ async def crud_transfer(crud, payload):
             if crud == 'create':
                 string_in = "SELECT id FROM user where " \
                             "email = '" + str(payload.user_id_in_email_or_login) \
-                            + "' or login = '" + str(payload.user_id_in_email_or_login) + "'"
+                            + "' or login = '" + str(payload.user_id_in_email_or_login) + "' or id = '"\
+                            + str(payload.user_id_in) + "'"
                 cur.execute(string_in)
                 data_in = cur.fetchone()
                 user_in = data_in.get('id', 0)
                 string_out = "SELECT id FROM user where " \
                              "email = '" + str(payload.user_id_out_email_or_login) \
-                             + "' or login = '" + str(payload.user_id_out_email_or_login) + "'"
+                             + "' or login = '" + str(payload.user_id_out_email_or_login) + "' or id = '" \
+                             + str(payload.user_id_in) + "'"
                 cur.execute(string_out)
                 data_out = cur.fetchone()
                 user_out = data_out.get('id', 0)
@@ -871,3 +879,47 @@ async def crud_transfer(crud, payload):
                     return {"Success": True, "data": data}
                 else:
                     return {"Success": False, "data": "Нет данных"}
+            if crud == "payin":
+                frozen = payload.get('value')
+                user_out = payload.get('user_id_out')
+                user_in = payload.get('user_id_in')
+                print("do emits", user_out, user_in, frozen)
+                if user_in > 0 and user_out > 0:
+                    print("emits", user_out, user_in, frozen)
+                    string1 = "SELECT value FROM pay_balance where user_id = " + str(user_in)
+                    cur.execute(string1)
+                    data1 = cur.fetchone()
+                    value_in = float(data1.get('value'))
+                    string2 = "SELECT frozen FROM pay_balance where user_id = " + str(user_out)
+                    cur.execute(string2)
+                    data2 = cur.fetchone()
+                    value_from = float(data2.get('frozen', 0))
+                    if float(value_from) >= frozen:
+                        # todo transaction multi
+                        string3 = "UPDATE pay_balance SET value = " + str(value_in + frozen) \
+                                  + " where user_id = " + str(user_in)
+                        cur.execute(string3)
+                        cnx.commit()
+                        if cur.rowcount > 0:
+                            string4 = "UPDATE pay_balance SET frozen = " + str(value_from - frozen) \
+                                      + " where user_id = " + str(user_out)
+                            cur.execute(string4)
+                            cnx.commit()
+                            if cur.rowcount > 0:
+                                data_string = "INSERT INTO pay_transfer_history (user_id_in, user_id_out, value, status, date) " \
+                                              "VALUES ('" + str(user_in) + "','" + str(user_out) + \
+                                              "','" + str(payload.value) + "','1', NOW())"
+                                cur.execute(data_string)
+                                cnx.commit()
+                                if cur.rowcount > 0:
+                                    return {"Success": True, "data": "Перевод успешно проведен"}
+                                else:
+                                    return {"Success": False, "data": "Не удалось совершить транзакцию перевода"}
+                            else:
+                                return {"Success": False, "data": "Не удалось списать с баланса gjkexftnzk"}
+                        else:
+                            return {"Success": False, "data": "Не удалось списать с баланса отправителя"}
+                    else:
+                        return {"Success": False, "data": "Недостаточно баланса для совершения операции"}
+                else:
+                    return {"Success": False, "data": "Выбранные пользователи не найдены"}

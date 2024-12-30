@@ -6,7 +6,7 @@ import mysql.connector as cpy
 
 import config
 import routers.admin.models as admin_models
-from routers.actives.controller import crud_deposit, crud_balance
+from routers.actives.controller import crud_deposit, crud_balance, crud_transfer
 from routers.orders.controller import (
     create_order_for_user,
     update_order_by_any
@@ -301,66 +301,68 @@ async def create_sms_data(payload):
     первично собрали данные по api_key в pay_sms_data
     :param payload:
     :return:
-    'user_id': user_id,
+    'user_id_merchant': user_id_merchant,
                 'sender': sender,
                 'sum_fiat': suma,
     """
-    user_id = payload.get('user_id', 0)
-    check_active = await get_is_active(user_id)
-    if check_active:
-        with cpy.connect(**config.config) as cnx:
-            with cnx.cursor(dictionary=True) as cur:
-                # сравнить на полное совпадение
-                check_string = "SELECT id, uuid, sum_fiat, user_id, date_expiry FROM pay_orders where user_id = '" \
-                               + str(user_id) + "' and pay_notify_order_types_id = 0 and sum_fiat = '"\
-                               + str(payload.get('sum_fiat', 0)) + "'"
-                cur.execute(check_string)
-                data = cur.fetchone()
-                if data:
-                    # проверяем ордер пришло зачисление
-                    if data['date_expiry'] > datetime.datetime.utcnow():
-                        await update_order_by_any({'id': data.get('id'), 'pay_notify_order_types_id': 3})
-                        string_wallet = "SELECT address FROM pay_wallet where wallet_status_id = 1 " \
-                                        "and user_id = " + str(payload.get('user_id'))
-                        cur.execute(string_wallet)
-                        wallet = cur.fetchone()
-                        if wallet:
-                            result = True
-                            # переводим по внутрянке USDT
-                            if result:
-                                #USDT отправляет менеджер
-                                send = await update_order_by_any({'id': data.get('id'), 'pay_notify_order_types_id': 5})
-                                data_string = "INSERT INTO pay_sms_data (user_id, date, sum_fiat, sender, text) " \
-                                              "VALUES ('" + str(payload.get('user_id')) + "','" + str(payload.get('datain')) \
-                                              + "','" + str(payload.get('sum_fiat')) + "','" + str(payload.get('sender')) \
-                                              + "','" + str(payload.get('text')) + "')"
-                                cur.execute(data_string)
-                                cnx.commit()
-                                if cur.rowcount > 0:
-                                    message = "Ордер " + str(data['uuid']) + " \nполучен платеж на сумму " \
-                                              + str(payload.get('sum_fiat')) + "\nОбработано автоматикой\n" \
-                                              + str(payload.get('text')) + "\n"
-                                    botgreenavipay.send_message(config.pay_main_group, message)
-                                    #todo block balance
-                                    await update_order_by_any({'id': data.get('id'), 'pay_notify_order_types_id': 1})
-                                    return {"Success": True, "data": 'ордер обработан и отправлен на проверку менеджеру'}
-                            else:
-                                # USDT не удалось отправить, ручная отправка
-                                await update_order_by_any({'id': data.get('id'), 'pay_notify_order_types_id': 4})
-                                return {"Success": False, "data": 'не удалось отправить USDT, ручная отправка'}
+
+    user_id_merchant = payload.get('user_id_merchant', 0)
+    #check_active = await get_is_active(user_id)
+    #if check_active:
+    with cpy.connect(**config.config) as cnx:
+        with cnx.cursor(dictionary=True) as cur:
+            # проверить включена ли автотматика на группу todo
+
+            check_string = "SELECT id, uuid, sum_fiat, user_id, user_pay, date_expiry FROM pay_orders " \
+                           "where user_pay = '" \
+                           + str(user_id_merchant) + "' and pay_notify_order_types_id = 0 and sum_fiat = '"\
+                           + str(payload.get('sum_fiat', 0)) + "'"
+            cur.execute(check_string)
+            data = cur.fetchone()
+            if data:
+                # проверяем ордер пришло зачисление
+
+                if data['date_expiry'] > datetime.datetime.utcnow(): #срок не вышел
+                    #USDT отправляет автоматика
+                    print("sms",data)
+
+                    data_string = "INSERT INTO pay_sms_data (user_id, date, sum_fiat, sender, text) " \
+                                  "VALUES ('" + str(payload.get('user_id_merchant')) + "','" + str(
+                        payload.get('datain')) \
+                                  + "','" + str(payload.get('sum_fiat')) + "','" + str(payload.get('sender')) \
+                                  + "','" + str(payload.get('text')) + "')"
+                    cur.execute(data_string)
+                    cnx.commit()
+                    if cur.rowcount > 0:
+                        message = "Ордер " + str(data['uuid']) + " \nполучен платеж на сумму " \
+                                  + str(payload.get('sum_fiat')) + "\nОбработано автоматикой\n" \
+                                  + str(payload.get('text')) + "\n"
+                        # botgreenavipay.send_message(config.pay_main_group, message)
+                        payed = await update_order_by_any({'id': data.get('id'), 'pay_notify_order_types_id': 1})
+                        if payed["Success"]:
+                            #принят оплачен
+                            return {"Success": True, "data": 'ордер принят и оплачен'}
                         else:
-                            await update_order_by_any({'id': data.get('id'), 'pay_notify_order_types_id': 8})
-                            return {"Success": False,
-                                    "data": 'не найден кошелек или не активирован, обратитесь к администратору'}
-                    else:
-                        #ордер просрочен переведен в диспут
-                        await update_order_by_any({'id': data.get('id'), 'pay_notify_order_types_id': 8})
-                        return {"Success": False, "data": 'sms data не добавлена, ордер просрочен'}
-                else:
-                    await update_order_by_any({'id': data.get('id'), 'pay_notify_order_types_id': 5})
-                    return {"Success": False, "data": 'Автоматизация не проведена, ордер переведен в диспут'}
-    else:
-        return {"Success": False, "data": 'Включите прием платежей'}
+                            return {"Success": False, "data": 'Ордер не оплачен'}
+            else:
+                #ордер не найден или сумма не точная
+                await update_order_by_any({'id': data.get('id'), 'pay_notify_order_types_id': 5})
+                return {"Success": False, "data": 'Автоматизация не проведена, ордер переведен в диспут'}
+
+                # else:
+                #     # USDT не удалось отправить, ручная отправка
+                #     await update_order_by_any({'id': data.get('id'), 'pay_notify_order_types_id': 4})
+                #     return {"Success": False, "data": 'не удалось отправить USDT, ручная отправка'}
+            # else:
+            #     await update_order_by_any({'id': data.get('id'), 'pay_notify_order_types_id': 8})
+            #     return {"Success": False,
+            #             "data": 'не найден кошелек или не активирован, обратитесь к администратору'}
+            #     else:
+            #         #ордер просрочен переведен в диспут
+            #         await update_order_by_any({'id': data.get('id'), 'pay_notify_order_types_id': 8})
+            #         return {"Success": False, "data": 'sms data не добавлена, ордер просрочен'}
+
+
 
 
 async def check_order_by_id_payin(payload):
@@ -379,13 +381,31 @@ async def check_order_by_id_payin(payload):
             data = cur.fetchone()
             print(data)
             if data:
-                if int(notify) == 3:
+                if notify == 3:
                     result = await update_order_by_any({'id': data.get('id'), 'pay_notify_order_types_id': notify})
-                    # receive RUB auto
-                    return {"Success": True, "data": "Ордер подтвержден"}
-                elif int(notify) == 2:
+                    # получили данные по ордеру
+                    if result:
+                        #переводим value из pay_orders
+
+                        transfer = {
+                            'user_id_in': data.get('user_pay'),
+                            'user_id_out': data.get('user_id'),
+                            'value': data.get('value')
+                        }
+                        send = crud_transfer("payin", transfer)
+                        if send["Success"]:
+                            return {"Success": True, "data": "Средства отправлены мерчанту"}
+                        else:
+                            return {"Success": True, "data": "Средства не отправлены"}
+                elif notify == 2:
                     result = await update_order_by_any({'id': data.get('id'), 'pay_notify_order_types_id': notify})
                     return {"Success": True, "data": "Ордер отменен"}
+                elif notify == 3:
+                    print("ордер успешный PAYIN, отправили USDT на баланс мерчанту")
+                elif notify == 4:
+                    print("ордер оплачен, время еще не вышло но не сработала автоматика")
+                elif notify == 5:
+                    print("чек не соответствует, оплата не проведена, переведен в диспут")
                 else:
                     return {"Success": False, "data": "Не верно указан статус PAYIN ордера"}
             else:
@@ -434,7 +454,7 @@ async def get_user_from_api_key(payload):
                      "status in (0,1,3) and api_key = '" + str(payload) + "'"
             cur.execute(string)
             data = cur.fetchone()
-
+            print(data)
             if data:
                 return {"Success": True, "data": data.get('user_id')}
             else:
@@ -445,121 +465,75 @@ async def get_info_for_invoice(payload):
     with cpy.connect(**config.config) as cnx:
         with cnx.cursor(dictionary=True) as cur:
             #достаем user_id мерчанта из апи кей
-
             data0 = await get_user_from_api_key(payload)
+
             if data0:
-
                 user_id_merchant = data0.get('data')
-
                 # в кабине мерчанта смотрим активные банки для приема платежей от пользователей из fav_banks id
-                select_banks = "SELECT * from pay_fav_banks where active = 1 and user_id = " + str(user_id_merchant)
+                select_banks = "SELECT bank_id from pay_fav_banks where active = 1 and user_id = " + str(user_id_merchant)
                 cur.execute(select_banks)
                 merch_banks = cur.fetchall()
                 if merch_banks:
-
-                    result = {}
+                    banks = []
+                    if len(merch_banks) > 1:
+                        for i in merch_banks:
+                            banks.append(i.get('bank_id'))
+                        banks = "in " + str(tuple(banks))
+                    else:
+                        banks = "= " + str(merch_banks[0].get('bank_id'))
                     all = []
-                    for i in merch_banks:
-                        # #ищем доступных трейдеров #todo доделать
-                        traders = "SELECT pay_reqs_groups.id as pay_reqs_groups_id, pay_reqs.value, pay_reqs.phone, " \
-                                  "pay_reqs_groups.title as pay_reqs_groups_title from user " \
-                                  "LEFT JOIN pay_reqs ON user.id = pay_reqs.user_id " \
-                                  "LEFT JOIN pay_reqs_groups ON pay_reqs.req_group_id = pay_reqs_groups.id " \
-                                  "where user.is_active = 1 and pay_reqs.req_group_id > 0 and " \
-                                  "pay_reqs.pay_pay_id = 1 " \
-                                  "and pay_reqs.reqs_status_id = 1 and " \
-                                  "user.role_id = 2 and pay_reqs.bank_id = " + str(i.get('bank_id'))
-                        cur.execute(traders)
-                        avail_traders = cur.fetchall()
-                        all.append(avail_traders)
-                        print(avail_traders)
-                    # all_reselt =[]
-                    # for j in all:
-                    #     result_all = {}
-                    #     result_all['id'] = j[0]['pay_reqs_groups_id']
-                    #     result_all['title'] = j[0]['pay_reqs_groups_title']
-                    #     for x in j:
-                    #         print(x)
-                    #         result_all['reqs'] = x['reqs_id']
-                    #     all_reselt.append(result_all)
-                    #
-                    # print(all_reselt)
+                    # #ищем доступных трейдеров по bank_id мерча
+                    traders = "SELECT pay_reqs_groups.id as pay_reqs_groups_id, " \
+                              "pay_reqs_groups.title as pay_reqs_groups_title from user " \
+                              "LEFT JOIN pay_reqs ON user.id = pay_reqs.user_id " \
+                              "LEFT JOIN pay_reqs_groups ON pay_reqs.req_group_id = pay_reqs_groups.id " \
+                              "where user.is_active = 1 and pay_reqs.req_group_id > 0 and " \
+                              "pay_reqs.pay_pay_id = 1 " \
+                              "and pay_reqs.reqs_status_id = 1 and " \
+                              "user.role_id = 4 and pay_reqs.bank_id " + str(banks)\
+                              + " group by pay_reqs_groups.id"
+                    cur.execute(traders)
+                    avail_traders = cur.fetchall()
+                    for j in avail_traders:
+                        result = {}
+                        result["id"] = j.get('pay_reqs_groups_id')
+                        result["title"] = j.get('pay_reqs_groups_title')
+                        #todo проверить занятость в ордерах со статусом не 3
+                        string2 = "SELECT * FROM pay_reqs where req_group_id = '" + str(j.get('pay_reqs_groups_id')) \
+                                  + "' and reqs_status_id = 1 and pay_pay_id = 1"
+                        cur.execute(string2)
+                        data2 = cur.fetchall()
+                        if data2:
+                            result["reqs"] = data2
+                        else:
+                            result["reqs"] = []
+                        all.append(result)
+                    print(len(all))
+                    if len(all) >0:
+                        return {"Success": True, "data": all}
+                    else:
+                        return {"Success": False, "data": "Реквизиты не найдены, попробуйте позже"}
+            else:
+                return {"Success": False, "data": "запрос не действителен. Обратитесь к администратору"}
 
-
-                    # if avail_traders:
-                    #     result = []
-                    #     for i in all:
-                    #
-                    #         # result["id"] = i.get('req_group_id')
-                    #         # result["group"] = i['pay_reqs_groups_title']
-                    #         # all.append(result)
-                    #         # for j in i:
-                    #         #     print(j['reqs_id'])
-                    #         #     #result["reqs"] = j.get('reqs_id')
-                    #
-                    return {"Success": True, "data": all}
-                else:
-                    return {"Success": False}
-
-
-                        #
-                        #     for j in avail_traders:
-                        #         result = {}
-                        #         result["id"] = j['req_group_id']
-                        #         result["group"] = j['title']
-                        #         string2 = "SELECT * FROM pay_reqs where req_group_id = '" + str(j['req_group_id']) \
-                        #                   + "' and user_id = " + str(j['user_id'])
-                        #         cur.execute(string2)
-                        #         data2 = cur.fetchall()
-                        #         if data2:
-                        #             result["reqs"] = data2
-                        #         else:
-                        #             result["reqs"] = []
-                        #         all.append(result)
-                        #     print(all)
-                        #     return {"Success": True, "data": all}
-                        # else:
-                        #     return {"Success": False}
-
-                # #ищем доступных трейдеров
-                # #смотрим кто активен, у кого доступны реки
-                # #проверяем количество активных ордеров у трейдеров
-                # #
-                #
-                #
-                # # ищем reqs_group_id формируем список из доступных банков
-                # string = "SELECT * FROM pay_reqs_groups where user_id = " + str(data0.get('data'))
-                # cur.execute(string)
-                # data = cur.fetchall()
-                # if data:
-                #     print(len(data))
-                #     all = []
-                #
-                #     for i in data:
-                #         result = {}
-                #         result["id"] = i['id']
-                #         result["group"] = i['title']
-                #         # todo логику выбора карт здесь
-                #         string2 = "SELECT * FROM pay_reqs where req_group_id = '" + str(i['id']) \
-                #                   + "' and reqs_status_id = 1 and user_id = " + str(data0['data'])
-                #         cur.execute(string2)
-                #         data2 = cur.fetchall()
-                #         if data2:
-                #             result["reqs"] = data2
-                #         else:
-                #             result["reqs"] = []
-                #         all.append(result)
-                #     print(all)
-                #     return {"Success": True, "data": all}
-                # else:
-                #     return {"Success": False}
-
+async def get_trader_user_id(payload):
+    with cpy.connect(**config.config) as cnx:
+        with cnx.cursor(dictionary=True) as cur:
+            # ищем reqs_group_id формируем список из доступных банков
+            print(payload)
+            string = "SELECT user_id FROM pay_reqs where id = " + str(payload)
+            cur.execute(string)
+            data = cur.fetchone()
+            if data:
+                return data.get('user_id')
+            else:
+                return 0
 
 def get_pattern_from_bd(sender):
     with cpy.connect(**config.config) as cnx:
         with cnx.cursor(dictionary=True) as cur:
             # ищем reqs_group_id формируем список из доступных банков
-            string = "SELECT shablon FROM pay_parsers where sender = 'Tinkoff'"
+            string = "SELECT shablon FROM pay_parsers where sender = '" + str(sender) + "'"
             cur.execute(string)
             data = cur.fetchall()
             print("parsers", data)

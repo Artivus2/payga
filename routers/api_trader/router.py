@@ -13,7 +13,13 @@ import routers.admin.models as admin_models
 import config
 from starlette.requests import Request
 
-from routers.admin.controller import get_user_from_api_key, create_sms_data, get_info_for_invoice, get_pattern
+from routers.admin.controller import (
+    get_user_from_api_key,
+    create_sms_data,
+    get_info_for_invoice,
+    get_pattern,
+    get_trader_user_id
+)
 from routers.admin.utils import create_access_token, get_min_amount
 from routers.mains.controller import get_chart
 from routers.orders.controller import create_order_for_user, insert_docs
@@ -80,7 +86,6 @@ async def get_info(request: Request):
     :return:
     """
     api_key = request.headers.get('x-api-key')
-
     response = await get_info_for_invoice(api_key)
     if not response['Success']:
         raise HTTPException(
@@ -128,10 +133,13 @@ async def create_payment_for_trader(request: Request):
     reqs = await request.body()
     string = json.loads(reqs.decode("utf-8"))
     user_id = await get_user_from_api_key(api_key_from_merchant)
+    req_id = string.get('req_id', 0)
+    get_trader_by_chosen_req = await get_trader_user_id(req_id)
     result_from_payment = {
-        "req_id": string.get('req_id'), #user_id_trader из reqs
+        "req_id": req_id, #user_id_trader из reqs
         "sum_fiat": string.get('sum_fiat'),
-        'user_id': user_id['data'], #user_merch
+        'user_id_trader': get_trader_by_chosen_req, #user_trader
+        'user_id_merchant': user_id['data'],  # user_trader
         'pay_id': 1, # payin,
         'docs_id': string.get('docs_id', 0)
     }
@@ -155,7 +163,6 @@ async def create_payout_for_trader(request: Request):
     :return:
     """
     api_key_from_merchant = request.headers.get('x-api-key')
-    print(api_key_from_merchant)
     reqs = await request.body()
     string = json.loads(reqs.decode("utf-8"))
     user_id = await get_user_from_api_key(api_key_from_merchant)
@@ -193,8 +200,10 @@ async def sms_receiver(request: Request):
     user_id = await get_user_from_api_key(api_key_from_merchant)
     if user_id['Success']:
         result = await get_pattern(sender, text)
+
         if result['Success']:
-            result["user_id"] = user_id['data']
+            result["user_id_merchant"] = user_id['data']
+
             response = await create_sms_data(result)
             if not response['Success']:
                 raise HTTPException(

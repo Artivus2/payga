@@ -1,10 +1,12 @@
 import datetime
+import json
+from cgi import print_form
 
 import mysql.connector as cpy
 from fastapi import HTTPException
 
 import config
-from routers.actives.controller import crud_balance, crud_deposit
+from routers.actives.controller import crud_balance, crud_deposit, crud_transfer
 from routers.orders.utils import generate_uuid
 import requests
 import telebot
@@ -21,6 +23,7 @@ async def get_course():
     response = requests.get(api_url, headers=headers)
     if response.status_code != 200:
         raise HTTPException(status_code=response.status_code, detail=response.json())
+    print(response.json())
     return response.json()
 
 
@@ -28,54 +31,53 @@ async def create_order_for_user(payload):
     with (cpy.connect(**config.config) as cnx):
         with cnx.cursor(dictionary=True) as cur:
             uuids = await generate_uuid()
-            string0 = "SELECT * FROM pay_reqs WHERE pay_pay_id = '" + str(payload.get('pay_id')) \
-            + "' and id = " + str(payload.get('req_id'))
+            string0 = "SELECT * FROM pay_reqs WHERE id = " + str(payload.get('req_id'))
             cur.execute(string0)
             data = cur.fetchone()
             if data:
-                string_cash = "SELECT value from pay_pay_percent where pay_id = '"+str(payload.get('pay_id'))+"' " \
-                              "and pay_status_id = 1 and user_id = " + str(data['user_id']) #payin / payout
-                cur.execute(string_cash)
-                cashback = cur.fetchone()
-                print(cashback)
-                if not cashback:
-                    return {"Success": False, "data": "Не установлен процент cashback, обратитесь к администратору"}
+                user_id = data.get('user_id')
+                pay_id = data.get('pay_pay_id')
                 course = await get_course()
-                cashback_value = float(cashback.get('value',1))
-                print(cashback_value)
-                course2 = float(course['data']['amount']) * (1 + cashback_value / 100)
-                #course2 = float(course) * (1 + cashback / 100) #test
-                currency_id = 1 #todo из sms_data
-                docs_id = 0
-                summ = float(payload.get('sum_fiat')) / course2
-                if int(payload.get('pay_id')) == 1:
-                    interval_order = config.TIME_ORDER_PAYIN_EXPIRY
-                else:
-                    interval_order = config.TIME_ORDER_PAYOUT_EXPIRY
-                data_string = "INSERT INTO pay_orders (uuid, user_id, course, chart_id, sum_fiat, pay_id," \
-                              "value, cashback, date, date_expiry, req_id, pay_notify_order_types_id, docs_id) " \
-                              "VALUES ('" + str(uuids) + "','" + str(data['user_id']) + \
-                              "','" + str(round(course2,2)) + "','" + str(currency_id) + "','" + \
-                              str(payload.get('sum_fiat')) + "','"+str(payload.get('pay_id'))\
-                              + "','" + str(round(summ, 2)) + "','" \
-                              + str(cashback_value) + "',UTC_TIMESTAMP(), DATE_ADD(UTC_TIMESTAMP(), INTERVAL " + str(interval_order) + " minute ),'" \
-                              + str(data['id']) + "',0,'" + str(docs_id) + "')"
-                print(data_string)
-                cur.execute(data_string)
-                cnx.commit()
-                if cur.rowcount > 0:
-                    message = "Ордер " + str(uuids) + " \nпоставлен в очередь со статусом СОЗДАН, \n"\
-                              + str(datetime.datetime.now()) + "\nна сумму: " + str(payload.get('sum_fiat')) + " руб."
-                    botgreenavipay.send_message(config.pay_main_group, message, parse_mode='HTML')
-                    #прикрепили ли платежку?
-                    # string_find_doc = "SELECT id from pay_orders where uuid = '" + str(uuids) + "'"
-                    # cur.execute(string_find_doc)
+                if course:
+                    course_value = float(course['data']['amount'])
 
-                    return {"Success": True, "data": "Ордер поставлен в очередь. Ожидайте исполнения"}
+                    currency_id = 1
+                    stringcash = "SELECT * from pay_pay_percent where pay_id = 1 and user_id = " + str(user_id)
+                    cur.execute(stringcash)
+                    data = cur.fetchone()
+                    if data:
+                        cashback = float(data.get('value'))
+                        if int(payload.get('pay_id')) == 1:
+                            interval_order = config.TIME_ORDER_PAYIN_EXPIRY
+                        else:
+                            interval_order = config.TIME_ORDER_PAYOUT_EXPIRY
+                        course2 = float(course['data']['amount']) * (1 + cashback / 100)
+                        summ = float(payload.get('sum_fiat')) / course2
+                        docs_id = payload.get('docs_id')
+                        data_string = "INSERT INTO pay_orders (uuid, user_id, course, chart_id, sum_fiat, pay_id," \
+                                      "value, cashback, date, date_expiry, req_id, pay_notify_order_types_id, " \
+                                      "docs_id, user_pay) " \
+                                      "VALUES ('" + str(uuids) + "','" + str(user_id) + \
+                                      "','" + str(course2) + "','" + str(currency_id) + "','" + \
+                                      str(payload.get('sum_fiat')) + "','" + str(payload.get('pay_id'))\
+                                      + "','" + str(round(summ, 2)) + "','" \
+                                      + str(cashback) + "',UTC_TIMESTAMP(), DATE_ADD(UTC_TIMESTAMP(), INTERVAL " \
+                                      + str(interval_order) + " minute ),'" \
+                                      + str(data['id']) + "',0,'" + str(docs_id)\
+                                      + "', '"+str(payload.get('user_id_merchant')) + "')"
+                        print(data_string)
+                        cur.execute(data_string)
+                        cnx.commit()
+                        if cur.rowcount > 0:
+                            return {"Success": True, "data": "Ордер создан"}
+                        else:
+                            return {"Success": False, "data": "не удалось создать ордер"}
+                    else:
+                        return {"Success": False, "data": "PAYIN % не установлен"}
                 else:
-                    return {"Success": False, "data": "Ордер не может быть создан"}
+                    return {"Success": False, "data": "Курс не найден"}
             else:
-                return {"Success": False, "data": "Реквизиты не найдены или отключены"}
+                return {"Success": False, "data": "Ордер не может быть создан"}
 
 
 async def get_orders_by_any(payload):
@@ -94,15 +96,16 @@ async def get_orders_by_any(payload):
                          "DATE_FORMAT(pay_orders.date_expiry, "+str(config.date_format_all)+") as date_expiry, " \
                          "pay_reqs.id as pay_reqs_id, pay_reqs.uuid as pay_reqs_uuid, " \
                          "pay_reqs.phone, pay_reqs_types.title as pay_type, pay_notify_order_types_id, " \
-                         "pay_fav_banks.id as bank_id, pay_fav_banks.title as banks_name, pay_fav_banks.bik, " \
-                         "pay_notify_order_types.title as pay_notify_order_types_title, " \
-                         "pay_docs.url as pay_docs_url " \
+                         "pay_reqs.bank_id as bank_id, pay_admin_banks.title as banks_name, pay_admin_banks.bik, " \
+                         "pay_fav_banks.active, pay_notify_order_types.title as pay_notify_order_types_title, " \
+                         "pay_docs.url as pay_docs_url, user_pay " \
                          "from pay_orders " \
                          "LEFT JOIN chart ON pay_orders.chart_id = chart.id " \
                          "LEFT JOIN pay_pay ON pay_orders.pay_id = pay_pay.id " \
                          "LEFT JOIN pay_reqs ON pay_orders.req_id = pay_reqs.id " \
                          "LEFT JOIN pay_docs ON pay_orders.id = pay_docs.order_id " \
                          "LEFT JOIN pay_fav_banks ON pay_fav_banks.id = pay_reqs.bank_id " \
+                         "LEFT JOIN pay_admin_banks ON pay_fav_banks.bank_id = pay_admin_banks.id " \
                          "LEFT JOIN pay_reqs_types ON pay_reqs.reqs_types_id = pay_reqs_types.id " \
                          "LEFT JOIN pay_notify_order_types ON pay_orders.pay_notify_order_types_id = " \
                          "pay_notify_order_types.id " \
@@ -150,18 +153,19 @@ async def update_order_by_any(payload):
             check_pay = "select * from pay_orders where id = " + str(payload.get('id'))
             cur.execute(check_pay)
             data0 = cur.fetchone()
-            if data0.get('pay_id') == 1:
-                #проверяем PAYIN
-                print(data0.get('pay_id'))
-            elif data0.get('pay_id') == 2:
-                # проверяем PAYOUT
-                print(data0.get('pay_id'))
-            else:
-                return {"Success": False, "data": "Ордер не найден"}
+            # if data0.get('pay_id') == 1:
+            #     #проверяем PAYIN
+            #     print(data0.get('pay_id'))
+            # elif data0.get('pay_id') == 2:
+            #     # проверяем PAYOUT
+            #     print(data0.get('pay_id'))
+            # else:
+            #     return {"Success": False, "data": "Ордер не найден"}
 
             ###проверка по параметрам reqs
             ###всю логику блокировки баланса и депозита здесь###
             result = await block_baldep_by_status(data0, payload)
+            print(result)
             if result["Success"]:
                 data_update = "UPDATE pay_orders SET "
                 for k, v in dict(payload).items():
@@ -172,9 +176,12 @@ async def update_order_by_any(payload):
                 cur.execute(data_update)
                 cnx.commit()
                 if cur.rowcount > 0:
-                    return {"Success": True, "data": str(result['data']) + ". Статус успешно изменен"}
+                    return {"Success": True, "data": ". Статус успешно изменен"}
                 else:
-                    return {"Success": False, "data": str(result['data']) + ". Статус не может быть изменен"}
+                    return {"Success": False, "data": ". Статус не может быть изменен"}
+            else:
+                return {"Success": False, "data": ". Статус не может быть изменен"}
+
 
 
 async def delete_order_by_id(id):
@@ -315,132 +322,197 @@ async def block_baldep_by_status(payload, new_status):
     """
     with cpy.connect(**config.config) as cnx:
         with cnx.cursor(dictionary=True) as cur:
+            order_id = new_status.get('id')
             new_status_notify = new_status.get('pay_notify_order_types_id')
             old_status_notify = payload.get('pay_notify_order_types_id')
-            print(old_status_notify,new_status_notify)
+            print("notify",old_status_notify,new_status_notify)
+            print("payload",payload)
             check_bal = "SELECT * FROM pay_balance where baldep_status_id = 1 and baldep_types_id = 1 and " \
                         "user_id = " + str(payload.get('user_id'))
             cur.execute(check_bal)
             value_bal = cur.fetchone()
+            print("value_bal",value_bal)
             if value_bal:
+                print("Выполняем операцию с балансом")
+                order_value = round(payload.get('value'), 2)
+                balance_value = round(value_bal.get('value'), 2)
+                frozen_value = round(value_bal.get('frozen'), 2)
                 check_dep = "SELECT * FROM pay_deposit where baldep_status_id = 1 and baldep_types_id = 1 and " \
                             "user_id = " + str(payload.get('user_id'))
                 cur.execute(check_dep)
                 value_dep = cur.fetchone()
                 if value_dep:
-                    order_value = round(payload.get('value'),2)
-                    # froze_bal = froze_dep = 0
-
-                    get_bal = "select * from pay_balance where user_id = " + str(payload.get('user_id'))
-                    cur.execute(get_bal)
-                    bal_info = cur.fetchone()
-
+                    deposit_value = round(value_dep.get('value'), 2)
+                    deposit_frozen_value = round(value_dep.get('value'), 2)
                     payload_history = {
                         'user_id': payload.get('user_id'),
-                        'balance_id': bal_info.get('id'),
+                        'balance_id': value_bal.get('id'),
                         'chart_id': payload.get('chart_id'),
-                        'value': round(value_bal.get('value'), 2),
-                        'frozen': order_value,
+                        'value': balance_value,
+                        'frozen': float(round(order_value,2)),
                         'balance_history_status_id': payload.get('id'),
                         'new_status_notify': new_status_notify
                         }
-
-                    if order_value <= value_bal.get('value') + value_dep.get('value'):
-                        if new_status_notify == 1:
-                            print("принят ордер payin ждем оплаты, блокируем сумму с балдепозита", payload)
-                            if order_value <= value_bal.get('value'):
-                                froze_bal = order_value
-                                result = await crud_balance("frozen", {'user_id': payload.get('user_id'), 'value': froze_bal})
+                    if old_status_notify == 0 and new_status_notify == 1:
+                        print("блокируем с баланса")
+                        if order_value <= value_bal.get('value'):
+                            froze_bal = order_value
+                            result = await crud_balance("frozen",
+                                                        {'user_id': payload.get('user_id'), 'value': froze_bal})
+                            if result["Success"]:
+                                result = await insert_balance_history(payload_history)
                                 if result["Success"]:
-                                    result = await insert_balance_history(payload_history)
-                                    if result["Success"]:
-                                        return {"Success": True, "data": result['data'] + ". Сумма заблокирована"}
-                                    else:
-                                        return {"Success": False, "data": result['data'] + ". Сумма не заблокирована"}
+
+                                    return {"Success": True, "data": "Выполняем операцию"}
+                                else:
+                                    return {"Success": True, "data": "История не записалась"}
                             else:
-                                froze_bal = value_bal.get('value')
-                                result = await crud_balance("frozen", {'user_id': payload.get('user_id'), 'value': froze_bal})
-                                if result["Success"]:
-                                    print("снимаем с депозита")
-                                    if value_dep.get('value') >= order_value - value_bal.get('value'):
-                                        froze_dep = order_value - value_bal.get('value')
-                                        result = await crud_deposit("frozen", {'user_id': payload.get('user_id'), 'value': froze_dep})
-                                        if result["Success"]:
-                                            result = await insert_balance_history(payload_history)
-                                            if result["Success"]:
-                                                return {"Success": True, "data": result['data'] + ". Сумма "+str(order_value)+" USDT заблокирована"}
-                                            else:
-                                                return {"Success": False, "data": result['data'] + ". Сумма не заблокирована"}
-                                        else:
-                                            return {"Success": False, "data": result['data'] + ". История не обновилась"}
-                                    else:
-                                        return {"Success": False, "data": result['data'] + "Недостаточно баланса на депозите"}
-                                else:
-                                    return {"Success": False, "data": result['data'] + ". Сумма не заблокирована"}
-                        elif new_status_notify == 2:
-                            unfroze_sum = order_value
-                            print(value_bal)
-                            print(order_value, value_bal.get('frozen'))
-                            if value_bal.get('frozen') >= unfroze_sum:
-                                print("ордер отменен, разблокируем баланс по ордеру либо с баланса")
-                                result = await crud_balance("unfrozen",
-                                                            {'user_id': payload.get('user_id'), 'value': unfroze_sum})
-                                if result["Success"]:
-                                    result = await insert_balance_history(payload_history)
-                                    if result["Success"]:
-                                        # отправляем внутрянку USDT МЕРЧАНТУ
-                                        return {"Success": True, "data": result['data'] + ". Сумма " + str(
-                                            order_value) + " USDT разблокирована. Ордер отменен."}
-                                    else:
-                                        return {"Success": False, "data": result['data'] + ". Сумма не заблокирована"}
-                                else:
-                                    return {"Success": False, "data": result['data'] + ". Не удалось разморозить баланс. Обратитесь к администратору"}
-                            else:
-                                print("ордер отменен, разблокируем баланс по ордеру либо с баланса, либо частично баланс + депозит")
-                                unfroze_sum_bal = value_bal.get('unfrozen')
-                                unfroze_sum_dep = order_value - value_bal.get('frozen')
-                                result = await crud_balance("unfrozen",
-                                                            {'user_id': payload.get('user_id'), 'value': unfroze_sum_bal})
-                                if result["Success"]:
-                                    result = await crud_deposit("unfrozen",
-                                                                {'user_id': payload.get('user_id'),
-                                                                 'value': unfroze_sum_dep})
-                                    if result["Success"]:
-                                        result = await insert_balance_history(payload_history)
-                                        if result["Success"]:
-                                            return {"Success": True, "data": result['data'] + ". Сумма " + str(
-                                                order_value) + " USDT разблокирована"}
-                                        else:
-                                            return {"Success": False,
-                                                    "data": result['data'] + ". Сумма не разблокирована"}
-                                    else:
-                                        return {"Success": False, "data": result[
-                                                                              'data'] + ". Не удалось разморозить депозит. Обратитесь к администратору"}
-                                else:
-                                    return {"Success": False, "data": result[
-                                                                          'data'] + ". Не удалось разморозить баланс. Обратитесь к администратору"}
-                        elif new_status_notify == 3:
-                            print("ордер успешный PAYIN, отправили USDT на баланс мерчанту")
-                            # то есть 2 + внутренний перевод
-                        elif new_status_notify == 4:
-                            print("ордер оплачен, время еще не вышло но не сработала автоматика")
-
-
-
-
-
-
-
+                                return {"Success": True, "data": "Баланс записать не удалось"}
                         else:
-                            return {"Success": True, "data": "тест. статус изменен"}
+                            print("order_value > balance")
+                    elif old_status_notify == 1 and new_status_notify == 3:
+                        print("в успех")
                     else:
-                        return {"Success": False, "data": "Не достаточно средств. Обратитесь к администратору"}
+                        return {"Success": False, "data": "статус не найден"}
                 else:
-                    return {"Success": False,
-                            "data": "Не возможно выполнить операции с депозитом"}
+                    return {"Success": False, "data": "Не возможно выполнить операции с балансом"}
             else:
-                return {"Success": False,
-                        "data": "Не возможно выполнить операции с балансом"}
+                return {"Success": False, "data": "Не возможно выполнить операции с балансом"}
+            # if value_bal:
+            #
+            #     check_dep = "SELECT * FROM pay_deposit where baldep_status_id = 1 and baldep_types_id = 1 and " \
+            #                 "user_id = " + str(payload.get('user_id'))
+            #     cur.execute(check_dep)
+            #     value_dep = cur.fetchone()
+            #     print("value_dep",value_dep)
+            #     if value_dep:
+            #         order_value = round(payload.get('value'),2)
+            #         # froze_bal = froze_dep = 0
+            #
+            #         get_bal = "select * from pay_balance where user_id = " + str(payload.get('user_id'))
+            #         cur.execute(get_bal)
+            #         bal_info = value_bal
+            #         if bal_info:
+            #             payload_history = {
+            #                 'user_id': payload.get('user_id'),
+            #                 'balance_id': bal_info.get('id'),
+            #                 'chart_id': payload.get('chart_id'),
+            #                 'value': round(value_bal.get('value'), 2),
+            #                 'frozen': float(round(order_value,2)),
+            #                 'balance_history_status_id': payload.get('id'),
+            #                 'new_status_notify': new_status_notify
+            #                 }
+            #             print("pay_history",payload_history)
+            #             if order_value <= value_bal.get('value') + float(value_dep.get('value')):
+            #                 if new_status_notify == 1:
+            #                     #print("принят ордер payin ждем оплаты, блокируем сумму с балдепозита", payload)
+            #                     if order_value <= value_bal.get('value'):
+            #                         froze_bal = order_value
+            #                         print("блкоируем",froze_bal, payload)
+            #                         result = await crud_balance("frozen", {'user_id': payload.get('user_id'), 'value': froze_bal})
+            #                         if result["Success"]:
+            #                             result = await insert_balance_history(payload_history)
+            #
+            #                             if result["Success"]:
+            #                                 print("result_hisotry", result)
+            #                                 return {"Success": True, "data": str(result['data']) + ". Сумма заблокирована"}
+            #                             else:
+            #                                 return {"Success": False,
+            #                                         "data": str(result['data']) + ". Сумма не заблокирована"}
+            #                         else:
+            #                             return {"Success": False, "data": str(result['data']) + ". История не записана"}
+            #                     else:
+            #                         froze_bal = value_bal.get('value')
+            #                         result = await crud_balance("frozen", {'user_id': payload.get('user_id'), 'value': froze_bal})
+            #                         if result["Success"]:
+            #                             print("снимаем с депозита")
+            #                             if value_dep.get('value') >= order_value - value_bal.get('value'):
+            #                                 froze_dep = order_value - value_bal.get('value')
+            #                                 result = await crud_deposit("frozen", {'user_id': payload.get('user_id'), 'value': froze_dep})
+            #                                 if result["Success"]:
+            #                                     result = await insert_balance_history(payload_history)
+            #                                     if result["Success"]:
+            #                                         return {"Success": True, "data": result['data'] + ". Сумма "+str(order_value)+" USDT заблокирована"}
+            #                                     else:
+            #                                         return {"Success": False, "data": result['data'] + ". Сумма не заблокирована"}
+            #                                 else:
+            #                                     return {"Success": False, "data": result['data'] + ". История не обновилась"}
+            #                             else:
+            #                                 return {"Success": False, "data": result['data'] + "Недостаточно баланса на депозите"}
+            #                         else:
+            #                             return {"Success": False, "data": result['data'] + ". Сумма не заблокирована"}
+            #                 elif new_status_notify == 2:
+            #                     unfroze_sum = order_value
+            #                     print(value_bal)
+            #                     print(order_value, value_bal.get('frozen'))
+            #                     if value_bal.get('frozen') >= unfroze_sum:
+            #                         print("ордер отменен, разблокируем баланс по ордеру либо с баланса")
+            #                         result = await crud_balance("unfrozen",
+            #                                                     {'user_id': payload.get('user_id'), 'value': unfroze_sum})
+            #                         if result["Success"]:
+            #                             result = await insert_balance_history(payload_history)
+            #                             if result["Success"]:
+            #                                 # отправляем внутрянку USDT МЕРЧАНТУ
+            #                                 return {"Success": True, "data": result['data'] + ". Сумма " + str(
+            #                                     order_value) + " USDT разблокирована. Ордер отменен."}
+            #                             else:
+            #                                 return {"Success": False, "data": result['data'] + ". Сумма не заблокирована"}
+            #                         else:
+            #                             return {"Success": False, "data": result['data'] + ". Не удалось разморозить баланс. Обратитесь к администратору"}
+            #                     else:
+            #                         print("ордер отменен, разблокируем баланс по ордеру либо с баланса, либо частично баланс + депозит")
+            #                         unfroze_sum_bal = value_bal.get('unfrozen')
+            #                         unfroze_sum_dep = order_value - value_bal.get('frozen')
+            #                         result = await crud_balance("unfrozen",
+            #                                                     {'user_id': payload.get('user_id'), 'value': unfroze_sum_bal})
+            #                         if result["Success"]:
+            #                             result = await crud_deposit("unfrozen",
+            #                                                         {'user_id': payload.get('user_id'),
+            #                                                          'value': unfroze_sum_dep})
+            #                             if result["Success"]:
+            #                                 result = await insert_balance_history(payload_history)
+            #                                 if result["Success"]:
+            #                                     return {"Success": True, "data": result['data'] + ". Сумма " + str(
+            #                                         order_value) + " USDT разблокирована"}
+            #                                 else:
+            #                                     return {"Success": False,
+            #                                             "data": result['data'] + ". Сумма не разблокирована"}
+            #                             else:
+            #                                 return {"Success": False, "data": result[
+            #                                                                       'data'] + ". Не удалось разморозить депозит. Обратитесь к администратору"}
+            #                         else:
+            #                             return {"Success": False, "data": result[
+            #                                                                   'data'] + ". Не удалось разморозить баланс. Обратитесь к администратору"}
+            #                 elif new_status_notify == 3: #если автоматом оплачено
+            #                     string = "SELECT * from pay_orders where id = '" + str(order_id) \
+            #                              + "' and pay_id = 1 and pay_notify_order_types_id = 1"
+            #                     cur.execute(string)
+            #                     data = cur.fetchone()
+            #                     print(data)
+            #                     if data:
+            #                         transfer = {
+            #                             'user_id_in': data.get('user_pay'),
+            #                             'user_id_out': data.get('user_id'),
+            #                             'value': data.get('value')
+            #                         }
+            #                         print("transfer", transfer)
+            #                         send = await crud_transfer("payin", transfer)
+            #                         if send["Success"]:
+            #                             return {"Success": True, "data": "Средства отправлены мерчанту"}
+            #                         else:
+            #                             return {"Success": True, "data": "Средства не отправлены"}
+            #                 else:
+            #                     return {"Success": True, "data": "тест. статус изменен"}
+            #             else:
+            #                 return {"Success": False, "data": "Не достаточно средств на балансе. Обратитесь к администратору"}
+            #         else:
+            #             return {"Success": False, "data": "Не достаточно средств. Обратитесь к администратору"}
+            #     else:
+            #         return {"Success": False,
+            #                 "data": "Не возможно выполнить операции с депозитом"}
+            # else:
+            #     return {"Success": False,
+            #             "data": "Не возможно выполнить операции с балансом"}
 
 
 async def insert_balance_history(payload):
@@ -451,10 +523,10 @@ async def insert_balance_history(payload):
                             "description, order_id) VALUES ('" + str(payload.get('user_id')) \
                             + "','" + str(payload.get('balance_id')) + "','"+str(payload.get('chart_id')) \
                             + "',UTC_TIMESTAMP(), '" \
-                            + str(round(payload.get('value'), 2)) + "','" + str(payload.get('frozen')) \
+                            + str(round(payload.get('value'), 2)) + "','" + str(round(payload.get('frozen'), 2) ) \
                             + "','" + str(payload.get('new_status_notify')) + "','блокировка','" \
                             + str(payload.get('balance_history_status_id')) + "')"
-            print(insert_string)
+
             cur.execute(insert_string)
 
             cnx.commit()

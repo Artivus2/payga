@@ -134,11 +134,31 @@
     //   .then(function (response) {console.log(response);})
     //   .catch(function (error) {console.log(error);});
 
+    // const headers = {'Content-Type': 'application/json','x-api-key': 'admin'}
+    // api.post('/api/v1/mains/set-admin-banks',{
+    //   title: 'ВТБ',
+    //   bik: '1010101010',
+    //   active: 1
+    // },headers)
+    //   .then(function (response) {console.log(response);})
+    //   .catch(function (error) {console.log(error);});
   // ========================= банки мерчанта============================
   // const headers = {'Content-Type': 'application/json','x-api-key': 'merchant'}
   //   axios.get('http://localhost:8000/api/v1/mains/get-fav-banks/628', headers)
   //     .then(function (response) {console.log(response);})
   //     .catch(function (error) {console.log(error);});
+
+  // ========================= банки admin============================
+      // const headers = {'Content-Type': 'application/json','x-api-key': 'SNr0i0iNIFTncQYcKndcHevdpa6iYK1eiUOKb5r1edJM5'}
+      // api.post('/api/v1/mains/set-admin-banks', {
+      //   id: 1,
+      //   active: 0,
+      //   title: 'any',
+      //   bik:'any'
+
+      // },{headers})
+      // .then(function (response) {console.log(response);})
+      // .catch(function (error) {console.log(error);});
 
     // =========================создать банки на прием для всех============================
     // const headers = {'Content-Type': 'application/json','x-api-key': 'admin'}
@@ -270,3 +290,16 @@ const headers = {'Content-Type': 'application/json','x-api-key': 'SNr0i0iNIFTncQ
 //       }, headers)
 //       .then(function (response) {console.log(response);})
 //       .catch(function (error) {console.log(error);});
+
+
+
+      //=====================================создается ордер payin==================================
+// const headers = {'Content-Type': 'application/json','x-api-key': 'SNr0i0iNIFTncQYcKndcHevdpa6iYK1eiUOKb5r1edJM5'}
+//     api.post('/api/v1/trader/create-payment', {
+//       sum_fiat: 1000,
+//       req_id: 2
+//     }
+
+//       , {headers})
+//       .then(function (response) {console.log(response);})
+//       .catch(function (error) {console.log(error);}); 
