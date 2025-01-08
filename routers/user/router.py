@@ -8,7 +8,7 @@ import requests
 import telebot
 from fastapi import APIRouter, HTTPException, Cookie, Request
 from routers.admin.controller import insert_new_user_banned
-from routers.admin.utils import get_hash, verify, create_access_token
+from routers.admin.utils import get_hash, verify, create_access_token, send_mail
 from routers.user.controller import (
     insert_generated_api_key,
     get_user_api_key,
@@ -25,7 +25,7 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 botgreenavipay = telebot.TeleBot(config.telegram_api)
-router = APIRouter(prefix='/api/v1/user', tags=['Пользователи'])
+router = APIRouter(prefix='/api/v1/user', include_in_schema=False, tags=['Пользователи'])
 
 
 # @router.get("/jwt-token/{token}")
@@ -191,11 +191,16 @@ async def register_request(request: user_models.User):
         'affiliate_invitation_code': request.affiliate_invitation_code,
         'password': hashed_password
     }
-    # pattern = '/^([A-Za-z0-9_\-\.])+\@([A-Za-z0-9_\-\.])+\.([A-Za-z]{2,4})$/' #todo
+
+    pattern = 'gmail.com'  # todo
+    if request.email.find(pattern):
+        return {"status": False, "message": "Для избежания проблем просим почту домена gmail.com не использовать"}
+
     if not payload['login'] or not payload['email'] or not payload['telegram'] or not payload['password']:
         # or len(re.findall(pattern, payload['email'])) > 0:
         return {"status": False, "message": "Указаны не все обязательные параметры при отправке заявки на регистрацию!"}
     response = await insert_new_user_banned(**payload)
+
     if not response['Success']:
         raise HTTPException(
             status_code=400,
@@ -227,7 +232,7 @@ async def login_for_access_token(request: user_models.Login):
     if not itog['Success']:
         raise HTTPException(status_code=404,
                             detail=f"Не удалось получить токен")
-
+    await send_mail("Пользователь "+str(user['data']['login'])+ " авторизирован", "Успешная авторизация", user['data']['email'])
     return {
         "access_token": access_token,
         "token_type": "bearer",

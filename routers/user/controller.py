@@ -17,7 +17,7 @@ async def insert_generated_api_key(user_id):
             cur.execute(string0)
             data0 = cur.fetchall()
             if not data0:
-                api_key = await create_random_key(45)
+                api_key = await create_random_key(20)
                 string = "SELECT * from user where app_id = 3 and banned = 0 and id = " + str(user_id)
                 cur.execute(string)
                 data1 = cur.fetchone()

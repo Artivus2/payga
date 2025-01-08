@@ -130,6 +130,13 @@ class AutomationTurnOff(BaseModel):
     title: str
 
 
+class PayoutReqs(BaseModel):
+    __table_name__ = "pay_orders_payout_reqs"
+    id: int | None = None
+    order_id: int | None = None
+    value: str | None = None
+    status: int | None = None
+
 class Reqs(BaseModel):
     __table_name__ = "pay_reqs"
     """
@@ -275,5 +282,5 @@ class RefsLevel(BaseModel):
 
 class Parsers(BaseModel):
     id: int | None = None
-    shablons: str | None = None
+    shablon: str | None = None
     sender: str | None = None

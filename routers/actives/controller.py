@@ -1,6 +1,8 @@
 import datetime
 
 import mysql.connector as cpy
+from sqlalchemy.sql.functions import current_time
+
 import config
 
 
@@ -249,6 +251,7 @@ async def get_balance_history_historyes(user_id=0):
                       "LEFT JOIN chart ON pay_balance_history.chart_id = chart.id "
             if user_id != 0:
                 string += "where user_id = " + str(user_id)
+            string += " order by id desc"
             cur.execute(string)
             data = cur.fetchall()
             if data:
@@ -497,7 +500,7 @@ async def crud_deposit(crud, payload):  # todo -> admin
                     if payload.value is None:
                         payload.value = 0
                     if current_withdrawals == 0:
-                        if current_value >= current_withdrawals:
+                        if current_value >= payload.value:
                             string = "UPDATE pay_deposit set value = '" + str(round(current_value - payload.value, 2)) + \
                                      "', withdrawals = '" + str(round(current_withdrawals + payload.value, 2)) + \
                                      "' where user_id = " + str(payload.user_id)
@@ -519,7 +522,7 @@ async def crud_deposit(crud, payload):  # todo -> admin
 async def dep_withdrawal_check(payload):
     with cpy.connect(**config.config) as cnx:
         with cnx.cursor(dictionary=True) as cur:
-            history_check = "select * from pay_deposit_history where status_id in (0,6) " \
+            history_check = "select * from pay_deposit_history where status_id in (3,6) " \
                             "and user_id = " + str(payload.user_id)
             cur.execute(history_check)
             data0 = cur.fetchall()
@@ -535,8 +538,8 @@ async def dep_withdrawal_check(payload):
                     result = await crud_deposit("withdrawals", payload)
                     if result["Success"]:
                         insert_string = "INSERT into pay_deposit_history (user_id, date, " \
-                                        "balordep, value, status_id) VALUES ('" + str(payload.user_id) \
-                                        + "', UTC_TIMESTAMP(), 1, '" + str(payload.value) + "',0)"
+                                        "balordep, value, status_id, address_id) VALUES ('" + str(payload.user_id) \
+                                        + "', UTC_TIMESTAMP(), 1, '" + str(payload.value) + "', 3, 0)"
                         cur.execute(insert_string)
                         cnx.commit()
                         if cur.rowcount > 0:
@@ -556,35 +559,41 @@ async def dep_withdrawal_check(payload):
 async def bal_withdrawal_check(payload):
     with cpy.connect(**config.config) as cnx:
         with cnx.cursor(dictionary=True) as cur:
-            history_check = "select * from pay_deposit_history where status_id in (0,6) " \
-                            "and user_id = " + str(payload.user_id)
-            cur.execute(history_check)
-            data0 = cur.fetchall()
-            if not data0:
-                check_string = "SELECT value, withdrawals FROM pay_balance where baldep_status_id = 1" \
-                               " and baldep_types_id = 1 and " \
-                               "value > 0 and withdrawals = 0 and user_id = " + str(payload.user_id)
-                cur.execute(check_string)
-                data = cur.fetchone()
-                if data:
-                    #переводим с value на withdrawals
-                    result = await crud_balance("withdrawals", payload)
-                    if result["Success"]:
-                        insert_string = "INSERT into pay_deposit_history (user_id, date, " \
-                                        "balordep, value, status_id) VALUES ('" + str(payload.user_id) + "', " \
-                                        + "UTC_TIMESTAMP(), 2, '" + str(payload.value) + "',0)"
-                        cur.execute(insert_string)
-                        cnx.commit()
-                        if cur.rowcount > 0:
-                            return {"Success": True, "data": result['data'] + ". Ожидайте подтверждения администратором."}
+            wallet_check = "SELECT * FROM wallet_address where user_id = " + str(payload.user_id)
+            cur.execute(wallet_check)
+            data_wallet = cur.fetchone()
+            if data_wallet:
+                history_check = "select * from pay_deposit_history where status_id in (3,6) " \
+                                "and user_id = " + str(payload.user_id)
+                cur.execute(history_check)
+                data0 = cur.fetchall()
+                if not data0:
+                    check_string = "SELECT value, withdrawals FROM pay_balance where baldep_status_id = 1" \
+                                   " and baldep_types_id = 1 and " \
+                                   "value > 0 and withdrawals = 0 and user_id = " + str(payload.user_id)
+                    cur.execute(check_string)
+                    data = cur.fetchone()
+                    if data:
+                        #переводим с value на withdrawals
+                        result = await crud_balance("withdrawals", payload)
+                        if result["Success"]:
+                            insert_string = "INSERT into pay_deposit_history (user_id, date, " \
+                                            "balordep, value, status_id, address_id) VALUES ('" + str(payload.user_id) + "', " \
+                                            + "UTC_TIMESTAMP(), 2, '" + str(payload.value) + "',3, '"+str(data_wallet.get('id'))+"')"
+                            cur.execute(insert_string)
+                            cnx.commit()
+                            if cur.rowcount > 0:
+                                return {"Success": True, "data": result['data'] + ". Ожидайте подтверждения администратором."}
+                            else:
+                                return {"Success": False, "data": result['data'] + ". Не выполнено."}
                         else:
-                            return {"Success": False, "data": result['data'] + ". Не выполнено."}
+                            return {"Success": False, "data": result['data'] + ". Операция не выполнена."}
                     else:
-                        return {"Success": False, "data": result['data'] + ". Операция не выполнена."}
+                        return {"Success": False, "data": "Есть не обработаные остатки на счету для вывода. Обратитесь к администратору"}
                 else:
-                    return {"Success": False, "data": "Есть не обработаные остатки на счету для вывода. Обратитесь к администратору"}
+                    return {"Success": False, "data": "Есть не обработаные заявки на вывод. Обратитесь к администратору"}
             else:
-                return {"Success": False, "data": "Есть не обработаные заявки на вывод. Обратитесь к администратору"}
+                return {"Success": False, "data": "Кошелек не найден. Обратитесь к администратору"}
 
 
 
@@ -600,7 +609,7 @@ async def bal_refunds_check(payload):
                 cur.execute(dep_check)
                 data_dep = cur.fetchone()
                 if data_dep:
-                    history_check = "select * from pay_deposit_history where status_id in (0,6) " \
+                    history_check = "select * from pay_deposit_history where status_id in (3,6) " \
                                     "and user_id = " + str(payload.user_id)
                     cur.execute(history_check)
                     data0 = cur.fetchall()
@@ -752,26 +761,21 @@ async def crud_wallet(crud, payload):  # todo -> admin
     """
     with cpy.connect(**config.config) as cnx:
         with cnx.cursor(dictionary=True) as cur:
-            if crud == 'create':
-                data_string = "INSERT INTO pay_wallet (user_id, network, address, wallet_status_id, date) " \
-                              "VALUES ('" + str(payload.user_id) + "','" + str(payload.network) + \
-                              "','" + str(payload.address) + "','1', NOW())"
-                try:
-                    cur.execute(data_string)
-                    cnx.commit()
-                    return {"Success": True, "data": "Кошелек пользователя создан"}
-                except:
-                    return {"Success": False, "data": "Кошелек не может быть создан"}
+            # if crud == 'create':
+            #     data_string = "INSERT INTO pay_wallet (user_id, network, address, wallet_status_id, date) " \
+            #                   "VALUES ('" + str(payload.user_id) + "','" + str(payload.network) + \
+            #                   "','" + str(payload.address) + "','1', NOW())"
+            #     try:
+            #         cur.execute(data_string)
+            #         cnx.commit()
+            #         return {"Success": True, "data": "Кошелек пользователя создан"}
+            #     except:
+            #         return {"Success": False, "data": "Кошелек не может быть создан"}
             if crud == 'get':
-                if int(payload.user_id) == 0:
-                    string = "select user_id, network, address, wallet_status_id, pay_wallet_status.title " \
-                             "from pay_wallet " \
-                             "LEFT JOIN pay_wallet_status ON pay_wallet.wallet_status_id = pay_wallet_status.id "
+                if int(payload) == 0:
+                    string = "select user_id, value from wallet_address"
                 else:
-                    string = "select user_id, network, address, wallet_status_id, pay_wallet_status.title " \
-                             "from pay_wallet " \
-                             "LEFT JOIN pay_wallet_status ON pay_wallet.wallet_status_id = pay_wallet_status.id " \
-                             "where user_id = " + str(payload.user_id)
+                    string = "select value from wallet_address where user_id = " + str(payload)
                 cur.execute(string)
                 data = cur.fetchall()
                 if data:
@@ -780,33 +784,31 @@ async def crud_wallet(crud, payload):  # todo -> admin
                     return {"Success": False, "data": "Нет данных"}
 
             if crud == 'set':
-                string = "UPDATE pay_wallet set wallet_status_id = '" + str(payload.wallet_status_id) + \
+                string = "UPDATE wallet_address set value = '" + str(payload.value) + \
                          "' where user_id = " + str(payload.user_id)
                 cur.execute(string)
                 cnx.commit()
                 if cur.rowcount > 0:
-                    cnx.close()
-                    return {"Success": True, "data": "Успешно изменен"}
+                    return {"Success": True, "data": "Адрес успешно изменен"}
                 else:
-                    cnx.close()
-                    return {"Success": False, "data": "Не удалось изменить статус кошелька"}
-            if crud == 'remove':
-                string = "DELETE from pay_wallet  " \
-                         "where user_id = " + str(payload.user_id)
-                cur.execute(string)
-                try:
-                    cnx.commit()
-                    return {"Success": True, "data": "Кошелек Успешно удален"}
-                except:
-                    return {"Success": False, "data": "Не удалось удалить кошелек"}
-            if crud == 'status':
-                string = "select * from pay_wallet_status "
-                cur.execute(string)
-                data = cur.fetchall()
-                if data:
-                    return {"Success": True, "data": data}
-                else:
-                    return {"Success": False, "data": "Нет данных"}
+                    return {"Success": False, "data": "Не удалось изменить адрес кошелька"}
+            # if crud == 'remove':
+            #     string = "DELETE from pay_wallet  " \
+            #              "where user_id = " + str(payload.user_id)
+            #     cur.execute(string)
+            #     try:
+            #         cnx.commit()
+            #         return {"Success": True, "data": "Кошелек Успешно удален"}
+            #     except:
+            #         return {"Success": False, "data": "Не удалось удалить кошелек"}
+            # if crud == 'status':
+            #     string = "select * from pay_wallet_status "
+            #     cur.execute(string)
+            #     data = cur.fetchall()
+            #     if data:
+            #         return {"Success": True, "data": data}
+            #     else:
+            #         return {"Success": False, "data": "Нет данных"}
 
 
 async def crud_transfer(crud, payload):
@@ -879,13 +881,57 @@ async def crud_transfer(crud, payload):
                     return {"Success": True, "data": data}
                 else:
                     return {"Success": False, "data": "Нет данных"}
+            if crud == "nopayin": #status 2
+                frozen = payload.get('value')
+                user_out = payload.get('user_id_out') #trader
+                if user_out > 0:
+                    string1 = "SELECT value, frozen FROM pay_balance where user_id = " + str(user_out)
+                    cur.execute(string1)
+                    data1 = cur.fetchone()
+                    current_value = float(data1.get('value'))
+                    current_frozen = float(data1.get('frozen'))
+                    if current_frozen >= frozen: #разблокируем только баланс если не хватает то с депозита
+                        string_bal = "UPDATE pay_balance SET value = " + str(current_value + frozen) \
+                                  + ", frozen = "+str(current_frozen - frozen)+" where user_id = " + str(user_out)
+                        cur.execute(string_bal)
+                        cnx.commit()
+                        if cur.rowcount > 0:
+                            return {"Success": True, "data": "Средтва разблокированы админисраттором"}
+                        else:
+                            return {"Success": False, "data": "Не удалось завершить разблокировку средств"}
+                    else:
+                        string_bal = "UPDATE pay_balance SET value = " + str(current_value + current_frozen) \
+                                  + ", frozen = "+str(current_frozen-current_frozen)+" where user_id = " + str(user_out)
+                        cur.execute(string_bal)
+                        cnx.commit()
+                        if cur.rowcount > 0:
+                            string_dep = "SELECT value, frozen FROM pay_deposit where user_id = " + str(user_out)
+                            cur.execute(string_dep)
+                            data2 = cur.fetchone()
+                            if data2:
+                                current_dep_value = float(data2.get('value'))
+                                current_dep_frozen = float(data2.get('frozen'))
+                                dep_value = frozen - current_frozen
+                                string_bal = "UPDATE pay_deposit SET value = " + str(current_dep_value + dep_value) \
+                                             + ", frozen = "+str(current_dep_frozen - dep_value) + " where user_id = " + str(user_out)
+                                cur.execute(string_bal)
+                                cnx.commit()
+                                if cur.rowcount > 0:
+                                    return {"Success": True, "data": "Средтва разблокированы админисраттором"}
+                                else:
+                                    return {"Success": False, "data": "Не удалось завершить разблокировку средств"}
+                            else:
+                                return {"Success": False, "data": "Не удалось получить данные депозита"}
+                        else:
+                            return {"Success": False, "data": "Не удалось определить баланс"}
+                else:
+                    return {"Success": False, "data": "Пользователь не найден"}
+
             if crud == "payin":
                 frozen = payload.get('value')
                 user_out = payload.get('user_id_out')
                 user_in = payload.get('user_id_in')
-                print("do emits", user_out, user_in, frozen)
                 if user_in > 0 and user_out > 0:
-                    print("emits", user_out, user_in, frozen)
                     string1 = "SELECT value FROM pay_balance where user_id = " + str(user_in)
                     cur.execute(string1)
                     data1 = cur.fetchone()
@@ -908,7 +954,7 @@ async def crud_transfer(crud, payload):
                             if cur.rowcount > 0:
                                 data_string = "INSERT INTO pay_transfer_history (user_id_in, user_id_out, value, status, date) " \
                                               "VALUES ('" + str(user_in) + "','" + str(user_out) + \
-                                              "','" + str(payload.value) + "','1', NOW())"
+                                              "','" + str(frozen) + "','1', UTC_TIMESTAMP())"
                                 cur.execute(data_string)
                                 cnx.commit()
                                 if cur.rowcount > 0:
@@ -923,3 +969,72 @@ async def crud_transfer(crud, payload):
                         return {"Success": False, "data": "Недостаточно баланса для совершения операции"}
                 else:
                     return {"Success": False, "data": "Выбранные пользователи не найдены"}
+            if crud == "payout":
+                frozen = payload.get('value')
+                user_out = payload.get('user_id_out')
+                user_in = payload.get('user_id_in')
+                if user_in > 0 and user_out > 0:
+                    string1 = "SELECT value FROM pay_balance where user_id = " + str(user_in)
+                    cur.execute(string1)
+                    data1 = cur.fetchone()
+                    value_in = float(data1.get('value'))
+                    string2 = "SELECT frozen FROM pay_balance where user_id = " + str(user_out)
+                    cur.execute(string2)
+                    data2 = cur.fetchone()
+                    value_from = float(data2.get('frozen', 0))
+                    if float(value_from) >= frozen:
+                        # todo transaction multi
+                        string3 = "UPDATE pay_balance SET value = " + str(value_in + frozen) \
+                                  + " where user_id = " + str(user_in)
+                        cur.execute(string3)
+                        cnx.commit()
+                        if cur.rowcount > 0:
+                            string4 = "UPDATE pay_balance SET frozen = " + str(value_from - frozen) \
+                                      + " where user_id = " + str(user_out)
+                            cur.execute(string4)
+                            cnx.commit()
+                            if cur.rowcount > 0:
+                                data_string = "INSERT INTO pay_transfer_history (user_id_in, user_id_out, value, status, date) " \
+                                              "VALUES ('" + str(user_in) + "','" + str(user_out) + \
+                                              "','" + str(frozen) + "','1', UTC_TIMESTAMP())"
+                                cur.execute(data_string)
+                                cnx.commit()
+                                if cur.rowcount > 0:
+                                    return {"Success": True, "data": "Перевод успешно проведен"}
+                                else:
+                                    return {"Success": False, "data": "Не удалось совершить транзакцию перевода"}
+                            else:
+                                return {"Success": False, "data": "Не удалось списать с баланса gjkexftnzk"}
+                        else:
+                            return {"Success": False, "data": "Не удалось списать с баланса отправителя"}
+                    else:
+                        return {"Success": False, "data": "Недостаточно баланса для совершения операции"}
+                else:
+                    return {"Success": False, "data": "Выбранные пользователи не найдены"}
+
+
+            if crud == "nopayout": #отказаться, разблокировать балик мерчу
+                pass
+
+async def get_deposit_history(payload):
+    with cpy.connect(**config.config) as cnx:
+        with cnx.cursor(dictionary=True) as cur: #str(config.date_format_all) + ") as date
+            dop_string = "where pay_deposit_history.user_id = " + str(payload) + " order by pay_deposit_history.id desc"
+            if payload == 0:
+                dop_string = "where pay_deposit_history.user_id > 0 order by pay_deposit_history.id desc"
+            string = "SELECT pay_deposit_history.id, pay_deposit_history.user_id, pay_deposit_history.value as value," + \
+                     "DATE_FORMAT(date, " + str(config.date_format_all) + ") as date, " \
+                     "pay_deposit_history_status.id as pay_deposit_history_status_id, " + \
+                     "pay_deposit_history_status.title as pay_deposit_history_status_title, wallet_address.value as address_value " + \
+                     "FROM pay_deposit_history " + \
+                     "LEFT JOIN pay_deposit_history_status ON pay_deposit_history_status.id = pay_deposit_history.status_id " + \
+                     "LEFT JOIN wallet_address ON wallet_address.id = pay_deposit_history.address_id " + \
+                     dop_string
+            cur.execute(string)
+            data = cur.fetchall()
+            if data:
+                return {"Success": True, "data": data}
+            else:
+                return {"Success": False, "data": "Нет истории ввода / вывода"}
+
+

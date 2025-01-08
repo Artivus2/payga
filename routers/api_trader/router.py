@@ -18,11 +18,18 @@ from routers.admin.controller import (
     create_sms_data,
     get_info_for_invoice,
     get_pattern,
-    get_trader_user_id
+    get_trader_user_id,
+    get_payment_status,
+    get_payout_status,
+    get_data_sms
+
 )
 from routers.admin.utils import create_access_token, get_min_amount
 from routers.mains.controller import get_chart
-from routers.orders.controller import create_order_for_user, insert_docs
+from routers.orders.controller import (
+    create_order_for_user_payin,
+    insert_docs,
+    create_order_for_user_payout)
 
 router = APIRouter(prefix='/api/v1/trader',
                    tags=['Трейдер'],
@@ -40,41 +47,35 @@ async def get_api_status():
     return {"Success": True, "data": "API доступна"}
 
 
-@router.get("/get-available-currencies")
-async def get_charts():
-    """
-    https://pay.greenavi.com/api/v1/get-available-currencies
-    This is a method for obtaining information about all cryptocurrencies available for payments
-    for your current setup of payout and payin wallets. 0 - for all available
-    :HEADERS
-    x-api-key: {{api-key}}
-    :(Required) Your PayGreenavi API key
-    :return
-    id
-    symbol
 
+@router.get("/get-payment-status/{uuids}")
+async def get_payment(uuids: str):
     """
-    response = await get_chart()
+    uuid
+    """
+    response = await get_payment_status(uuids)
     if not response['Success']:
         raise HTTPException(
             status_code=400,
-            detail=response
+            detail=response,
         )
     return response
 
 
-@router.get("/min-amount")
-async def min_amount():
+@router.get("/get-payout-status/{order_id}")
+async def get_payment(order_id: str):
     """
-    Get the minimum payment amount
-    HEADERS
-    x-api-key: {{api-key}}
-
-    (Required) Your PayGreenavi API key
-    :return:
+    o_id
     """
-    response = await get_min_amount()
+    response = await get_payout_status(order_id)
+    if not response['Success']:
+        raise HTTPException(
+            status_code=400,
+            detail=response,
+        )
     return response
+
+
 
 @router.get("/get-info-for-invoice")
 async def get_info(request: Request):
@@ -133,24 +134,24 @@ async def create_payment_for_trader(request: Request):
     reqs = await request.body()
     string = json.loads(reqs.decode("utf-8"))
     user_id = await get_user_from_api_key(api_key_from_merchant)
-    req_id = string.get('req_id', 0)
+    req_id = string.get('req_id')
     get_trader_by_chosen_req = await get_trader_user_id(req_id)
     result_from_payment = {
         "req_id": req_id, #user_id_trader из reqs
         "sum_fiat": string.get('sum_fiat'),
+        "o_id": string.get('o_id'),
         'user_id_trader': get_trader_by_chosen_req, #user_trader
         'user_id_merchant': user_id['data'],  # user_trader
         'pay_id': 1, # payin,
         'docs_id': string.get('docs_id', 0)
     }
 
-    response = await create_order_for_user(result_from_payment)
+    response = await create_order_for_user_payin(result_from_payment)
     if not response['Success']:
         raise HTTPException(
             status_code=400,
             detail=response
         )
-    print(response)
     return response
 
 
@@ -164,23 +165,36 @@ async def create_payout_for_trader(request: Request):
     """
     api_key_from_merchant = request.headers.get('x-api-key')
     reqs = await request.body()
+    print(reqs)
     string = json.loads(reqs.decode("utf-8"))
     user_id = await get_user_from_api_key(api_key_from_merchant)
     result_from_payout = {
-        "req_id": string.get('req_id'),
         "sum_fiat": string.get('sum_fiat'),
-        'phone': string.get('phone'),
-        'user_id': user_id['data'],
-        'pay_id': 2,  # payout
+        'receiver': string.get('receiver'),
+        'o_id': string.get('o_id'),
+        'user_id_merchant': user_id['data'],
+        'docs_id': string.get('docs_id', 0)
     }
-    print(result_from_payout)
-    response = await create_order_for_user(result_from_payout)
+    response = await create_order_for_user_payout(result_from_payout)
     if not response['Success']:
         raise HTTPException(
             status_code=400,
             detail=response
         )
-    print(response)
+    return response
+
+
+@router.get("/get-sms-data/{user_id}")
+async def sms_receiver(user_id: int):
+    """
+    получить данные
+    """
+    response = await get_data_sms(user_id)
+    if not response['Success']:
+        raise HTTPException(
+            status_code=400,
+            detail=response
+        )
     return response
 
 
@@ -194,15 +208,16 @@ async def sms_receiver(request: Request):
     """
     reqs = await request.body()
     string = json.loads(reqs.decode("utf-8"))
-    text = string.get('text',0)
-    sender = string.get('smsFrom',0)
-    api_key_from_merchant = request.headers.get('x-api-key', 0)
-    user_id = await get_user_from_api_key(api_key_from_merchant)
+    print(string, request.headers.get('x-api-key'))
+    text = string.get('body')
+    sender = string.get('address')
+    api_key_from_trader = request.headers.get('x-api-key')
+    user_id = await get_user_from_api_key(api_key_from_trader)
     if user_id['Success']:
         result = await get_pattern(sender, text)
 
         if result['Success']:
-            result["user_id_merchant"] = user_id['data']
+            result["user_id_trader"] = user_id['data']
 
             response = await create_sms_data(result)
             if not response['Success']:

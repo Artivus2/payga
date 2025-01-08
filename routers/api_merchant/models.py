@@ -22,3 +22,13 @@ class Invoice(BaseModel):
     req_id: int | None = None
     sum_fiat: float | None = None
     api_key: str | None = None
+
+
+class Settings(BaseModel):
+    __table_name__ = "pay_notify_user_settings"
+    id: int | None = None
+    user_id: int | None = None
+    site_url: str | None = None
+    success_url: str | None = None
+    fail_url: str | None = None
+    secret_word: str | None = None

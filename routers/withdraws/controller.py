@@ -70,7 +70,7 @@ async def generate_wallet(payload):
     with cpy.connect(**config.config) as cnx:
         with cnx.cursor(dictionary=True) as cur:
             if payload.user_id is not None:
-                string_check = "SELECT * FROM wallet_address where user_id = " + str(payload.user_id)
+                string_check = "SELECT * FROM wallet_address where chain_id = 259 and user_id = " + str(payload.user_id)
                 cur.execute(string_check)
                 data = cur.fetchone()
                 if not data:
@@ -83,7 +83,7 @@ async def generate_wallet(payload):
                     cur.execute(string)
                     cnx.commit()
                     if cur.rowcount > 0:
-                        return {"Success": True, "data": "Кошелек сгенерирован"}
+                        return {"Success": True, "data": result['base58check_address']}
                     else:
                         return {"Success": False, "data": "Кошелек не сгенерирован"}
                 else:

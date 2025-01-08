@@ -3,28 +3,6 @@ import config
 from routers.orders.utils import generate_uuid
 
 
-# async def get_bank(id):
-#     """
-#     Найти банк по id, 0 - все банки todo fav_banks
-#     :param id:
-#     :return:
-#     """
-#     with cpy.connect(**config.config) as cnx:
-#         with cnx.cursor(dictionary=True) as cur:
-#             if int(id) == 0:
-#                 data = "SELECT id, title from banks where title not like ''"
-#             else:
-#                 data = "SELECT id, title from banks where title not like '' and id = " + str(id)
-#             cur.execute(data)
-#             data = cur.fetchall()
-#             if data:
-#                 cnx.close()
-#                 return {"Success": True, "data": data}
-#             else:
-#                 cnx.close()
-#                 return {"Success": False, "data": 'банк не найден'}
-
-
 async def get_banks(id):
     with cpy.connect(**config.config) as cnx:
         with cnx.cursor(dictionary=True) as cur:
@@ -306,11 +284,21 @@ async def set_reqs_group_by_any(payload):
             cur.execute(data_update)
             cnx.commit()
             if cur.rowcount > 0:
-                cnx.close()
                 return {"Success": True, "data": "Успешно обновлены реквизиты группы"}
             else:
-                cnx.close()
                 return {"Success": False, "data": "реквизиты группы не обновлены"}
+
+
+async def get_payout_reqs(payload):
+    with cpy.connect(**config.config) as cnx:
+        with cnx.cursor(dictionary=True) as cur:
+            string ="SELECT * FROM pay_orders_payout_reqs where order_id = " + str(payload)
+            cur.execute(string)
+            data = cur.fetchone()
+            if data:
+                return {"Success": True, "data": data}
+            else:
+                return {"Success": False, "data": "реквизиты не найдены"}
 
 
 async def req_by_filters(payload):
@@ -331,7 +319,7 @@ async def req_by_filters(payload):
                      "pay_reqs_status.title as pay_status, pay_reqs.value," \
                      "reqs_types_id, pay_reqs_types.title as reqs_types_title," \
                      "pay_fav_banks.id as bank_id, pay_admin_banks.title as bank_title, currency_id, currency.symbol as currency_symbol," \
-                     "phone, pay_reqs.date, pay_automation_type.title as pay_automation_type_title, " \
+                     "phone, DATE_FORMAT(pay_reqs.date, "+str(config.date_format_all)+") as date, pay_automation_type.title as pay_automation_type_title, " \
                      "pay_automation_turn_off.title as turn_off_title," \
                      "qty_limit_hour, qty_limit_day, qty_limit_month, sum_limit_hour, sum_limit_day, " \
                      "sum_limit_month, limit_active_orders, other_banks, min_sum_per_transaction, " \
@@ -747,3 +735,35 @@ async def get_all_parsers():
             else:
                 return {"Success": False, "data": "Парсеры не найдены"}
 
+async def set_parsers(payload):
+    with cpy.connect(**config.config) as cnx:
+        with cnx.cursor(dictionary=True) as cur:
+            check_string = "SELECT * from pay_parsers where " \
+                           "id = " + str(payload.get('id'))
+            cur.execute(check_string)
+            pars = cur.fetchall()
+            if pars:
+                data_update = "UPDATE pay_parsers SET "
+                for k, v in dict(payload).items():
+                    print(k,v)
+                    if k != 'id':
+                        data_update += str(k) + " = '" + str(v) + "',"
+                data_update = data_update[:-1]
+                data_update += " where id = " + str(payload.get('id'))
+                cur.execute(data_update)
+                cnx.commit()
+                if cur.rowcount > 0:
+                    return {"Success": True, "data": "Шаблон изменен"}
+                else:
+                    return {"Success": False, "data": "Шаблон не изменен"}
+
+            else:
+                insert_string = "INSERT INTO pay_parsers (shablon, sender) " \
+                                "VALUES ('" + str(payload.get('shablon')) + \
+                                "','" + str(payload.get('sender')) + "')"
+                cur.execute(insert_string)
+                cnx.commit()
+                if cur.rowcount > 0:
+                    return {"Success": True, "data": "Прасер успешно добавлен"}
+                else:
+                    return {"Success": False, "data": "Парсер не добавлен"}

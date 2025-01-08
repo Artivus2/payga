@@ -1,8 +1,5 @@
-import json
-import datetime
 
-from starlette.requests import Request
-import re
+
 import routers.admin.models as admin_models
 import routers.user.models as users_models
 import routers.actives.models as actives_models
@@ -16,16 +13,12 @@ from routers.admin.controller import (
     crud_roles,
     change_user_role,
     set_users_any,
-    create_invoice_data,
-    create_sms_data,
-    get_user_from_api_key,
-    get_info_for_invoice,
-    get_pattern,
     check_order_by_id_payin,
     check_order_by_id_payout,
     confirm_deposit_to_balance,
     confirm_balance_to_network,
-    confirm_bal_or_dep_funds
+    confirm_bal_or_dep_funds,
+    get_active_traders
 
 )
 from routers.admin.utils import (
@@ -33,7 +26,7 @@ from routers.admin.utils import (
 )
 from routers.orders.controller import update_order_by_any
 
-router = APIRouter(prefix='/api/v1/admin', tags=['Администратор'])
+router = APIRouter(prefix='/api/v1/admin',include_in_schema=False, tags=['Администратор'])
 
 
 @router.post("/confirm-request")
@@ -308,8 +301,8 @@ async def get_allowed_status(id: int):
 
 
 
-@router.post("/check-payin-order")
-async def check_order(request: orders_models.Orders):
+@router.post("/check-order-by-id-payin")
+async def check_order_payin(request: orders_models.Orders):
     """
     подтверждение заявки или отмена payin
     id
@@ -327,8 +320,8 @@ async def check_order(request: orders_models.Orders):
     return response
 
 
-@router.post("/check-payout-order")
-async def check_order(request: orders_models.Orders):
+@router.post("/check-order-by-id-payout")
+async def check_order_payout(request: orders_models.Orders):
     """
     подтверждение заявки или отмена payout
     id
@@ -346,7 +339,7 @@ async def check_order(request: orders_models.Orders):
 
 
 @router.post("/confirm-deposit-withdrawals")
-async def check_out_deposit(request: actives_models.Deposit):
+async def check_out_deposit(request: actives_models.DepositHistory):
     """
     подтверждаем вывод депозита на баланс
     :param request:
@@ -385,6 +378,20 @@ async def check_in_funds(request: actives_models.Balance):
     :return:
     """
     response = await confirm_bal_or_dep_funds(request)
+    if not response['Success']:
+        raise HTTPException(
+            status_code=400,
+            detail=response
+        )
+    return response
+
+
+@router.get("/get-active-traders/{user_id}")
+async def get_any_traders(user_id: int):
+    """
+    ищем трейдеров
+    """
+    response = await get_active_traders(user_id)
     if not response['Success']:
         raise HTTPException(
             status_code=400,

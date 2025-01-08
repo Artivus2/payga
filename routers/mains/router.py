@@ -10,6 +10,7 @@ from routers.mains.controller import (
     get_chart,
     get_curr,
     get_reqs_groups_by_id,
+    get_payout_reqs,
     req_by_filters,
     set_reqs_by_any,
     set_reqs_group_by_any,
@@ -32,13 +33,14 @@ from routers.mains.controller import (
     get_pay_refs_levels_by_id,
     update_pay_refs_level_by_id,
     get_pay_refs_by_user,
+    set_parsers,
     get_all_parsers
 
 
 
 )
 
-router = APIRouter(prefix='/api/v1/mains', tags=['Основные'])
+router = APIRouter(prefix='/api/v1/mains', include_in_schema=False, tags=['Основные'])
 
 @router.get("/get-admin-banks/{active}")
 async def get_admin_fav(active: int):
@@ -274,6 +276,20 @@ async def filter_reqs(request: mains_models.ReqsFilters):
             payload[k] = v
     print(payload)
     response = await req_by_filters(payload)
+    if not response['Success']:
+        raise HTTPException(
+            status_code=400,
+            detail=response
+        )
+    return response
+
+
+@router.post("/get-payout-reqs/{order_id}")
+async def filter_reqs(order_id: int):
+    """
+    реквизиты для вывода пользователей если не нзанчаен payout
+    """
+    response = await get_payout_reqs(order_id)
     if not response['Success']:
         raise HTTPException(
             status_code=400,
@@ -638,20 +654,25 @@ async def delete_pay_refs_level(request: mains_models.RefsLevel):
     pass
 
 
-@router.get("/add-parsers")
-async def get_parsers(request: mains_models.Parsers):
+@router.post("/set-parsers")
+async def set_parss(request: mains_models.Parsers):
     """
     получить все парсеры по банкам
     :param id:
     :return:
     """
-    response = await get_all_parsers()
+    payload = {}
+    for k, v in request:
+        if v is not None:
+            payload[k] = v
+    response = await set_parsers(payload)
     if not response['Success']:
         raise HTTPException(
             status_code=400,
             detail=response
         )
     return response
+
 
 @router.get("/get-parsers")
 async def get_parsers():

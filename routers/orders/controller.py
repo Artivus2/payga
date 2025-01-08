@@ -1,83 +1,188 @@
 import datetime
-import json
-from cgi import print_form
 
 import mysql.connector as cpy
-from fastapi import HTTPException
-
 import config
 from routers.actives.controller import crud_balance, crud_deposit, crud_transfer
-from routers.orders.utils import generate_uuid
-import requests
+from routers.orders.utils import (
+    generate_uuid,
+    get_course
+)
 import telebot
 
 botgreenavipay = telebot.TeleBot(config.telegram_api)
 
 
-async def get_course():
 
-    api_url = "https://api.coinbase.com/v2/prices/USDT-RUB/spot"
-    headers = {
-        'Content-Type': 'application/json'
-    }
-    response = requests.get(api_url, headers=headers)
-    if response.status_code != 200:
-        raise HTTPException(status_code=response.status_code, detail=response.json())
-    print(response.json())
-    return response.json()
+async def create_order_for_user_payin(payload):
+    with (cpy.connect(**config.config) as cnx):
+        with cnx.cursor(dictionary=True) as cur:
+            summa = payload.get('sum_fiat')
+            if type(summa) is float or type(summa) is int:
+                if summa > 0:
+                    uuids = await generate_uuid()
+                    string0 = "SELECT * FROM pay_reqs WHERE id = " + str(payload.get('req_id'))
+                    cur.execute(string0)
+                    data = cur.fetchone()
+                    if data:
+                        user_id = data.get('user_id')
+                        course = await get_course()
+                        if course:
+                            course_value = float(course['data']['amount'])
+                            currency_id = 1
+                            stringcash = "SELECT * from pay_pay_percent where pay_id = 1 and user_id = " + str(user_id)
+                            cur.execute(stringcash)
+                            data = cur.fetchone()
+                            if data:
+                                cashback = float(data.get('value'))
+                                interval_order = config.TIME_ORDER_PAYIN_EXPIRY
+                                course2 = float(course_value) * (1 + cashback / 100)
+                                summ = float(summa) / course2 * (1 - cashback / 100)
+                                docs_id = payload.get('docs_id')
+                                data_string = "INSERT INTO pay_orders (uuid, user_id, course, chart_id, sum_fiat, pay_id," \
+                                              "value, cashback, date, date_expiry, req_id, pay_notify_order_types_id, " \
+                                              "docs_id, user_pay, o_id) " \
+                                              "VALUES ('" + str(uuids) + "','" + str(user_id) + \
+                                              "','" + str(course2) + "','" + str(currency_id) + "','" + \
+                                              str(summa) + "',1,'" + str(round(summ, 2)) + "','" \
+                                              + str(cashback) + "',UTC_TIMESTAMP(), DATE_ADD(UTC_TIMESTAMP(), INTERVAL " \
+                                              + str(interval_order) + " minute ),'" \
+                                              + str(data['id']) + "',0,'" + str(docs_id)\
+                                              + "', '"+str(payload.get('user_id_merchant')) + "', '"+str(payload.get('o_id'))+"')"
+                                print(data_string)
+                                cur.execute(data_string)
+                                cnx.commit()
+                                if cur.rowcount > 0:
+                                    message = "PAYIN: Создан новый ордер. назначен трейдеру. id: "+str(user_id)+" \n " + str(
+                                        uuids)  + \
+                                              "\nВремя (utc): " + str(datetime.datetime.utcnow())
+                                    botgreenavipay.send_message(config.pay_main_group, message)
+                                    return {"Success": True, "data": uuids}
+                                else:
+                                    return {"Success": False, "data": "не удалось создать ордер"}
+                            else:
+                                return {"Success": False, "data": "PAYIN % не установлен"}
+                        else:
+                            return {"Success": False, "data": "Курс не найден"}
+                    else:
+                        return {"Success": False, "data": "Ордер не может быть создан"}
+                else:
+                    return {"Success": False, "data": "Не корректная сумма"}
+            else:
+                return {"Success": False, "data": "Не верное значение суммы"}
 
 
-async def create_order_for_user(payload):
+async def create_order_for_user_payout(payload):
     with (cpy.connect(**config.config) as cnx):
         with cnx.cursor(dictionary=True) as cur:
             uuids = await generate_uuid()
-            string0 = "SELECT * FROM pay_reqs WHERE id = " + str(payload.get('req_id'))
-            cur.execute(string0)
-            data = cur.fetchone()
-            if data:
-                user_id = data.get('user_id')
-                pay_id = data.get('pay_pay_id')
-                course = await get_course()
-                if course:
-                    course_value = float(course['data']['amount'])
+            summa = payload.get('sum_fiat')
+            if type(summa) is float or type(summa) is int:
+                if summa > 0:
+                    receiver = payload.get('receiver')
+                    user_pay = payload.get('user_id_merchant')
+                    o_id = payload.get('o_id')
+                    course = await get_course()
+                    if course:
+                        course_value = float(course['data']['amount'])
+                        frozing_value = round(float(summa) / course_value, 3)
+                        #блокируем на счету мерчанта сумму ордера в usdt по курсу
+                        string_balance_merchant = "SELECT value, frozen from pay_balance where user_id = " +str(user_pay)
+                        cur.execute(string_balance_merchant)
+                        bal_merch = cur.fetchone()
+                        # string_deposit_merchant = "SELECT value, frozen from pay_deposit where user_id = " + str(user_pay)
+                        # cur.execute(string_deposit_merchant)
+                        # dep_merch = cur.fetchone()
+                        if bal_merch:
+                            current_value_bal = bal_merch.get('value')
+                            current_frozen_bal = bal_merch.get('frozen')
+                            if current_value_bal >= frozing_value:
+                                #блокируем с баланса
+                                result = await crud_balance("frozen",
+                                                            {'user_id': user_pay, 'value': frozing_value})
+                                if result["Success"]:
+                                    #кому из трейдеров отлетит заявка
+                                    reqs_out_string = "SELECT * from pay_reqs where pay_pay_id = 2 and reqs_types_id = 1 and reqs_status_id = 1"
+                                    cur.execute(reqs_out_string)
+                                    data = cur.fetchall()
+                                    #нашли активного трейдера
+                                    if data:
+                                        for i in data:
+                                            active_user_string = "SELECT id from user where is_active = 1 and role_id = 4 and id = " + str(i.get('user_id'))
+                                            current_req = i.get('id')
+                                            cur.execute(active_user_string)
+                                            data_user = cur.fetchone()
+                                            if data_user:
+                                                # занятость в ордерах проверить
+                                                user_id_trader = data_user.get('id')
+                                                break
+                                            else:
+                                                user_id_trader = 0
+                                                current_req = 0
+                                        stringcash = "SELECT * from pay_pay_percent where pay_id = 2 and user_id = " + str(user_id_trader)
+                                        cur.execute(stringcash)
+                                        data_percent = cur.fetchone()
+                                        if data_percent:
+                                            cashback = float(data_percent.get('value'))
+                                        else:
+                                            cashback = 0
+                                    else:
+                                        user_id_trader = 0
+                                        cashback = 0
+                                        current_req = 0
+                                        print("активные трейдеры не найдены, ордер упал админам со статусом 0")
+                                    interval_order = config.TIME_ORDER_PAYOUT_EXPIRY
+                                    currency_id = 1
+                                    course2 = float(course_value) * (1 + cashback / 100)
+                                    summ = float(payload.get('sum_fiat')) / course2 * (1 - cashback / 100)
+                                    docs_id = payload.get('docs_id')
+                                    data_string = "INSERT INTO pay_orders (uuid, user_id, course, chart_id, sum_fiat, pay_id," \
+                                                  "value, cashback, date, date_expiry, req_id, pay_notify_order_types_id, " \
+                                                  "docs_id, user_pay, o_id) " \
+                                                  "VALUES ('" + str(uuids) + "','" + str(user_id_trader) + \
+                                                  "','" + str(round(course2,2)) + "','" + str(currency_id) + "','" + \
+                                                  str(summa) + "',2,'" + str(round(summ, 2)) + "','" \
+                                                  + str(cashback) + "',UTC_TIMESTAMP(), DATE_ADD(UTC_TIMESTAMP(), INTERVAL " \
+                                                  + str(interval_order) + " minute ),'" \
+                                                  + str(current_req) + "',0,'" + str(docs_id) \
+                                                  + "', '" + str(user_pay) + "','"+str(o_id)+"')"
+                                    print(data_string)
+                                    cur.execute(data_string)
+                                    cnx.commit()
+                                    if cur.rowcount > 0:
+                                        if user_id_trader > 0:
+                                            string_update_reqs = "UPDATE pay_reqs SET value = " + str(receiver) + " where id = " + str(current_req)
+                                            cur.execute(string_update_reqs)
+                                            cnx.commit()
+                                        else:
+                                            select_order = "SELECT id from pay_orders where uuid = '" + str(uuids) + "'"
+                                            cur.execute(select_order)
+                                            data_order = cur.fetchone()
+                                            if data_order:
+                                                id_order = data_order.get('id')
+                                                string_insert_reqs = "INSERT into pay_orders_payout_reqs (order_id, value, status) " + \
+                                                                     "VALUES ('"+str(id_order)+"', '"+str(payload.get('receiver'))+"',0)"
+                                                cur.execute(string_insert_reqs)
+                                                cnx.commit()
 
-                    currency_id = 1
-                    stringcash = "SELECT * from pay_pay_percent where pay_id = 1 and user_id = " + str(user_id)
-                    cur.execute(stringcash)
-                    data = cur.fetchone()
-                    if data:
-                        cashback = float(data.get('value'))
-                        if int(payload.get('pay_id')) == 1:
-                            interval_order = config.TIME_ORDER_PAYIN_EXPIRY
+                                        message = "PAYOUT: Создан новый ордер. \n " + str(
+                                            uuids) + \
+                                                  "\nВремя (utc): " + str(datetime.datetime.utcnow())
+                                        botgreenavipay.send_message(config.pay_main_group, message)
+                                        return {"Success": True, "data": data_order}
+                                    else:
+                                        return {"Success": False, "data": "не удалось создать ордер"}
+                                else:
+                                    return {"Success": False, "data": "Не удалось заблокировать средства на балансе"}
+                            else:
+                                return {"Success": False, "data": "Не достаточно средств на балансе"}
                         else:
-                            interval_order = config.TIME_ORDER_PAYOUT_EXPIRY
-                        course2 = float(course['data']['amount']) * (1 + cashback / 100)
-                        summ = float(payload.get('sum_fiat')) / course2
-                        docs_id = payload.get('docs_id')
-                        data_string = "INSERT INTO pay_orders (uuid, user_id, course, chart_id, sum_fiat, pay_id," \
-                                      "value, cashback, date, date_expiry, req_id, pay_notify_order_types_id, " \
-                                      "docs_id, user_pay) " \
-                                      "VALUES ('" + str(uuids) + "','" + str(user_id) + \
-                                      "','" + str(course2) + "','" + str(currency_id) + "','" + \
-                                      str(payload.get('sum_fiat')) + "','" + str(payload.get('pay_id'))\
-                                      + "','" + str(round(summ, 2)) + "','" \
-                                      + str(cashback) + "',UTC_TIMESTAMP(), DATE_ADD(UTC_TIMESTAMP(), INTERVAL " \
-                                      + str(interval_order) + " minute ),'" \
-                                      + str(data['id']) + "',0,'" + str(docs_id)\
-                                      + "', '"+str(payload.get('user_id_merchant')) + "')"
-                        print(data_string)
-                        cur.execute(data_string)
-                        cnx.commit()
-                        if cur.rowcount > 0:
-                            return {"Success": True, "data": "Ордер создан"}
-                        else:
-                            return {"Success": False, "data": "не удалось создать ордер"}
+                            return {"Success": False, "data": "Отсутствует информация о балансе мерчанта / магазина"}
                     else:
-                        return {"Success": False, "data": "PAYIN % не установлен"}
+                        return {"Success": False, "data": "Курс не найден"}
                 else:
-                    return {"Success": False, "data": "Курс не найден"}
+                    return {"Success": False, "data": "Не корректная сумма"}
             else:
-                return {"Success": False, "data": "Ордер не может быть создан"}
+                return {"Success": False, "data": "Не верное значение суммы"}
 
 
 async def get_orders_by_any(payload):
@@ -88,17 +193,17 @@ async def get_orders_by_any(payload):
     """
     with cpy.connect(**config.config) as cnx:
         with cnx.cursor(dictionary=True) as cur:
-            #null_id = payload.get('id', -1)
             data_check = "select pay_orders.id, pay_orders.uuid, pay_orders.user_id, course, pay_orders.chart_id, " \
                          "chart.symbol as chart_symbol, sum_fiat, pay_pay.id as pay_id, " \
-                         "pay_pay.title as pay_id_title, pay_orders.value, cashback, " \
+                         "pay_pay.title as pay_id_title, pay_orders.value, " \
+                         "pay_orders_payout_reqs.value as payout_value, cashback, " \
                          "DATE_FORMAT(pay_orders.date, "+str(config.date_format_all)+") as date, " \
                          "DATE_FORMAT(pay_orders.date_expiry, "+str(config.date_format_all)+") as date_expiry, " \
                          "pay_reqs.id as pay_reqs_id, pay_reqs.uuid as pay_reqs_uuid, " \
                          "pay_reqs.phone, pay_reqs_types.title as pay_type, pay_notify_order_types_id, " \
                          "pay_reqs.bank_id as bank_id, pay_admin_banks.title as banks_name, pay_admin_banks.bik, " \
                          "pay_fav_banks.active, pay_notify_order_types.title as pay_notify_order_types_title, " \
-                         "pay_docs.url as pay_docs_url, user_pay " \
+                         "pay_docs.url as pay_docs_url, user_pay, round(((cashback / 100) * pay_orders.value),3) as trader_cb " \
                          "from pay_orders " \
                          "LEFT JOIN chart ON pay_orders.chart_id = chart.id " \
                          "LEFT JOIN pay_pay ON pay_orders.pay_id = pay_pay.id " \
@@ -109,8 +214,9 @@ async def get_orders_by_any(payload):
                          "LEFT JOIN pay_reqs_types ON pay_reqs.reqs_types_id = pay_reqs_types.id " \
                          "LEFT JOIN pay_notify_order_types ON pay_orders.pay_notify_order_types_id = " \
                          "pay_notify_order_types.id " \
+                         "LEFT JOIN pay_orders_payout_reqs ON pay_orders_payout_reqs.order_id = pay_orders.id " \
                          "where "
-            # #if int(null_id) == 0:
+
             for k, v in dict(payload).items():
                 if k != 'id':
                     if isinstance(v, list):
@@ -150,6 +256,7 @@ async def update_order_by_any(payload):
     with cpy.connect(**config.config) as cnx:
         with cnx.cursor(dictionary=True) as cur:
             #payin или payout
+            #uuid_order = payload.get('uuid', 0)
             check_pay = "select * from pay_orders where id = " + str(payload.get('id'))
             cur.execute(check_pay)
             data0 = cur.fetchone()
@@ -323,61 +430,142 @@ async def block_baldep_by_status(payload, new_status):
     with cpy.connect(**config.config) as cnx:
         with cnx.cursor(dictionary=True) as cur:
             order_id = new_status.get('id')
-            new_status_notify = new_status.get('pay_notify_order_types_id')
+            new_status_notify = new_status.get('pay_notify_order_types_id', -1)
             old_status_notify = payload.get('pay_notify_order_types_id')
             print("notify",old_status_notify,new_status_notify)
-            print("payload",payload)
             check_bal = "SELECT * FROM pay_balance where baldep_status_id = 1 and baldep_types_id = 1 and " \
                         "user_id = " + str(payload.get('user_id'))
             cur.execute(check_bal)
             value_bal = cur.fetchone()
-            print("value_bal",value_bal)
-            if value_bal:
-                print("Выполняем операцию с балансом")
-                order_value = round(payload.get('value'), 2)
-                balance_value = round(value_bal.get('value'), 2)
-                frozen_value = round(value_bal.get('frozen'), 2)
-                check_dep = "SELECT * FROM pay_deposit where baldep_status_id = 1 and baldep_types_id = 1 and " \
-                            "user_id = " + str(payload.get('user_id'))
-                cur.execute(check_dep)
-                value_dep = cur.fetchone()
-                if value_dep:
-                    deposit_value = round(value_dep.get('value'), 2)
-                    deposit_frozen_value = round(value_dep.get('value'), 2)
-                    payload_history = {
-                        'user_id': payload.get('user_id'),
-                        'balance_id': value_bal.get('id'),
-                        'chart_id': payload.get('chart_id'),
-                        'value': balance_value,
-                        'frozen': float(round(order_value,2)),
-                        'balance_history_status_id': payload.get('id'),
-                        'new_status_notify': new_status_notify
-                        }
-                    if old_status_notify == 0 and new_status_notify == 1:
-                        print("блокируем с баланса")
-                        if order_value <= value_bal.get('value'):
-                            froze_bal = order_value
-                            result = await crud_balance("frozen",
-                                                        {'user_id': payload.get('user_id'), 'value': froze_bal})
-                            if result["Success"]:
-                                result = await insert_balance_history(payload_history)
-                                if result["Success"]:
+            if new_status_notify != -1:
+                if value_bal:
+                    print("Выполняем операцию с балансом")
+                    order_value = round(payload.get('value'), 2)
+                    balance_value = round(value_bal.get('value'), 2)
+                    frozen_value = round(value_bal.get('frozen'), 2)
+                    check_dep = "SELECT * FROM pay_deposit where baldep_status_id = 1 and baldep_types_id = 1 and " \
+                                "user_id = " + str(payload.get('user_id'))
+                    cur.execute(check_dep)
+                    value_dep = cur.fetchone()
+                    if value_dep:
+                        deposit_value = round(value_dep.get('value'), 2)
+                        deposit_frozen_value = round(value_dep.get('value'), 2)
+                        payload_history = {
+                            'user_id': payload.get('user_id'),
+                            'balance_id': value_bal.get('id'),
+                            'chart_id': payload.get('chart_id'),
+                            'value': balance_value,
+                            'frozen': float(round(order_value,2)),
+                            'balance_history_status_id': payload.get('id'),
+                            'new_status_notify': new_status_notify
+                            }
 
-                                    return {"Success": True, "data": "Выполняем операцию"}
+                        #############################PAYIN##############################################
+                        if old_status_notify == 0 and new_status_notify == 1: # ручная оплата
+                            print("блокируем с баланса")
+                            if order_value <= value_bal.get('value'):
+                                froze_bal = order_value
+                                result = await crud_balance("frozen",
+                                                            {'user_id': payload.get('user_id'), 'value': froze_bal})
+                                if result["Success"]:
+                                    result = await insert_balance_history(payload_history)
+                                    if result["Success"]:
+
+                                        return {"Success": True, "data": "Выполняем операцию"}
+                                    else:
+                                        return {"Success": True, "data": "История не записалась"}
                                 else:
-                                    return {"Success": True, "data": "История не записалась"}
+                                    return {"Success": True, "data": "Баланс записать не удалось"}
                             else:
-                                return {"Success": True, "data": "Баланс записать не удалось"}
+                                print("order_value > balance")
+                        elif old_status_notify == 0 and new_status_notify == 3: #автоматом зачислен
+                            string = "SELECT * from pay_orders where id = '" + str(order_id) \
+                                     + "' and pay_id = 1 and pay_notify_order_types_id = 0"
+                            cur.execute(string)
+                            data = cur.fetchone()
+                            transfer = {
+                                'user_id_in': data.get('user_pay'),
+                                'user_id_out': data.get('user_id'),
+                                'value': data.get('value')
+                            }
+                            print("transfer", transfer)
+                            send = await crud_transfer("payin", transfer)
+                            if send["Success"]:
+                                return {"Success": True, "data": "Средства отправлены мерчанту"}
+                            else:
+                                return {"Success": True, "data": "Средства не отправлены"}
+                        elif old_status_notify == 1 and new_status_notify == 2:
+                            pass
+
+                        elif old_status_notify == 1 and new_status_notify == 5:
+                            print("Переведен в диспут. платеж не выполнен")
+                            return {"Success": True, "data": "диспут"}
+                        elif old_status_notify == 1 and new_status_notify == 6:
+                            print("Переведен в диспут. сумма платежа отличается")
+                            return {"Success": True, "data": "диспут"}
+
+                        #############################PAYOUT##############################################
+                        elif new_status_notify == 18: #admin
+                            return {"Success": True, "data": "Ордер отменен"}
+                        elif new_status_notify == 19: #admin
+                            return {"Success": True, "data": "Ордер создан менеджером и переведен в диспут"}
+                        elif new_status_notify == 20: #admin
+                            return {"Success": True, "data": "Ордер отменен"}
+                        elif old_status_notify == 15 and new_status_notify == 21:
+                            #забрать у мерчанта с frozen usdt Подтвердить
+                            string = "SELECT * from pay_orders where id = '" + str(order_id) \
+                                     + "' and pay_id = 2 and pay_notify_order_types_id = 15"
+                            cur.execute(string)
+                            data = cur.fetchone()
+                            transfer = {
+                                'user_id_in': data.get('user_id'),
+                                'user_id_out': data.get('user_pay'),
+                                'value': data.get('value')
+                            }
+                            send = await crud_transfer("payout", transfer)
+                            if send["Success"]:
+                                return {"Success": True, "data": "Средства получены от мерчанта"}
+                            else:
+                                return {"Success": False, "data": "Средства не получены от мерчанта"}
+                        elif old_status_notify == 15 and new_status_notify == 29:
+                            return {"Success": True, "data": "Не верно указаные реквизиты"}
+                        elif old_status_notify == 15 and new_status_notify == 30:
+                            return {"Success": True, "data": "Не возможно совершить платеж на указанные реквизиты"}
+                        elif old_status_notify == 15 and new_status_notify == 22:
+                            return {"Success": True, "data": "Недостаточно средств"}
+                        elif old_status_notify == 15 and new_status_notify == 23:
+                            return {"Success": True, "data": "Нет возможности соверщить перевод"}
+                        elif old_status_notify == 15 and new_status_notify == 24:
+                            return {"Success": True, "data": "Реквизиты заблокированы"}
+
                         else:
-                            print("order_value > balance")
-                    elif old_status_notify == 1 and new_status_notify == 3:
-                        print("в успех")
+                            return {"Success": False, "data": "статус не найден. обновлены другие параметры"}
                     else:
-                        return {"Success": False, "data": "статус не найден"}
+                        return {"Success": False, "data": "Не возможно выполнить операции с балансом"}
                 else:
                     return {"Success": False, "data": "Не возможно выполнить операции с балансом"}
             else:
-                return {"Success": False, "data": "Не возможно выполнить операции с балансом"}
+                print(new_status)
+                #поменять req_id value из pay_orders_payout_reqs order_id
+                string_reqs = "SELECT value FROM pay_orders_payout_reqs where status = 0 and order_id = " + str(new_status.get('id'))
+                cur.execute(string_reqs)
+                data = cur.fetchone()
+                if data:
+                    update_req = "UPDATE pay_reqs SET value = '" + str(data.get('value')) + "' where id = " + str(new_status.get('req_id'))
+                    cur.execute(update_req)
+                    cnx.commit()
+                    update_payout_req = "UPDATE pay_orders_payout_reqs SET status = 1 where order_id = " + str(
+                        new_status.get('id'))
+                    cur.execute(update_payout_req)
+                    cnx.commit()
+                    if cur.rowcount > 0:
+                        return {"Success": True, "data": "Реквизиты обновлены"}
+                    else:
+                        return {"Success": False, "data": "Реквизиты не обновлены, статус не обновлен"}
+                else:
+                    return {"Success": False, "data": "Реквизиты не обновлены"}
+
+
             # if value_bal:
             #
             #     check_dep = "SELECT * FROM pay_deposit where baldep_status_id = 1 and baldep_types_id = 1 and " \
@@ -534,3 +722,15 @@ async def insert_balance_history(payload):
                 return {"Success": True, "data": "История баланса обновлена"}
             else:
                 return {"Success": False, "data": "Не удалось записать историю баланса"}
+
+
+async def payout_reqs(payload):
+    with cpy.connect(**config.config) as cnx:
+        with cnx.cursor(dictionary=True) as cur:
+            string0 = "SELECT * from pay_orders_payout_reqs where order_uuid = '" + str(payload) + "'"
+            cur.execute(string0)
+            data = cur.fetchall()
+            if data:
+                return {"Success": True, "data": data}
+            else:
+                return {"Success": False, "data": "Не удалось найти реквизиты"}

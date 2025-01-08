@@ -1,4 +1,9 @@
 import json
+import re
+import smtplib
+from string import Template
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 import secrets
 import string
 from datetime import datetime, timedelta
@@ -24,6 +29,32 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # async def create_random_key(length: int = 8) -> str:
 #     return "12345678"
+
+
+async def send_mail(message = "TEST", subject = "TEST", to_address = "artivus2@mail.ru"):
+    try:
+        with smtplib.SMTP_SSL(config.HOST_EMAIL, port=465) as connection:
+            connection.login(
+                user=config.SUPER_ADMIN_ADDRESS,
+                password=config.password
+            )
+            message_send = MIMEText(message)
+            message_send["Subject"] = subject
+            connection.sendmail(
+                from_addr=config.SUPER_ADMIN_ADDRESS,
+                to_addrs=to_address,
+                msg=message_send.as_string()
+            )
+            connection.close()
+            return {"Success": True, "data": "Сообщение отправлено на почту: " + str(to_address)}
+    except Exception as e:
+        connection.close()
+        return {"Success": False, "data": "Сообщение не отправлено на почту: " + str(to_address) + " : " + str(e)}
+
+
+
+
+
 
 async def create_random_key(length: int = 8) -> str:
     chars = string.ascii_uppercase + string.digits + string.ascii_lowercase

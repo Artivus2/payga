@@ -91,12 +91,7 @@ class Sms(BaseModel):
     api_key: str | None = None
 
 
-class Invoice(BaseModel):
-    __table_name__ = "pay_invoice"
-    id: int | None = None
-    req_id: int | None = None
-    sum_fiat: float | None = None
-    api_key: str | None = None
+
 
 
 class Parsers(BaseModel):

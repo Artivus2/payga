@@ -7,3 +7,6 @@ class Statistic(BaseModel):
     """
     user_id: int | None = None
     title: str | None = None
+    date_begin:str | None = None
+    date_end: str | None = None
+    pay_id:  int | None = None

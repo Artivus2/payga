@@ -72,6 +72,7 @@ class Balance(BaseModel):
     withdrawals: float | None = None
 
 
+
 class BalanceHistoryStatus(BaseModel):
     __table_name__ = "pay_balance_history_status"
     """
@@ -128,7 +129,8 @@ class DepositHistory(BaseModel):
     date: str | None = None
     balordep: int | None = None # 1 - баланс, 2 - депозит
     value: float | None = None
-    withdrawal_status_id: int | None = None
+    status_id: int | None = None
+    address_id:  int | None = None
 
 
 class DepositHistoryStatus(BaseModel):
@@ -159,10 +161,8 @@ class Wallet(BaseModel):
     """
     id: int | None = None
     user_id: int | None = None
-    network: str | None = None
-    address: str | None = None
-    wallet_status_id: int | None = None
-    date: str | None = None
+    value: str | None = None
+
 
 
 class TransferStatus(BaseModel):

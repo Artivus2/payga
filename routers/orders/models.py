@@ -9,6 +9,7 @@ class Orders(BaseModel):
     """
     id: int | None = None
     order_id: int | None = None
+    order_uuid: str | None = None
     user_id: int | None = None
     course: float | None = None
     chart_id: int | None = None
@@ -20,10 +21,18 @@ class Orders(BaseModel):
     date_expiry: str | None = None
     req_id: int | None = None
     pay_notify_order_types_id: int | list | None = None
+    notify: int | list | None = None
     docs_id: int | list | None = None
     date_start: str | None = None
     date_end: str | None = None
     user_pay: int | None = None
+
+
+class PayoutOrdersReqs(BaseModel):
+    __table_name__ = "pay_orders_payout_reqs"
+    id: int | None = None
+    order_uuid: int | None = None
+    value: float | None = None
 
 
 

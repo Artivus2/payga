@@ -1,18 +1,12 @@
-import json
-
 from fastapi import APIRouter, HTTPException, Depends, Body
-from fastapi.responses import RedirectResponse
-from typing import Any
-
-from starlette.responses import HTMLResponse
-
 import routers.api_merchant.models as merchant_models
-from routers.admin.controller import get_user_from_api_key
-from routers.admin.utils import get_min_amount
+from routers.admin.utils import get_min_amount, send_mail
+from routers.api_merchant.controller import (
+    get_settings,
+    set_settings
+)
 from routers.mains.controller import get_chart
-from starlette.requests import Request
 
-from routers.orders.controller import create_order_for_user
 
 router = APIRouter(prefix='/api/v1/merchant',
                    tags=['Мерчант'],
@@ -27,6 +21,8 @@ async def get_api_status():
     :param request:
     :return:
     """
+    await send_mail('тестовое сообщение', 'тестовая тема', 'artivus@gmail.com')
+
     return {"Success": True, "data": "API доступна"}
 
 
@@ -84,28 +80,36 @@ async def min_amount():
     return response
 
 
-@router.get("/get-payment-status/{payment_id}")
-async def get_payment_status(payment_id: int):
+@router.get("/get-settings/{user_id}")
+async def get_merchant_settings(user_id: int):
     """
-    waiting - waiting for the customer to send the payment. The initial status of each payment;
-    confirming - the transaction is being processed on the blockchain. Appears when pay.greenavi.com
-                detect the funds from the user on the blockchain;
-    confirmed - the process is confirmed by the blockchain. Customer’s funds have accumulated enough confirmations;
-    sending - the funds are being sent to your personal wallet. We are in the process of sending the funds to you;
-    finished - the funds have reached your personal address and the payment is finished;
-    failed - the payment wasn't completed due to the error of some kind;
-    refunded - the funds were refunded back to the user;
-    expired - the user didn't send the funds to the specified address in the 7 days time window;
-    :return:
+    получить настройки мерчанта
     """
-    pass
+    response = await get_settings(user_id)
+    if not response['Success']:
+            raise HTTPException(
+                status_code=400,
+                detail=response
+            )
+    return response
 
 
-@router.get("/get-payment-list")
-async def get_payment_list():
+@router.post("/set-settings")
+async def set_merchant_settings(request: merchant_models.Settings):
     """
-    List of orders
-    :return:
+    установить настройки мерчанта
     """
+    payload = {}
+    for k, v in request:
+        if v is not None:
+            payload[k] = v
+    response = await set_settings(payload)
+    if not response['Success']:
+            raise HTTPException(
+                status_code=400,
+                detail=response
+            )
+    return response
+
 
 

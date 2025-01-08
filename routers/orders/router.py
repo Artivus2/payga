@@ -1,13 +1,9 @@
 import os
 import shutil
-from typing import Annotated
 from fastapi import APIRouter, Response, Depends, UploadFile, File, HTTPException, Form, Body, Query
-from fastapi.responses import StreamingResponse, JSONResponse
 from fastapi.responses import FileResponse
 import routers.orders.models as orders_models
-import base64
 from routers.orders.controller import (
-    create_order_for_user,
     get_orders_by_any,
     delete_order_by_id,
     update_order_by_any,
@@ -17,30 +13,13 @@ from routers.orders.controller import (
     set_cashback_status_for_group_by_id,
     set_cashback_to_group,
     get_all_cashback_statuses,
-    get_all_cashback_by_id
-
-
+    get_all_cashback_by_id,
+    payout_reqs
 )
 
 
 
-router = APIRouter(prefix='/api/v1/orders', tags=['Ордера'])
-
-
-# @router.post("/create-order")
-# async def create_order(request: orders_models.Orders):
-#     """
-#     Создать ордер
-#     :return:
-#     """
-#     response = await create_order_for_user(request)
-#     if not response['Success']:
-#         raise HTTPException(
-#             status_code=400,
-#             detail=response
-#         )
-#     print(response)
-#     return response
+router = APIRouter(prefix='/api/v1/orders', include_in_schema=False, tags=['Ордера'])
 
 
 @router.post("/get-orders")
@@ -98,6 +77,21 @@ async def update_order(request: orders_models.Orders):
         )
     return response
 
+@router.get("/get-payout-orders-reqs/{order_uuid}")
+async def order_payout_info(order_uuid: str):
+    """
+    для не принятых ордеров payout
+    """
+    response = await payout_reqs(order_uuid)
+    if not response['Success']:
+        raise HTTPException(
+            status_code=400,
+            detail=response
+        )
+    print(response)
+    return response
+
+
 
 @router.post("/delete-order")
 async def delete_order(request: orders_models.Orders):
@@ -145,8 +139,6 @@ async def store(order_uuid: int = Form(...), image: UploadFile = File(...)):
 
 
 
-
-
 @router.get("/get-orders-docs-ids/{order_id}")
 async def get_docs(order_id: int):
     """
@@ -173,63 +165,63 @@ async def get_docs(order_id: int):
 
 
 
-@router.post("/create-cashback")
-async def create_cashback(request: orders_models.Cashback):
-    """
-        # создать вид кешбека на группу
-        :param request:
-        :return:
-    """
-    payload = {
-        "title": request.title,
-        "date": request.date,
-        "pay_reqs_group_id": request.pay_reqs_group_id,
-        "value": request.value,
-        "status_id": request.status_id
-    }
-    response = await create_new_cashback_for_group(payload)
-    if not response['Success']:
-        raise HTTPException(
-            status_code=400,
-            detail=response
-        )
-    print(response)
-    return response
+# @router.post("/create-cashback")
+# async def create_cashback(request: orders_models.Cashback):
+#     """
+#         # создать вид кешбека на группу
+#         :param request:
+#         :return:
+#     """
+#     payload = {
+#         "title": request.title,
+#         "date": request.date,
+#         "pay_reqs_group_id": request.pay_reqs_group_id,
+#         "value": request.value,
+#         "status_id": request.status_id
+#     }
+#     response = await create_new_cashback_for_group(payload)
+#     if not response['Success']:
+#         raise HTTPException(
+#             status_code=400,
+#             detail=response
+#         )
+#     print(response)
+#     return response
 
 
-@router.post("/set-cashback-percent-for-group")
-async def set_cashback(id: int, value: int):
-    """
-    # поменять % кешбека группе
-    :param request:
-    :return:
-    """
-    response = await set_cashback_to_group(id, value)
-    if not response['Success']:
-        raise HTTPException(
-            status_code=400,
-            detail=response
-        )
-    print(response)
-    return response
+# @router.post("/set-cashback-percent-for-group")
+# async def set_cashback(id: int, value: int):
+#     """
+#     # поменять % кешбека группе
+#     :param request:
+#     :return:
+#     """
+#     response = await set_cashback_to_group(id, value)
+#     if not response['Success']:
+#         raise HTTPException(
+#             status_code=400,
+#             detail=response
+#         )
+#     print(response)
+#     return response
 
-
-@router.post("/set-cashback-status-for-group")
-async def set_cashback_status_for_group(request: orders_models.Cashback):
-    """
-    поменять статус кешбека группе (действует недействует) ?
-    status: действует, не действует
-    :param request:
-    :return:
-    """
-    response = await set_cashback_status_for_group_by_id(request.id, request.status_id)
-    if not response['Success']:
-        raise HTTPException(
-            status_code=400,
-            detail=response
-        )
-    print(response)
-    return response
+#
+# @router.post("/set-cashback-status-for-group")
+# async def set_cashback_status_for_group(request: orders_models.Cashback):
+#     """
+#     поменять статус кешбека группе (действует недействует) ?
+#     status: действует, не действует
+#     :param request:
+#     :return:
+#     """
+#     response = await set_cashback_status_for_group_by_id(request.id, request.status_id)
+#     if not response['Success']:
+#         raise HTTPException(
+#             status_code=400,
+#             detail=response
+#         )
+#     print(response)
+#     return response
 
 
 @router.post("/get-cashback-status")

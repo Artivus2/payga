@@ -2,9 +2,7 @@ import json
 from typing import Optional
 
 import routers.actives.models as actives_models
-import requests
 from fastapi import APIRouter, HTTPException
-import config
 from routers.actives.controller import (
     crud_balance_percent,
     crud_balance,
@@ -18,6 +16,7 @@ from routers.actives.controller import (
     crud_transfer,
     get_balance_history_statuses,
     get_balance_history_historyes,
+    get_deposit_history,
     dep_withdrawal_check,
     bal_withdrawal_check,
     get_deposit_history_statuses,
@@ -25,7 +24,7 @@ from routers.actives.controller import (
 
 )
 
-router = APIRouter(prefix='/api/v1/actives', tags=['Активы'])
+router = APIRouter(prefix='/api/v1/actives',include_in_schema=False, tags=['Активы'])
 
 
 ### percent ###
@@ -385,53 +384,6 @@ async def remove_deposit(request: actives_models.Deposit):
 
 
 
-@router.post("/refunds-balance")
-async def balance_in(request: actives_models.Balance):
-    """
-    запрос вывода с баланса в сеть
-    :param request:
-    :return:
-    """
-    response = await bal_refunds_check(request)
-    if not response['Success']:
-        raise HTTPException(
-            status_code=400,
-            detail=response
-        )
-    return response
-
-
-
-@router.post("/withdrawals-from-balance")
-async def from_balance(request: actives_models.Balance):
-    """
-    запрос вывода с баланса в сеть
-    :param request:
-    :return:
-    """
-    response = await bal_withdrawal_check(request)
-    if not response['Success']:
-        raise HTTPException(
-            status_code=400,
-            detail=response
-        )
-    return response
-
-
-
-@router.post("/withdrawals-from-deposit")
-async def from_deposit(request: actives_models.Deposit):
-    """
-    вывод с депозита после не менее 1 месяца после 1 пополнения баланса (из истории)
-    """
-    response = await dep_withdrawal_check(request)
-    if not response['Success']:
-        raise HTTPException(
-            status_code=400,
-            detail=response
-        )
-    return response
-
 
 @router.get("/get-deposit-statuses")
 async def get_deposit_history_status(request: actives_models.DepositHistoryStatus):
@@ -505,28 +457,28 @@ async def change_deposit_frozen(request: actives_models.Deposit):
 
 
 # wallet
-@router.post("/create-wallet")
-async def create_wallet(request: actives_models.Wallet):
-    """
-    :param request:
-    :return:
-    {
-    user_id: int
-    network: str
-    address: str
-    }
-    """
-    response = await crud_wallet('create', request)
-    if not response['Success']:
-        raise HTTPException(
-            status_code=400,
-            detail=response
-        )
-    return response
+# @router.post("/create-wallet")
+# async def create_wallet(request: actives_models.Wallet):
+#     """
+#     :param request:
+#     :return:
+#     {
+#     user_id: int
+#     network: str
+#     address: str
+#     }
+#     """
+#     response = await crud_wallet('create', request)
+#     if not response['Success']:
+#         raise HTTPException(
+#             status_code=400,
+#             detail=response
+#         )
+#     return response
 
 
-@router.post("/get-wallet")
-async def get_wallet(request: actives_models.Wallet):
+@router.get("/get-wallet/{user_id}")
+async def get_wallet(user_id: int):
     """
     :param request:
     :return:
@@ -534,7 +486,7 @@ async def get_wallet(request: actives_models.Wallet):
     user_id: int (0 - все, только для админ?)
     }
     """
-    response = await crud_wallet('get', request)
+    response = await crud_wallet('get', user_id)
     if not response['Success']:
         raise HTTPException(
             status_code=400,
@@ -543,25 +495,25 @@ async def get_wallet(request: actives_models.Wallet):
     return response
 
 
-@router.post("/get-wallet-statuses")
-async def get_wallet(request: actives_models.WalletStatus):
-    """
-    :param request:
-    :return:
-    {
-    id: int (0)
-    }
-    """
-    response = await crud_wallet('status', request)
-    if not response['Success']:
-        raise HTTPException(
-            status_code=400,
-            detail=response
-        )
-    return response
-
-
-@router.post("/set-wallet-status")
+# @router.post("/get-wallet-statuses")
+# async def get_wallet(request: actives_models.WalletStatus):
+#     """
+#     :param request:
+#     :return:
+#     {
+#     id: int (0)
+#     }
+#     """
+#     response = await crud_wallet('status', request)
+#     if not response['Success']:
+#         raise HTTPException(
+#             status_code=400,
+#             detail=response
+#         )
+#     return response
+#
+#
+@router.post("/set-wallet")
 async def set_wallet(request: actives_models.Wallet):
     """
     :param request:
@@ -580,23 +532,23 @@ async def set_wallet(request: actives_models.Wallet):
     return response
 
 
-@router.post("/remove-wallet")
-async def remove_wallet(request: actives_models.Wallet):
-    """
-    :param request:
-    :return:
-    {
-    user_id: int
-
-    }
-    """
-    response = await crud_wallet('remove', request)
-    if not response['Success']:
-        raise HTTPException(
-            status_code=400,
-            detail=response
-        )
-    return response
+# @router.post("/remove-wallet")
+# async def remove_wallet(request: actives_models.Wallet):
+#     """
+#     :param request:
+#     :return:
+#     {
+#     user_id: int
+#
+#     }
+#     """
+#     response = await crud_wallet('remove', request)
+#     if not response['Success']:
+#         raise HTTPException(
+#             status_code=400,
+#             detail=response
+#         )
+#     return response
 
 
 # balance history
@@ -619,6 +571,20 @@ async def get_balance_history(user_id: int | None):
     }
     """
     response = await get_balance_history_historyes(user_id)
+    if not response['Success']:
+        raise HTTPException(
+            status_code=400,
+            detail=response
+        )
+    return response
+
+
+@router.get("/get-deposit-history/{user_id}")
+async def get_dep_history(user_id: int | None):
+    """
+    user_id
+    """
+    response = await get_deposit_history(user_id)
     if not response['Success']:
         raise HTTPException(
             status_code=400,
@@ -872,3 +838,49 @@ async def get_transfer_status(status_id: int):
 
 
 
+@router.post("/refunds-balance")
+async def balance_in(request: actives_models.Balance):
+    """
+    запрос вывода с баланса в сеть
+    :param request:
+    :return:
+    """
+    response = await bal_refunds_check(request)
+    if not response['Success']:
+        raise HTTPException(
+            status_code=400,
+            detail=response
+        )
+    return response
+
+
+
+@router.post("/withdrawals-from-balance")
+async def from_balance(request: actives_models.DepositHistory):
+    """
+    запрос вывода с баланса в сеть
+    :param request:
+    :return:
+    """
+    response = await bal_withdrawal_check(request)
+    if not response['Success']:
+        raise HTTPException(
+            status_code=400,
+            detail=response
+        )
+    return response
+
+
+
+@router.post("/withdrawals-from-deposit")
+async def from_deposit(request: actives_models.Deposit):
+    """
+    вывод с депозита после не менее 1 месяца после 1 пополнения баланса (из истории)
+    """
+    response = await dep_withdrawal_check(request)
+    if not response['Success']:
+        raise HTTPException(
+            status_code=400,
+            detail=response
+        )
+    return response
