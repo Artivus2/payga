@@ -1,5 +1,3 @@
-from tronpy import Tron
-from tronpy.keys import PrivateKey
 
 BASE_URL = 'http://localhost:8080'
 REG_URL = 'https://test.greenavi.com'
@@ -35,21 +33,6 @@ USDT_CONTRACT_ADDRESS = 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t'
 BYBIT_ADDRESS = "TM6hy595DEm9NSzEJ1dLq7ogGeM1Kv4bQA"
 SUPER_ADMIN_ADDRESS = 'support@greenavi.com'
 HOST_EMAIL = "mail.hosting.reg.ru"
-
-
-# client = Tron()
-#
-# # Define your private key
-# priv_key = PrivateKey(bytes.fromhex(private_key))
-#
-# # Define the recipient address and token amount
-# recipient_address = BYBIT_ADDRESS
-# token_amount = 1 # Specify the amount of USDT TRC20 tokens to send
-#
-# # Send the tokens
-#
-# #priv_key = PrivateKey.fromhex(private_key)
-# result = client.trx.transfer(admin_wallet, recipient_address, 1).fee_limit(3000000).build().sign(priv_key).broadcast().wait()
-#
-# # Print transaction result
-# print("Transaction ID:", result["transaction"]["txID"])
+ADMIN_ROLE = 1
+MERCHANT_ROLE = 2
+TRADER_ROLE = 4

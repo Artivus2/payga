@@ -7,33 +7,7 @@
     <list default="true" id="1d37d695-bb31-4eb5-87e8-c4c9df400ca9" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/config.py" beforeDir="false" afterPath="$PROJECT_DIR$/config.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/routers/actives/controller.py" beforeDir="false" afterPath="$PROJECT_DIR$/routers/actives/controller.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/routers/actives/models.py" beforeDir="false" afterPath="$PROJECT_DIR$/routers/actives/models.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/routers/actives/router.py" beforeDir="false" afterPath="$PROJECT_DIR$/routers/actives/router.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/routers/admin/controller.py" beforeDir="false" afterPath="$PROJECT_DIR$/routers/admin/controller.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/routers/admin/models.py" beforeDir="false" afterPath="$PROJECT_DIR$/routers/admin/models.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/routers/admin/router.py" beforeDir="false" afterPath="$PROJECT_DIR$/routers/admin/router.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/routers/admin/utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/routers/admin/utils.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/routers/api_merchant/models.py" beforeDir="false" afterPath="$PROJECT_DIR$/routers/api_merchant/models.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/routers/api_merchant/router.py" beforeDir="false" afterPath="$PROJECT_DIR$/routers/api_merchant/router.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/routers/api_operator/router.py" beforeDir="false" afterPath="$PROJECT_DIR$/routers/api_operator/router.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/routers/api_trader/router.py" beforeDir="false" afterPath="$PROJECT_DIR$/routers/api_trader/router.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/routers/mains/controller.py" beforeDir="false" afterPath="$PROJECT_DIR$/routers/mains/controller.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/routers/mains/models.py" beforeDir="false" afterPath="$PROJECT_DIR$/routers/mains/models.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/routers/mains/router.py" beforeDir="false" afterPath="$PROJECT_DIR$/routers/mains/router.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/routers/nowpayments/controller.py" beforeDir="false" afterPath="$PROJECT_DIR$/routers/nowpayments/controller.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/routers/orders/controller.py" beforeDir="false" afterPath="$PROJECT_DIR$/routers/orders/controller.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/routers/orders/models.py" beforeDir="false" afterPath="$PROJECT_DIR$/routers/orders/models.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/routers/orders/router.py" beforeDir="false" afterPath="$PROJECT_DIR$/routers/orders/router.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/routers/orders/utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/routers/orders/utils.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/routers/stats/controller.py" beforeDir="false" afterPath="$PROJECT_DIR$/routers/stats/controller.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/routers/stats/models.py" beforeDir="false" afterPath="$PROJECT_DIR$/routers/stats/models.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/routers/stats/router.py" beforeDir="false" afterPath="$PROJECT_DIR$/routers/stats/router.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/routers/user/controller.py" beforeDir="false" afterPath="$PROJECT_DIR$/routers/user/controller.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/routers/user/router.py" beforeDir="false" afterPath="$PROJECT_DIR$/routers/user/router.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/routers/withdraws/controller.py" beforeDir="false" afterPath="$PROJECT_DIR$/routers/withdraws/controller.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/routers/withdraws/router.py" beforeDir="false" afterPath="$PROJECT_DIR$/routers/withdraws/router.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/services.py" beforeDir="false" afterPath="$PROJECT_DIR$/services.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />

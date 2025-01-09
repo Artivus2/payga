@@ -192,9 +192,6 @@ async def register_request(request: user_models.User):
         'password': hashed_password
     }
 
-    pattern = 'gmail.com'  # todo
-    if request.email.find(pattern):
-        return {"status": False, "message": "Для избежания проблем просим почту домена gmail.com не использовать"}
 
     if not payload['login'] or not payload['email'] or not payload['telegram'] or not payload['password']:
         # or len(re.findall(pattern, payload['email'])) > 0:
