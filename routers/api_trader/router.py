@@ -93,6 +93,7 @@ async def get_info(request: Request):
             status_code=400,
             detail=response,
         )
+
     return response
 
 #

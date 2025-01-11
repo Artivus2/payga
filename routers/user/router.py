@@ -16,7 +16,9 @@ from routers.user.controller import (
     get_profile_by_id,
     get_user_by_email,
     set_user_active_token,
-    set_user_active_onoff
+    set_user_active_onoff,
+    send_code,
+    check_code
 
 )
 from typing import Annotated
@@ -72,20 +74,6 @@ router = APIRouter(prefix='/api/v1/user', include_in_schema=False, tags=['Пол
 #         raise BadRequestException(detail="refresh token required")
 #     print(create_token_pair(user_id))
 #     return create_token_pair(user_id)
-
-
-@router.post("/code")
-async def code(request: user_models.Code):
-    """
-    запрос токена авторизации
-    :param request: email, password, code
-    :return:
-    {access_token}
-    """
-    print(request)
-    if request.code != '111111':
-        raise HTTPException(status_code=401, detail="Не верный код авторизации")
-    return True
 
 
 @router.post("/logout")
@@ -206,40 +194,72 @@ async def register_request(request: user_models.User):
     return response
 
 
+@router.post("/code")
+async def code(request: user_models.Login):
+    """
+    запрос токена авторизации
+    :param request: email, password, code
+    :return:
+    {access_token}
+    """
+    user = await get_user_by_email(request.email)
+    if not user['Success']:
+        raise HTTPException(status_code=404,
+                            detail=f"Указаны не верные данные !")
+
+    if not await verify(request.password, user['data']['password']):
+        raise HTTPException(status_code=404,
+                            detail=f"Пароль указан неверно !")
+
+    response = await check_code(request.code, user['data']['id'])
+    # if response.code != '111111':
+    #     raise HTTPException(status_code=401, detail="Не верный код авторизации")
+    if response['Success']:
+        access_token = create_access_token(user_id=user['data']['email'],
+                                           role=user['data']['role_id'],
+                                           expires_delta=config.ACCESS_TOKEN_EXPIRE_MINUTES)
+        #
+        # Change the active status of the user -->True(1)
+        itog = await set_user_active_token(user['data']['email'], datetime.datetime.utcnow(), access_token)
+        if not itog['Success']:
+            raise HTTPException(status_code=404,
+                                detail=f"Не удалось получить токен")
+        await send_mail("Пользователь "+str(user['data']['login'])+ " авторизирован", "Успешная авторизация", user['data']['email'])
+        return {
+            "access_token": access_token,
+            "token_type": "bearer",
+            "data": {
+                "id": user['data']['id'],
+                "email": user['data']['email'],
+                "login": user['data']['login'],
+                "role_id": user['data']['role_id']
+            }
+        }
+    else:
+        raise HTTPException(status_code=404,
+                            detail=f"Указан не верный код подтверждения!")
+
+
 @router.post('/login')
 async def login_for_access_token(request: user_models.Login):
-    print(request)
     ## To see if username/email exsist in Database
     user = await get_user_by_email(request.email)
     if not user['Success']:
         raise HTTPException(status_code=404,
-                            detail=f"Invalid Creadentials. or blocked !")
+                            detail=f"Указаны не верные данные !")
 
     if not await verify(request.password, user['data']['password']):
         raise HTTPException(status_code=404,
-                            detail=f"Incorrect Password. !")
+                            detail=f"Пароль указан неверно !")
 
-    ## Generate and return JWT token
-    access_token = create_access_token(user_id=user['data']['email'],
-                                       role=user['data']['role_id'],
-                                       expires_delta=config.ACCESS_TOKEN_EXPIRE_MINUTES)
-    #
-    # Change the active status of the user -->True(1)
-    itog = await set_user_active_token(user['data']['email'], datetime.datetime.utcnow(), access_token)
-    if not itog['Success']:
+    ##отпрваили код на почту
+    result = await send_code(user['data']['id'])
+    if result["Success"]:
+        return result["data"]
+    else:
         raise HTTPException(status_code=404,
                             detail=f"Не удалось получить токен")
-    await send_mail("Пользователь "+str(user['data']['login'])+ " авторизирован", "Успешная авторизация", user['data']['email'])
-    return {
-        "access_token": access_token,
-        "token_type": "bearer",
-        "data": {
-            "id": user['data']['id'],
-            "email": user['data']['email'],
-            "login": user['data']['login'],
-            "role_id": user['data']['role_id']
-        }
-    }
+
 
 
 
@@ -416,24 +436,7 @@ async def read_profile(request: Request):
     return {"success":True}
 
 
-@router.post("/code")
-async def code(request: user_models.ApiKey):
-    """
-    code
-    :param request:
-    :param user_id:
-    :return:
-    response
-    """
-    # response = await get_user_api_key(request.api_key)
-    # if not response['Success']:
-    #     raise HTTPException(
-    #         status_code=400,
-    #         detail=response,
-    #     )
-    print(request.fcm_token)
 
-    return {"access_token": 'd3taikK7bW8oGo8Hye-aFv:APA91bFJkUJe7HqWrqzL27Eyv2gETyDW4pvRI3XtO7k7bGP9G_tjI9rjo77ZAXPu5sMtiZnKNgskaY_FQal3tK6S9VIEnquL-JJv1aXLdz1Nnj6uhbzro10'}
 
 
 

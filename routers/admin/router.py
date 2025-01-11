@@ -1,9 +1,9 @@
-
+import shutil
 
 import routers.admin.models as admin_models
 import routers.user.models as users_models
 import routers.actives.models as actives_models
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Form, UploadFile, File
 import routers.orders.models as orders_models
 from routers.admin.controller import (
     send_link_to_user,
@@ -18,7 +18,9 @@ from routers.admin.controller import (
     confirm_deposit_to_balance,
     confirm_balance_to_network,
     confirm_bal_or_dep_funds,
-    get_active_traders
+    get_active_traders,
+    set_admin_banks_png,
+    set_reqs_png
 
 )
 from routers.admin.utils import (
@@ -401,7 +403,45 @@ async def get_any_traders(user_id: int):
 
 
 
+@router.post("/change-png-reqs")
+async def store(id: int = Form(...), image: UploadFile = File(...)):
+    """
+    изменение png у админа
+    :param id:
+    :param image:
+    :return:
+    """
+    file_location = f"files/{image.filename}"
+    with open(file_location, "wb+") as file_object:
+        shutil.copyfileobj(image.file, file_object)
+        response = await set_reqs_png(id, image.filename)
+        if not response['Success']:
+            raise HTTPException(
+                status_code=400,
+                detail=response
+            )
 
+        return response
+
+    @router.post("/change-png-admin-banks")
+    async def store(id: int = Form(...), image: UploadFile = File(...)):
+        """
+        изменение png у админа
+        :param id:
+        :param image:
+        :return:
+        """
+        file_location = f"files/{image.filename}"
+        with open(file_location, "wb+") as file_object:
+            shutil.copyfileobj(image.file, file_object)
+            response = await set_admin_banks_png(id, image.filename)
+            if not response['Success']:
+                raise HTTPException(
+                    status_code=400,
+                    detail=response
+                )
+
+            return response
 
 
 

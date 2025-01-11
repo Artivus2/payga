@@ -21,7 +21,7 @@ async def get_api_status():
     :param request:
     :return:
     """
-    await send_mail('тестовое сообщение', 'тестовая тема', 'artivus@gmail.com')
+    #await send_mail('тестовое сообщение', 'тестовая тема', 'artivus@gmail.com')
 
     return {"Success": True, "data": "API доступна"}
 

@@ -159,7 +159,6 @@ async def get_docs(order_id: int):
         file_path = os.path.join("/files", filename)
         #image_url = f"c:\\projects\\payga{file_path}" #wtest
         image_url = f"/var/www/html/payga{file_path}" #prod
-        print(FileResponse(image_url, media_type="image/png"))
         return FileResponse(image_url)
 
 

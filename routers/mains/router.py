@@ -1,3 +1,7 @@
+import os
+
+from starlette.responses import FileResponse
+
 import routers.mains.models as mains_models
 from fastapi import APIRouter, HTTPException
 from routers.mains.controller import (
@@ -20,6 +24,7 @@ from routers.mains.controller import (
     get_automation_type,
     get_pay_reqs_status_by_id,
     get_pay_reqs_types_by_id,
+    get_urls_reqs,
     set_pay_reqs_types_by_id,
     remove_pay_reqs_types_by_id,
     get_turn_off,
@@ -689,3 +694,25 @@ async def get_parsers():
         )
     return response
 
+
+@router.get("/get-pay-reqs-png/{id}")
+async def get_reqs_urls(id: int):
+    """
+    получаем png rqs_types
+    :param request:
+    :return:
+    """
+    response = await get_urls_reqs(id)
+    if not response['Success']:
+        raise HTTPException(
+            status_code=400,
+            detail=response
+        )
+    filename = response["data"]
+    print(filename)
+    if response["data"].endswith((".jpg", ".jpeg", ".png", ".gif")):
+        #file_path = os.path.join("\\files", filename)
+        file_path = os.path.join("/files", filename)
+        #image_url = f"c:\\projects\\payga{file_path}" #wtest
+        image_url = f"/var/www/html/payga{file_path}" #prod
+        return FileResponse(image_url)

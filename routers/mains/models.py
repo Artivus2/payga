@@ -144,7 +144,7 @@ class Reqs(BaseModel):
     reqs_types - Способ оплаты (СБП / перевод с карты на карту / перевод по номеру счета...)
     bank_id - банк
     currency_id - валюта
-    phone - телефон
+    fio - fio
     pay_id: Payin - 0, Payout - 1
     req_group_id - ид группы реквизитов
     qty - лимит сделок в час / день / месяц
@@ -167,7 +167,7 @@ class Reqs(BaseModel):
     reqs_types_id: int = 1
     reqs_status_id: int = 1
     bank_id: int | None = None
-    phone: str = '+700000000'
+    fio: str = 'иванов'
     qty_limit_hour: int = 1
     qty_limit_day: int = 10
     qty_limit_month: int = 100
@@ -199,7 +199,7 @@ class ReqsFilters(BaseModel):
     reqs_types_id: int | None = None
     reqs_status_id: int | None = None
     bank_id: int | None = None
-    phone: str | None = None
+    fio: str | None = None
     qty_limit_hour: int | None = None
     qty_limit_day: int | None = None
     qty_limit_month: int | None = None

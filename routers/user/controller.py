@@ -6,9 +6,52 @@ from datetime import datetime, timedelta
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from pydantic import ValidationError
-from routers.admin.utils import create_random_key
+from routers.admin.utils import create_random_key, generate_code, send_mail
 import telebot
 botgreenavipay = telebot.TeleBot(config.telegram_api)
+
+
+
+async def check_code(code, user_id):
+    with cpy.connect(**config.config) as cnx:
+        with cnx.cursor(dictionary=True) as cur:
+            string0 = "SELECT verification_code FROM user where id = " + str(user_id)
+            cur.execute(string0)
+            data0 = cur.fetchone()
+            if data0:
+                if code == data0.get('verification_code'):
+                    return {"Success": True, "data": "Код успешно подтвержден"}
+                else:
+                    return {"Success": False, "data": "Код не верен"}
+            else:
+                return {"Success": False, "data": "Пользователь не найден"}
+
+
+async def send_code(payload):
+    with cpy.connect(**config.config) as cnx:
+        with cnx.cursor(dictionary=True) as cur:
+            string0 = "SELECT * FROM user where id = " + str(payload)
+            cur.execute(string0)
+            data0 = cur.fetchone()
+            if data0:
+                code = await generate_code()
+                string = "UPDATE user set verification_code = '" + str(code) + "' where id = " + str(payload)
+                cur.execute(string)
+                cnx.commit()
+                if cur.rowcount > 0:
+                    result = await send_mail("Ваш код подтверждения: " + str(code), "Код подтверждения платформы pay.greenavi.com", data0.get('email'))
+                    if result["Success"]:
+                        return {"Success": True, "data": "Код отправлен на почту"}
+                    else:
+                        return {"Success": False, "data": "Код не отправлен"}
+                else:
+                    return {"Success": False, "data": "Код не сгенерирован"}
+            else:
+                return {"Success": False, "data": "Пользователь не найден"}
+
+
+
+
 
 async def insert_generated_api_key(user_id):
     with cpy.connect(**config.config) as cnx:

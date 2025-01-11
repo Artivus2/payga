@@ -200,7 +200,7 @@ async def get_orders_by_any(payload):
                          "DATE_FORMAT(pay_orders.date, "+str(config.date_format_all)+") as date, " \
                          "DATE_FORMAT(pay_orders.date_expiry, "+str(config.date_format_all)+") as date_expiry, " \
                          "pay_reqs.id as pay_reqs_id, pay_reqs.uuid as pay_reqs_uuid, " \
-                         "pay_reqs.phone, pay_reqs_types.title as pay_type, pay_notify_order_types_id, " \
+                         "pay_reqs.fio, pay_reqs_types.title as pay_type, pay_notify_order_types_id, " \
                          "pay_reqs.bank_id as bank_id, pay_admin_banks.title as banks_name, pay_admin_banks.bik, " \
                          "pay_fav_banks.active, pay_notify_order_types.title as pay_notify_order_types_title, " \
                          "pay_docs.url as pay_docs_url, user_pay, round(((cashback / 100) * pay_orders.value),3) as trader_cb " \
@@ -478,6 +478,24 @@ async def block_baldep_by_status(payload, new_status):
                                     return {"Success": True, "data": "Баланс записать не удалось"}
                             else:
                                 print("order_value > balance")
+                        elif old_status_notify == 1 and new_status_notify == 3:  # вручную зачислил админ
+                            string = "SELECT * from pay_orders where id = " + str(order_id)
+                            cur.execute(string)
+                            data = cur.fetchone()
+                            if data:
+                                transfer = {
+                                    'user_id_in': data.get('user_pay'),
+                                    'user_id_out': data.get('user_id'),
+                                    'value': data.get('value')
+                                }
+                                send = await crud_transfer("payin", transfer)
+                                if send["Success"]:
+                                    return {"Success": True, "data": "Средства отправлены мерчанту администратором"}
+                                else:
+                                    return {"Success": True, "data": "Средства не отправлены"}
+                            else:
+                                return {"Success": True, "data": "Ордер не найден"}
+
                         elif old_status_notify == 0 and new_status_notify == 3: #автоматом зачислен
                             string = "SELECT * from pay_orders where id = '" + str(order_id) \
                                      + "' and pay_id = 1 and pay_notify_order_types_id = 0"
@@ -488,14 +506,28 @@ async def block_baldep_by_status(payload, new_status):
                                 'user_id_out': data.get('user_id'),
                                 'value': data.get('value')
                             }
-                            print("transfer", transfer)
                             send = await crud_transfer("payin", transfer)
                             if send["Success"]:
                                 return {"Success": True, "data": "Средства отправлены мерчанту"}
                             else:
                                 return {"Success": True, "data": "Средства не отправлены"}
                         elif old_status_notify == 1 and new_status_notify == 2:
-                            pass
+                            string = "SELECT * from pay_orders where id = " + str(order_id)
+                            cur.execute(string)
+                            data = cur.fetchone()
+                            if data:
+                                transfer = {
+                                    'user_id_in': data.get('user_pay'),
+                                    'user_id_out': data.get('user_id'),
+                                    'value': data.get('value')
+                                }
+                                send = await crud_transfer("nopayin", transfer)
+                                if send["Success"]:
+                                    return {"Success": True, "data": "Отмена отправки средств мерчанту"}
+                                else:
+                                    return {"Success": True, "data": "Ошибка отмены отправки средств мерчанту"}
+                            else:
+                                return {"Success": True, "data": "Ордер не найден"}
 
                         elif old_status_notify == 1 and new_status_notify == 5:
                             print("Переведен в диспут. платеж не выполнен")

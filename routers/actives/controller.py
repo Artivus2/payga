@@ -1038,3 +1038,13 @@ async def get_deposit_history(payload):
                 return {"Success": False, "data": "Нет истории ввода / вывода"}
 
 
+async def get_urls_admin_banks(id):
+    with cpy.connect(**config.config) as cnx:
+        with cnx.cursor(dictionary=True) as cur:
+            data_check = "select url from pay_admin_banks where id = " + str(id)
+            cur.execute(data_check)
+            check = cur.fetchone()
+            if check:
+                return {"Success": True, "data": check['url']}
+            else:
+                return {"Success": False, "data": "png не найдены"}

@@ -319,7 +319,7 @@ async def req_by_filters(payload):
                      "pay_reqs_status.title as pay_status, pay_reqs.value," \
                      "reqs_types_id, pay_reqs_types.title as reqs_types_title," \
                      "pay_fav_banks.id as bank_id, pay_admin_banks.title as bank_title, currency_id, currency.symbol as currency_symbol," \
-                     "phone, DATE_FORMAT(pay_reqs.date, "+str(config.date_format_all)+") as date, pay_automation_type.title as pay_automation_type_title, " \
+                     "fio, DATE_FORMAT(pay_reqs.date, "+str(config.date_format_all)+") as date, pay_automation_type.title as pay_automation_type_title, " \
                      "pay_automation_turn_off.title as turn_off_title," \
                      "qty_limit_hour, qty_limit_day, qty_limit_month, sum_limit_hour, sum_limit_day, " \
                      "sum_limit_month, limit_active_orders, other_banks, min_sum_per_transaction, " \
@@ -492,7 +492,7 @@ async def create_reqs_for_user(payload):
       reqs_status_id: 0,
       bank_id: 142,
       chart_id: 259,
-      phone: '+545674567',
+      fio: 'fio',
       qty_limit_hour: 1,
       qty_limit_day: 10,
       qty_limit_month: 100,
@@ -523,7 +523,7 @@ async def create_reqs_for_user(payload):
             if payload.req_group_id is None:
                 payload.req_group_id = 0
             data_string = "INSERT INTO pay_reqs (uuid, user_id, req_group_id, sequence, pay_pay_id, value," \
-                          "currency_id, reqs_types_id, reqs_status_id, bank_id, phone, date, qty_limit_hour," \
+                          "currency_id, reqs_types_id, reqs_status_id, bank_id, fio, date, qty_limit_hour," \
                           "qty_limit_day, qty_limit_month, sum_limit_hour, sum_limit_day, sum_limit_month," \
                           "title, limit_active_orders, other_banks, min_sum_per_transaction," \
                           "max_sum_per_transaction, max_limit_transaction_sum, max_limit_transaction) " \
@@ -532,7 +532,7 @@ async def create_reqs_for_user(payload):
                           str(payload.pay_pay_id) + "','" + str(payload.value) + "','" \
                           + str(payload.currency_id) + "','" + str(payload.reqs_types_id) + "',0,'" \
                           + str(payload.bank_id) + "','" \
-                          + str(payload.phone) + "',NOW(),'" + str(payload.qty_limit_hour) \
+                          + str(payload.fio) + "',NOW(),'" + str(payload.qty_limit_hour) \
                           + "','" + str(payload.qty_limit_day) + "','" + str(payload.qty_limit_month) \
                           + "','" + str(payload.sum_limit_hour) + "','" + str(payload.sum_limit_day) \
                           + "','" + str(payload.sum_limit_month) + "','" + str(payload.title) \
@@ -767,3 +767,15 @@ async def set_parsers(payload):
                     return {"Success": True, "data": "Прасер успешно добавлен"}
                 else:
                     return {"Success": False, "data": "Парсер не добавлен"}
+
+
+async def get_urls_reqs(id):
+    with cpy.connect(**config.config) as cnx:
+        with cnx.cursor(dictionary=True) as cur:
+            data_check = "select url from pay_reqs_types where id = " + str(id)
+            cur.execute(data_check)
+            check = cur.fetchone()
+            if check:
+                return {"Success": True, "data": check['url']}
+            else:
+                return {"Success": False, "data": "png не найдены"}

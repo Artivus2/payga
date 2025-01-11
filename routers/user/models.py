@@ -128,12 +128,12 @@ class Login(BaseModel):
     login: str | None = None
     password: str
     api_key: str | None = None
+    code:  str | None = None
 
 
 class Code(BaseModel):
     __table_name__ = "auth_tokens"
     """
-    запрос в auth_tokens yii2
     """
     email: str
     password: str

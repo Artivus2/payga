@@ -1,5 +1,8 @@
 import json
+import os
 from typing import Optional
+
+from starlette.responses import FileResponse
 
 import routers.actives.models as actives_models
 from fastapi import APIRouter, HTTPException
@@ -20,7 +23,8 @@ from routers.actives.controller import (
     dep_withdrawal_check,
     bal_withdrawal_check,
     get_deposit_history_statuses,
-    bal_refunds_check
+    bal_refunds_check,
+    get_urls_admin_banks
 
 )
 
@@ -884,3 +888,26 @@ async def from_deposit(request: actives_models.Deposit):
             detail=response
         )
     return response
+
+
+@router.get("/get-pay-banks-png/{id}")
+async def get_admin_banks_urls(id: int):
+    """
+    получаем png admin_banks
+    :param request:
+    :return:
+    """
+    response = await get_urls_admin_banks(id)
+    if not response['Success']:
+        raise HTTPException(
+            status_code=400,
+            detail=response
+        )
+    filename = response["data"]
+    print(filename)
+    if response["data"].endswith((".jpg", ".jpeg", ".png", ".gif")):
+        #file_path = os.path.join("\\files", filename)
+        file_path = os.path.join("/files", filename)
+        #image_url = f"c:\\projects\\payga{file_path}" #wtest
+        image_url = f"/var/www/html/payga{file_path}" #prod
+        return FileResponse(image_url)

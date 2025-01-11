@@ -273,7 +273,8 @@ async def create_sms_data(payload):
             check_string = "SELECT id, uuid, sum_fiat, user_id, user_pay, date_expiry FROM pay_orders " \
                            "where user_id = '" \
                            + str(user_id_trader) + "' and pay_notify_order_types_id = 0 and sum_fiat >= '"\
-                           + str(low) + " and sum_fiat <= '"+str(high)+"'"
+                           + str(low) + "' and sum_fiat <= '"+str(high)+"'"
+            print(check_string)
             cur.execute(check_string)
             data = cur.fetchone()
             if data:
@@ -338,27 +339,21 @@ async def check_order_by_id_payin(payload):
                     'value': value
                 }
                 if notify == 3:
-                    send = await crud_transfer("payin", transfer)
-                    if send["Success"]:
-                        result = await update_order_by_any({'id': data.get('id'), 'pay_notify_order_types_id': notify})
-                        # получили данные по ордеру
-                        if result:
-                            return {"Success": True, "data": "Средства отправлены мерчанту"}
-                        else:
-                            return {"Success": False, "data": "Статус не изменен"}
+                    result = await update_order_by_any({'id': data.get('id'), 'pay_notify_order_types_id': notify})
+                    # получили данные по ордеру
+                    if result:
+                        return {"Success": True, "data": "Средства отправлены мерчанту"}
                     else:
-                        return {"Success": False, "data": "Средства не отправлены"}
+                        return {"Success": False, "data": "Статус не изменен"}
 
                 elif notify == 2:
-                    send = await crud_transfer("nopayin", transfer)
-                    if send["Success"]:
-                        result = await update_order_by_any({'id': data.get('id'), 'pay_notify_order_types_id': notify})
-                        if result["Success"]:
-                            return {"Success": True, "data": "Ордер отменен"}
-                        else:
-                            return {"Success": True, "data": "Ордер не отменен"}
+
+                    result = await update_order_by_any({'id': data.get('id'), 'pay_notify_order_types_id': notify})
+                    if result["Success"]:
+                        return {"Success": True, "data": "Ордер отменен"}
                     else:
-                        return {"Success": True, "data": "Баланс не разблокирован"}
+                        return {"Success": True, "data": "Ордер не отменен"}
+
 
 
                 elif notify == 4:
@@ -424,7 +419,7 @@ async def get_info_for_invoice(payload):
     with cpy.connect(**config.config) as cnx:
         with cnx.cursor(dictionary=True) as cur:
             # достаем типы оплаты
-            select_reqs = "SELECT id, title from pay_reqs_types"
+            select_reqs = "SELECT id, title, url from pay_reqs_types"
             cur.execute(select_reqs)
             datareqs = cur.fetchall()
             if datareqs: # для перавой страниц сбп с карты на карту
@@ -433,29 +428,32 @@ async def get_info_for_invoice(payload):
 
                     result0 = {
                         "id": types_reqs.get('id'),
-                        "title": types_reqs.get('title')
+                        "title": types_reqs.get('title'),
+                        "url": types_reqs.get('url')
                     }
-                    string2 = "SELECT pay_reqs.id as req_id, value, pay_reqs.phone, pay_admin_banks.title as bank_title "+\
-                              "FROM pay_reqs " + \
+                    string2 = "SELECT pay_reqs.id as req_id, value, pay_reqs.fio, pay_admin_banks.title as bank_title, "+\
+                              "pay_admin_banks.id as bank_id, pay_admin_banks.url as bank_url FROM pay_reqs " + \
                               "LEFT JOIN user ON user.id = pay_reqs.user_id " + \
                               "LEFT JOIN pay_fav_banks ON pay_reqs.bank_id = pay_fav_banks.id " + \
                               "LEFT JOIN pay_admin_banks ON pay_fav_banks.bank_id = pay_admin_banks.id " + \
                               "WHERE reqs_types_id = '" + str(types_reqs.get('id')) + \
-                               "' and reqs_status_id = 1 and pay_pay_id = 1 and user.role_id = 4 and user.app_id = 3 LIMIT 1"
+                               "' and reqs_status_id = 1 and pay_pay_id = 1 and user.role_id = 4 and user.app_id = 3 ORDER BY RAND() LIMIT 1"
                     cur.execute(string2)
                     data2 = cur.fetchall()
                     if data2:
                         for x in data2:
                             check_reqs_limits = await get_reqs_limits_by_req_id(x.get('req_id'))
                             if check_reqs_limits:
+                                print(data2)
                                 result0["reqs"] = data2
+
+
                             else:
                                 result0["reqs"] = []
                     else:
                         result0["reqs"] = []
                     all.append(result0)
                 if len(all) > 0:
-                    print(all)
                     return {"Success": True, "data": all}
                 else:
                     return {"Success": False, "data": "Реквизиты не найдены, попробуйте позже"}
@@ -796,13 +794,14 @@ async def get_payment_status(uuids):
             refunded - the funds were refunded back to the user;
             expired - the user didn't send the funds to the specified address in the 7 days time window;
             """
-            check_order = "SELECT uuid, pay_notify_order_types_id, value, user_pay, DATE_FORMAT(pay_orders.date_expiry, " \
+            check_order = "SELECT id, uuid, pay_notify_order_types_id, value, user_pay, DATE_FORMAT(pay_orders.date_expiry, " \
                           + str(config.date_format_all)+") as date_expiry, o_id FROM pay_orders where uuid = '" + str(uuids) + "'"
             cur.execute(check_order)
             data = cur.fetchone()
             print(data)
             if data:
                 result = {
+                    'id': data.get('id'),
                     'status': data.get('pay_notify_order_types_id'),
                     'value': data.get('value'),
                     'order_uuid': data.get('uuid'),
@@ -846,10 +845,63 @@ async def get_active_traders(payload):
             check_order = "SELECT user.id, login, email FROM user " + \
                           "LEFT JOIN pay_reqs ON user.id = pay_reqs.user_id " + \
                           "where is_active = 1 and role_id = 4 and banned = 0 and pay_reqs.pay_pay_id = 2 " + \
-                          "and pay_reqs.reqs_types_id = 1 and reqs_status_id = 1"
+                          " and reqs_status_id = 1"
             cur.execute(check_order)
             data = cur.fetchall()
             if data:
                 return {"Success": True, "data": data}
             else:
                 return {"Success": False, "data": "Данные не найдены"}
+
+
+
+async def set_admin_banks_png(id, images):
+    with cpy.connect(**config.config) as cnx:
+        with cnx.cursor(dictionary=True) as cur:
+            #for i in images:
+            string_check = "select * from pay_admin_banks where order_id = " + str(id)
+            cur.execute(string_check)
+            data = cur.fetchall()
+            if not data:
+                insert_string = "INSERT into pay_admin_banks (id, url) " \
+                              "VALUES ('" + str(id) + "','" + str(images) + "')"
+                cur.execute(insert_string)
+                cnx.commit()
+            else:
+                update_string = "UPDATE pay_admin_banks SET url = '" + str(images) + "' where id = " + str(id)
+                cur.execute(update_string)
+                cnx.commit()
+            if cur.rowcount > 0:
+                string_check = "select id from pay_admin_banks where id = " + str(id)
+                cur.execute(string_check)
+                data = cur.fetchall()
+                if data:
+                    return {"Success": True, "data": data[0].get('id')}
+                else:
+                    return {"Success": False, "data": "png не добавлены"}
+
+
+async def set_reqs_png(id, images):
+    with cpy.connect(**config.config) as cnx:
+        with cnx.cursor(dictionary=True) as cur:
+            #for i in images:
+            string_check = "select * from pay_reqs_types where id = " + str(id)
+            cur.execute(string_check)
+            data = cur.fetchall()
+            if not data:
+                insert_string = "INSERT into pay_reqs_types (id, url) " \
+                              "VALUES ('" + str(id) + "','" + str(images) + "')"
+                cur.execute(insert_string)
+                cnx.commit()
+            else:
+                update_string = "UPDATE pay_reqs_types SET url = '" + str(images) + "' where order_id = " + str(id)
+                cur.execute(update_string)
+                cnx.commit()
+            if cur.rowcount > 0:
+                string_check = "select id from pay_reqs_types where id = " + str(id)
+                cur.execute(string_check)
+                data = cur.fetchall()
+                if data:
+                    return {"Success": True, "data": data[0].get('id')}
+                else:
+                    return {"Success": False, "data": "png не доюавлены"}
