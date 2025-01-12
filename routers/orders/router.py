@@ -39,7 +39,6 @@ async def order_filters(request: orders_models.Orders):
             status_code=400,
             detail=response
         )
-    print(response)
     return response
 
 

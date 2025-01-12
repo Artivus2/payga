@@ -1,9 +1,10 @@
 import os
+import shutil
 
 from starlette.responses import FileResponse
 
 import routers.mains.models as mains_models
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Form, UploadFile, File
 from routers.mains.controller import (
     get_banks,
     set_admin_bank,
@@ -39,7 +40,13 @@ from routers.mains.controller import (
     update_pay_refs_level_by_id,
     get_pay_refs_by_user,
     set_parsers,
-    get_all_parsers
+    get_all_parsers,
+    set_messages,
+    insert_check,
+    get_messages_by_any,
+    get_message_url,
+    set_message_status
+
 
 
 
@@ -716,3 +723,97 @@ async def get_reqs_urls(id: int):
         #image_url = f"c:\\projects\\payga{file_path}" #wtest
         image_url = f"/var/www/html/payga{file_path}" #prod
         return FileResponse(image_url)
+
+
+@router.post("/create-message")
+async def create_message(request: mains_models.Messages):
+    """
+    id: int | None = None
+    order_uuid: str | None = None
+    text: str | None = None
+    docs_url: str | None = None
+    status: int | None = None
+    email: str | None = None
+    """
+    response = await set_messages(request)
+    if not response['Success']:
+        raise HTTPException(
+            status_code=400,
+            detail=response
+        )
+    return response
+
+
+@router.post("/update-message-status")
+async def create_message(request: mains_models.Messages):
+    """
+    status: int | None = None
+    """
+    response = await set_message_status(request)
+    if not response['Success']:
+        raise HTTPException(
+            status_code=400,
+            detail=response
+        )
+    return response
+
+@router.post("/create-message-upload")
+async def store(message_uuid: str = Form(...), image: UploadFile = File(...)):
+    """
+    Записываем urls платежек по order_uuid
+    :param order_uuid:
+    :param image:
+    :return:
+    """
+    file_location = f"files/{image.filename}"
+    with open(file_location, "wb+") as file_object:
+        shutil.copyfileobj(image.file, file_object)
+        response = await insert_check(message_uuid, image.filename)
+        if not response['Success']:
+            raise HTTPException(
+                status_code=400,
+                detail=response
+            )
+        return response
+
+
+@router.get("/get-message-docs-ids/{message_uuid}")
+async def get_message_image(message_uuid: str):
+    """
+    получаем список платежек по uuid message
+    :param request:
+    :return:
+    """
+    response = await get_message_url(message_uuid)
+    if not response['Success']:
+        raise HTTPException(
+            status_code=400,
+            detail=response
+        )
+    filename = response["data"]['docs_url']
+    print(filename)
+    if response["data"]['docs_url'].endswith((".jpg", ".jpeg", ".png", ".gif")):
+        #file_path = os.path.join("\\files", filename)
+        file_path = os.path.join("/files", filename)
+        #image_url = f"c:\\projects\\payga{file_path}" #wtest
+        image_url = f"/var/www/html/payga{file_path}" #prod
+        return FileResponse(image_url)
+
+@router.post("/get-messages")
+async def message_filters(request: mains_models.Messages):
+    """
+    фильтры по сообщениям
+    :param request:
+    :return:
+    """
+    payload = {}
+    for k, v in request:
+        if v is not None:
+            payload[k] = v
+    response = await get_messages_by_any(payload)
+    if not response['Success']:
+        raise HTTPException(
+            status_code=400,
+            detail=response
+        )
+    return response

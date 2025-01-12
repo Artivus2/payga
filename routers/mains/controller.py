@@ -1,5 +1,6 @@
 import mysql.connector as cpy
 import config
+from routers.admin.utils import send_mail
 from routers.orders.utils import generate_uuid
 
 
@@ -779,3 +780,84 @@ async def get_urls_reqs(id):
                 return {"Success": True, "data": check['url']}
             else:
                 return {"Success": False, "data": "png не найдены"}
+
+
+async def set_messages(payload):
+    with cpy.connect(**config.config) as cnx:
+        with cnx.cursor(dictionary=True) as cur:
+            message_uuid = await generate_uuid()
+            insert_string = "INSERT INTO pay_message (order_uuid, message_uuid, text, docs_url, status, date, email) " \
+                            "VALUES ('" + str(payload.order_uuid) + "','" + str(message_uuid) + \
+                            "','" + str(payload.text) + "',0,0, UTC_TIMESTAMP(), '"+str(payload.email)+"')"
+            cur.execute(insert_string)
+            cnx.commit()
+            if cur.rowcount > 0:
+                result = await send_mail("Ваше обращение по заявке № "+str(message_uuid) + " будет обработано в ближайшее время", "Обращение в службу поддержки", payload.email)
+                if result["Success"]:
+                    return {"Success": True, "data": message_uuid}
+                else:
+                    return {"Success": False, "data": "Сообщение не удалось отправить"}
+            else:
+                return {"Success": False, "data": "Сообщение не отправлено"}
+
+
+async def insert_check(message_uuid, images):
+    with cpy.connect(**config.config) as cnx:
+        with cnx.cursor(dictionary=True) as cur:
+
+            update_string = "UPDATE pay_message SET docs_url = '" + str(images) + "' where message_uuid = '" + str(message_uuid) +"'"
+            cur.execute(update_string)
+            cnx.commit()
+            if cur.rowcount > 0:
+                return {"Success": True, "data": "Добавлен чек"}
+            else:
+                return {"Success": False, "data": "Платежки не добавлены"}
+
+
+async def get_messages_by_any(payload):
+    with cpy.connect(**config.config) as cnx:
+        with cnx.cursor(dictionary=True) as cur:
+            data_check = "select * from pay_message where "
+
+            for k, v in dict(payload).items():
+                if k != 'id':
+                    data_check += "pay_message." + str(k) + " = '" + str(v) + "' and "
+            data_check += "pay_message.id > 0"
+            cur.execute(data_check)
+            data = cur.fetchall()
+            if data:
+                return {"Success": True, "data": data}
+            else:
+                return {"Success": False, "data": "Сообщения не найдены"}
+
+
+async def set_message_status(payload):
+    with (cpy.connect(**config.config) as cnx):
+        with cnx.cursor(dictionary=True) as cur:
+            data_check = "select * from pay_message where message_uuid = '" + str(payload.message_uuid) +"'"
+            cur.execute(data_check)
+            data = cur.fetchone()
+            if data:
+                update_string = "UPDATE pay_message SET status = " + str(payload.status) + \
+                " where message_uuid = '" + str(payload.message_uuid) +"'"
+                cur.execute(update_string)
+                cnx.commit()
+                if cur.rowcount > 0:
+                    return {"Success": True, "data": "Статус сообщения изменен"}
+                else:
+                    return {"Success": False, "data": "Сообщение не изменено"}
+            else:
+                return {"Success": False, "data": "Сообщение не найдено"}
+
+
+
+async def get_message_url(message_uuid):
+    with cpy.connect(**config.config) as cnx:
+        with cnx.cursor(dictionary=True) as cur:
+            data_check = "select * from pay_message where message_uuid = '" + str(message_uuid) +"'"
+            cur.execute(data_check)
+            check = cur.fetchone()
+            if check:
+                return {"Success": True, "data": check}
+            else:
+                return {"Success": False, "data": "Платежка не найдена"}

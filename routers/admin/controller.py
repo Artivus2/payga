@@ -431,9 +431,10 @@ async def get_info_for_invoice(payload):
                         "title": types_reqs.get('title'),
                         "url": types_reqs.get('url')
                     }
-                    string2 = "SELECT pay_reqs.id as req_id, value, pay_reqs.fio, pay_admin_banks.title as bank_title, "+\
+                    string2 = "SELECT pay_pay_percent.value as cashback, pay_reqs.id as req_id, pay_reqs.value, pay_reqs.fio, pay_admin_banks.title as bank_title, "+\
                               "pay_admin_banks.id as bank_id, pay_admin_banks.url as bank_url FROM pay_reqs " + \
                               "LEFT JOIN user ON user.id = pay_reqs.user_id " + \
+                              "LEFT JOIN pay_pay_percent ON pay_pay_percent.user_id = pay_reqs.user_id and pay_pay_percent.pay_id = 1 " + \
                               "LEFT JOIN pay_fav_banks ON pay_reqs.bank_id = pay_fav_banks.id " + \
                               "LEFT JOIN pay_admin_banks ON pay_fav_banks.bank_id = pay_admin_banks.id " + \
                               "WHERE reqs_types_id = '" + str(types_reqs.get('id')) + \

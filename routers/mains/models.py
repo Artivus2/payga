@@ -284,3 +284,14 @@ class Parsers(BaseModel):
     id: int | None = None
     shablon: str | None = None
     sender: str | None = None
+
+
+class Messages(BaseModel):
+    id: int | None = None
+    order_uuid: str | None = None
+    text: str | None = None
+    docs_url: str | None = None
+    status: int | None = None
+    email: str | None = None
+    date: str | None = None
+    message_uuid: str | None = None

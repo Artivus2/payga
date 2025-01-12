@@ -35,13 +35,13 @@ async def send_mail(message = "TEST", subject = "TEST", to_address = "artivus2@m
     try:
         with smtplib.SMTP_SSL(config.HOST_EMAIL, port=465) as connection:
             connection.login(
-                user=config.SUPER_ADMIN_ADDRESS,
+                user=config.PAY_EMAIL_ADDRESS,
                 password=config.password
             )
             message_send = MIMEText(message)
             message_send["Subject"] = subject
             connection.sendmail(
-                from_addr=config.SUPER_ADMIN_ADDRESS,
+                from_addr=config.PAY_EMAIL_ADDRESS,
                 to_addrs=to_address,
                 msg=message_send.as_string()
             )

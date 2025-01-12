@@ -32,6 +32,7 @@ hex_address = '418a03b3bf5afe0e94b014be2e3929e11150dc601f'
 USDT_CONTRACT_ADDRESS = 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t'
 BYBIT_ADDRESS = "TM6hy595DEm9NSzEJ1dLq7ogGeM1Kv4bQA"
 SUPER_ADMIN_ADDRESS = 'support@greenavi.com'
+PAY_EMAIL_ADDRESS = 'pay@greenavi.com'
 HOST_EMAIL = "mail.hosting.reg.ru"
 ADMIN_ROLE = 1
 MERCHANT_ROLE = 2
