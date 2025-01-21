@@ -3,14 +3,16 @@ import routers.api_merchant.models as merchant_models
 from routers.admin.utils import get_min_amount, send_mail
 from routers.api_merchant.controller import (
     get_settings,
-    set_settings
+    set_settings,
+    create_or_update_shop,
+    get_shops
 )
 from routers.mains.controller import get_chart
 
 
 router = APIRouter(prefix='/api/v1/merchant',
                    tags=['Мерчант'],
-                   dependencies=[Depends(merchant_models.GetApiKey())]
+                   #dependencies=[Depends(merchant_models.GetApiKey())]
                    )
 
 @router.get("/get-api-status")
@@ -110,6 +112,42 @@ async def set_merchant_settings(request: merchant_models.Settings):
                 detail=response
             )
     return response
+
+
+@router.post("/create-shops")
+async def create_shops(request: merchant_models.Shops):
+    """
+    Создать магазин
+    """
+    payload = {}
+    for k, v in request:
+        if v is not None:
+            payload[k] = v
+    if request.id is None:
+        payload['id'] = 0
+    print(payload)
+    response = await create_or_update_shop(payload)
+    if not response['Success']:
+            raise HTTPException(
+                status_code=400,
+                detail=response
+            )
+    return response
+
+
+@router.get("/get-all-shops/{id}")
+async def get_all_shops(id: int):
+    """
+    вывести магазины
+    """
+    response = await get_shops(id)
+    if not response['Success']:
+            raise HTTPException(
+                status_code=400,
+                detail=response
+            )
+    return response
+
 
 
 

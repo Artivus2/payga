@@ -32,3 +32,14 @@ class Settings(BaseModel):
     success_url: str | None = None
     fail_url: str | None = None
     secret_word: str | None = None
+
+
+class Shops(BaseModel):
+    __table_name__ = "pay_shops"
+    id: int | None = None
+    uuid: str | None = None
+    user_id: int | None = None
+    title: str | None = None
+    balance: float | None = None
+    date: str | None = None
+

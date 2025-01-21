@@ -45,9 +45,11 @@ async def create_balance_percent(request: actives_models.PayPercent):
 
     }
     """
-    print(request)
-    response = await crud_balance_percent('create', request)
-    print(response)
+    payload = {}
+    for k, v in request:
+        if v is not None:
+            payload[k] = v
+    response = await crud_balance_percent('create', payload)
     if not response['Success']:
         raise HTTPException(
             status_code=400,
@@ -133,8 +135,11 @@ async def create_balance(request: actives_models.Balance):
     user_id: int
     }
     """
-
-    response = await crud_balance('create', request)
+    payload = {}
+    for k, v in request:
+        if v is not None:
+            payload[k] = v
+    response = await crud_balance('create', payload)
     if not response['Success']:
         raise HTTPException(
             status_code=400,
@@ -303,7 +308,11 @@ async def create_deposit(request: actives_models.Deposit):
     user_id: int
     }
     """
-    response = await crud_deposit('create', request)
+    payload = {}
+    for k, v in request:
+        if v is not None:
+            payload[k] = v
+    response = await crud_deposit('create', payload)
     if not response['Success']:
         raise HTTPException(
             status_code=400,

@@ -6,6 +6,7 @@ from fastapi import FastAPI
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from routers.orders.router import router as router_orders
 from routers.user.router import router as router_user
 from routers.admin.router import router as router_admin
@@ -27,30 +28,13 @@ app = FastAPI()
 # Добавляем middleware для CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://admin.greenavi.com", "http://localhost:3000"],  # Разрешаем все источники
+    allow_origins=["https://admin.greenavi.com", "http://localhost:3000", "http://localhost"],  # Разрешаем все источники
     allow_credentials=True,
     allow_methods=["*"],  # Разрешаем все методы
     allow_headers=["*"],  # Разрешаем все заголовки
     #allowed_hosts=['greenavi.com', '*.greenavi.com'],
 
 )
-
-# @app.get("/")
-# async def route():
-#     return {
-#         "message": "Сайт находится в разработке!"
-#     }
-
-# @app.get("/register/{referral_code}")
-# async def register_with_referral_code(referral_code: str | None):
-#     """
-#     регистрация по реферальной ссылке
-#     http://test.greenavi.com/24g23g24g2
-#     :param referral_code:
-#     :return:
-#     """
-#     print(referral_code)
-#     return referral_code
 
 @app.get("/files/pay-greenavi.apk")
 def download_file():

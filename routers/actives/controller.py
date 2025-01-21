@@ -12,24 +12,26 @@ async def crud_balance_percent(crud, payload):  # todo -> admin
     :param payload:
     :return:
     """
-    print(payload)
     with cpy.connect(**config.config) as cnx:
         with cnx.cursor(dictionary=True) as cur:
             if crud == 'create':
-                string0 = "SELECT * FROM pay_pay_percent where user_id = " + str(payload.user_id) + \
-                          " and pay_id = " + str(payload.pay_id)
+                user_id = payload.get('user_id')
+                pay_id = payload.get('pay_id')
+                value = payload.get('value')
+                string0 = "SELECT * FROM pay_pay_percent where user_id = " + str(user_id) + \
+                          " and pay_id = " + str(pay_id)
                 cur.execute(string0)
-                data0 = cur.fetchall()
+                data0 = cur.fetchone()
                 if not data0:
                     data_str = "INSERT INTO pay_pay_percent (user_id, pay_id, value, date, pay_status_id) " \
-                               "VALUES ('" + str(payload.user_id) + "','" + str(payload.pay_id) + "','" \
-                               + str(payload.value) + "', UTC_TIMESTAMP() , 1)"
+                               "VALUES ('" + str(user_id) + "','" + str(pay_id) + "','" \
+                               + str(value) + "', UTC_TIMESTAMP() , 1)"
                     cur.execute(data_str)
                     cnx.commit()
                     if cur.rowcount > 0:
-                        return {"Success": True, "data": "Операция проведена"}
+                        return {"Success": True, "data": "Процент проведен"}
                     else:
-                        return {"Success": False, "data": "Операцию провести не удалось"}
+                        return {"Success": False, "data": "Процент провести не удалось"}
                 else:
                     return {"Success": False, "data": "Уже есть процент по данному пользователю"}
 
@@ -81,20 +83,27 @@ async def crud_balance(crud, payload):  # todo -> admin
     :return:
     """
 
-    with (cpy.connect(**config.config) as cnx):
+    with cpy.connect(**config.config) as cnx:
         with cnx.cursor(dictionary=True) as cur:
             if crud == 'create':
-                # todo проверить есть уже баланс insert or update
-                data_string = "INSERT INTO pay_balance (user_id, value, chart_id, baldep_status_id, " \
-                              "baldep_types_id, date, frozen, withdrawals) " \
-                              "VALUES ('" + str(payload.user_id) + "',0,259,1,1,UTC_TIMESTAMP(), 0, 0)"
 
-                cur.execute(data_string)
-                cnx.commit()
-                if cur.rowcount > 0:
-                    return {"Success": True, "data": "Баланс пользователя создан"}
+                user_id = payload
+                string0 = "SELECT * FROM pay_balance where user_id = " + str(user_id)
+                cur.execute(string0)
+                data0 = cur.fetchone()
+                if not data0:
+                    data_string = "INSERT INTO pay_balance (user_id, value, chart_id, baldep_status_id, " \
+                                  "baldep_types_id, date, frozen, withdrawals) " \
+                                  "VALUES ('" + str(user_id) + "',0,259,1,1,UTC_TIMESTAMP(), 0, 0)"
+
+                    cur.execute(data_string)
+                    cnx.commit()
+                    if cur.rowcount > 0:
+                        return {"Success": True, "data": "Баланс пользователя создан"}
+                    else:
+                        return {"Success": False, "data": "Баланс не может быть создан"}
                 else:
-                    return {"Success": False, "data": "Баланс не может быть создан"}
+                    return {"Success": False, "data": "Баланс уже существует"}
             if crud == 'get':
                 if int(payload) == 0:  # todo left join
                     string = "select * from pay_balance"
@@ -330,13 +339,14 @@ async def crud_deposit(crud, payload):  # todo -> admin
     with cpy.connect(**config.config) as cnx:
         with cnx.cursor(dictionary=True) as cur:
             if crud == 'create':
-                check_deposit = "SELECT * from pay_deposit where user_id = " + str(payload.user_id)
+                user_id = payload
+                check_deposit = "SELECT * from pay_deposit where user_id = " + str(user_id)
                 cur.execute(check_deposit)
                 data = cur.fetchone()
                 if not data:
                     data_string = "INSERT INTO pay_deposit (user_id, value, baldep_status_id, " \
                                   "baldep_types_id, frozen, date, min_deposit) " \
-                                  "VALUES ('" + str(payload.user_id) + "',0,1,1,0,UTC_TIMESTAMP(),0)"
+                                  "VALUES ('" + str(user_id) + "',0,1,1,0,UTC_TIMESTAMP(),0)"
                     cur.execute(data_string)
                     cnx.commit()
                     if cur.rowcount > 0:

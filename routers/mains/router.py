@@ -286,7 +286,6 @@ async def filter_reqs(request: mains_models.ReqsFilters):
     for k, v in request:
         if v is not None:
             payload[k] = v
-    print(payload)
     response = await req_by_filters(payload)
     if not response['Success']:
         raise HTTPException(

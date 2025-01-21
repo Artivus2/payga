@@ -3,7 +3,8 @@ import datetime
 import mysql.connector as cpy
 import config
 import routers.admin.models as admin_models
-from routers.actives.controller import crud_deposit, crud_balance, crud_transfer
+from routers.actives.controller import crud_deposit, crud_balance, crud_transfer, crud_balance_percent
+from routers.admin.utils import send_mail
 from routers.orders.controller import (
     update_order_by_any
 )
@@ -37,15 +38,23 @@ async def check_access(request: admin_models.AuthRoles):
 async def send_link_to_user(user_id):
     with cpy.connect(**config.config) as cnx:
         with cnx.cursor(dictionary=True) as cur:
-            try:
+            string0 = "SELECT * FROM user where id = " + str(user_id)
+            cur.execute(string0)
+            data0 = cur.fetchone()
+            if data0:
                 string = "UPDATE user SET banned = 0 where id = '" + str(user_id) + "'"
                 cur.execute(string)
                 cnx.commit()
-                cur.close()
-                return {"Success": True, "data": "Пользователь подтвержден"}
-            except:
-                cur.close()
-                return {"Success": False, "data": "Пользователь не подтвержден"}
+                if cur.rowcount > 0:
+                    message = "Пользователь " + str(data0.get('login')) + " подтвержден "
+                    await send_mail(message,
+                                    "Успешная регистрация", data0.get('email'))
+
+                    return {"Success": True, "data": "Пользователь подтвержден"}
+                else:
+                    return {"Success": True, "data": "Пользователь не может быть подтвержден"}
+            else:
+                return {"Success": False, "data": "Пользователь не найден"}
 
 
 async def insert_new_user_banned(**payload):
@@ -75,7 +84,7 @@ async def insert_new_user_banned(**payload):
                               "VALUES ('" + str(payload['login']) + "','" + str(payload['email']) + \
                               "','" + str(payload['password']) + "','" + str(ref_id) + "','" + str(link_gen)\
                               + "','" + str(payload['telegram']) + "','" + str(app_id) + "','" \
-                              + str(banned_for_submit) + "', 0)"
+                              + str(banned_for_submit) + "', 2)"
                 cur.execute(data_string)
                 cnx.commit()
                 data_user_id = "SELECT * from user where login = '" + str(payload['login']) + \
@@ -91,8 +100,12 @@ async def insert_new_user_banned(**payload):
                 cnx.close()
                 # print(comment)
                 message = "Пользователь " + str(payload['email']) \
-                          + " поставлен в очередь на регистрацию " + str(datetime.utcnow())
+                          + " поставлен в очередь на регистрацию " + str(datetime.datetime.utcnow())
                 botgreenavipay.send_message(config.pay_main_group, message)
+                await crud_balance("create", data_user.get('id'))
+                await crud_deposit("create", data_user.get('id'))
+                await crud_balance_percent("create", {"user_id": data_user.get('id'),"pay_id": 1, "value": 0})
+                await crud_balance_percent("create", {"user_id": data_user.get('id'),"pay_id": 2, "value": 0})
                 return {"Success": True, "data": "Поставлен в очередь на регистрацию. Ожидайте"}
             else:
                 return {"Success": False, "data": "Пользователь: " + str(payload['email'])
@@ -227,13 +240,11 @@ async def set_users_any(payload):  # эталон для update
                 cur.execute(data_update)
                 cnx.commit()
             except:
-                cnx.close()
+
                 return {"Success": False, "data": "Не корректные данные"}
             if cur.rowcount > 0:
-                cnx.close()
                 return {"Success": True, "data": "Успешно обновлены реквизиты пользователя"}
             else:
-                cnx.close()
                 return {"Success": False, "data": "реквизиты пользователя не обновлены"}
 
 
