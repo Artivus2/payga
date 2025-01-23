@@ -88,17 +88,25 @@ async def create_or_update_shop(payload):
 
 
 
-async def get_shops(id):
+async def get_shops(id, user_id):
     with cpy.connect(**config.config) as cnx:
         with cnx.cursor(dictionary=True) as cur:
-            if id == 0:
-                check_settings = "SELECT * FROM pay_shops"
-                cur.execute(check_settings)
-                data = cur.fetchall()
+            check_settings = "SELECT * FROM pay_shops"
+            dop1 = ""
+            if id != 0:
+                dop1 = " where id = " + str(id)
             else:
-                check_settings = "SELECT * FROM pay_shops where id = '" + str(id) + "'"
-                cur.execute(check_settings)
-                data = cur.fetchone()
+                dop1 = " where id > 0"
+
+            if user_id != 0:
+                dop1 += " and user_id = " + str(user_id)
+            else:
+                dop1 = " and user_id > 0"
+
+
+            check_settings += dop1
+            cur.execute(check_settings)
+            data = cur.fetchone()
             if data:
                 return {"Success": True, "data": data}
             else:

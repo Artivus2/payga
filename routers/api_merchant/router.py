@@ -135,12 +135,12 @@ async def create_shops(request: merchant_models.Shops):
     return response
 
 
-@router.get("/get-all-shops/{id}")
-async def get_all_shops(id: int):
+@router.get("/get-all-shops/{user_id}/{id}")
+async def get_all_shops(id: int | None, user_id: int):
     """
     вывести магазины
     """
-    response = await get_shops(id)
+    response = await get_shops(id, user_id)
     if not response['Success']:
             raise HTTPException(
                 status_code=400,
