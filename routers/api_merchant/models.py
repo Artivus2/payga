@@ -24,14 +24,13 @@ class Invoice(BaseModel):
     api_key: str | None = None
 
 
-class Settings(BaseModel):
-    __table_name__ = "pay_notify_user_settings"
+class FavReqsTypes(BaseModel):
+    __table_name__ = "pay_fav_merchant_reqs_types"
     id: int | None = None
-    user_id: int | None = None
-    site_url: str | None = None
-    success_url: str | None = None
-    fail_url: str | None = None
-    secret_word: str | None = None
+    shop_id: int | None = None
+    pay_reqs_types_id: int | None = None
+    active:  int | None = None
+
 
 
 class Shops(BaseModel):
@@ -40,6 +39,7 @@ class Shops(BaseModel):
     uuid: str | None = None
     user_id: int | None = None
     title: str | None = None
+    url: str | None = None
     balance: float | None = None
     date: str | None = None
 

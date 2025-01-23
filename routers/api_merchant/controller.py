@@ -4,56 +4,64 @@ from routers.admin.utils import create_random_key
 from routers.orders.utils import generate_uuid
 
 
-async def get_settings(user_id):
+async def getfavtypes(shop_id):
     with cpy.connect(**config.config) as cnx:
         with cnx.cursor(dictionary=True) as cur:
-            if user_id == 0:
-                check_settings = "SELECT * FROM pay_notify_user_settings"
-                cur.execute(check_settings)
-                data = cur.fetchall()
-            else:
-                check_settings = "SELECT * FROM pay_notify_user_settings where user_id = '" + str(user_id) + "'"
-                cur.execute(check_settings)
-                data = cur.fetchone()
+
+            check_settings = "SELECT * FROM pay_fav_merchant_reqs_types " \
+                              "LEFT JOIN pay_reqs_types ON pay_reqs_types.id = pay_fav_merchant_reqs_types.pay_reqs_types_id" \
+                              " where shop_id = " + str(shop_id)
+            cur.execute(check_settings)
+            data = cur.fetchall()
             if data:
                 return {"Success": True, "data": data}
             else:
                 return {"Success": False, "data": "не удалось найти параметры"}
 
 
-async def set_settings(payload):
-    with (cpy.connect(**config.config) as cnx):
+async def setfavtypes(payload):
+    with cpy.connect(**config.config) as cnx:
         with cnx.cursor(dictionary=True) as cur:
-
-            check_settings = "SELECT * FROM pay_notify_user_settings where user_id = '" + str(payload.get('user_id')) + "'"
-            cur.execute(check_settings)
-            data = cur.fetchone()
-            if data:
-                data_update = "UPDATE pay_notify_user_settings SET "
-                for k, v in dict(payload).items():
-                    if k != 'user_id':
-                        data_update += str(k) + " = '" + str(v) + "',"
-                data_update = data_update[:-1]
-                data_update += " where user_id = " + str(payload.get('user_id'))
-                cur.execute(data_update)
+            check_string = "SELECT * from pay_fav_merchant_reqs_types where " \
+                           "shop_id = " + str(payload.shop_id) + " and pay_reqs_types_id = " + str(payload.pay_reqs_types_id)
+            cur.execute(check_string)
+            fav_reqs = cur.fetchall()
+            if fav_reqs:
+                update_string = "UPDATE pay_fav_merchant_reqs_types set " \
+                                "active = '" + str(payload.active) + "' where shop_id = " + str(payload.shop_id) \
+                                + " and pay_reqs_types_id = " + str(payload.pay_reqs_types_id)
+                cur.execute(update_string)
                 cnx.commit()
                 if cur.rowcount > 0:
-                    return {"Success": True, "data": "Успешно обновлены настройки мерчанта"}
+                    return {"Success": True, "data": "Статус активности изменен"}
                 else:
-                    return {"Success": False, "data": "настройки мерчанта не обновлены"}
+                    return {"Success": False, "data": "Платежный метод не изменен"}
             else:
-                secret_word = await create_random_key(20)
-                data_insert = "INSERT into pay_notify_user_settings (user_id, site_url, success_url, " \
-                               "fail_url, secret_word) VALUES (" \
-                + str(payload.get('user_id')) + ", '" + str(payload.get('site_url')) + "', '" + str(payload.get('success_url')) \
-                + "', '" + str(payload.get('fail_url')) + "', '" + str(secret_word) + "')"
-                print(data_insert)
-                cur.execute(data_insert)
+                insert_string = "INSERT INTO pay_fav_merchant_reqs_types (shop_id, pay_reqs_types_id, active) " \
+                                "VALUES (" + str(payload.shop_id) + \
+                                ",'" + str(payload.pay_reqs_types_id) + "', 1)"
+                cur.execute(insert_string)
                 cnx.commit()
                 if cur.rowcount > 0:
-                    return {"Success": True, "data": "Успешно обновлены настройки"}
+                    return {"Success": True, "data": "Успешно добавлен в группу избранных платежных методов"}
                 else:
-                    return {"Success": False, "data": "настройки не обновлены"}
+                    return {"Success": False, "data": "платежный метод не добавлен не добавлен"}
+
+
+async def remove_fav_reqs(payload):
+    with cpy.connect(**config.config) as cnx:
+        with cnx.cursor(dictionary=True) as cur:
+            delete_string = "DELETE FROM pay_fav_merchant_reqs_types where " \
+                            "id = '"+str(payload.id) + "'"
+            cur.execute(delete_string)
+            cnx.commit()
+            if cur.rowcount > 0:
+                cnx.close()
+                return {"Success": True, "data": "Успешно удален из группы избранных платежных методов"}
+            else:
+                cnx.close()
+                return {"Success": False, "data": "платежный метод не найден"}
+
 
 
 async def create_or_update_shop(payload):
@@ -75,10 +83,13 @@ async def create_or_update_shop(payload):
                     return {"Success": False, "data": "Данные не обновлены"}
             else:
                 uuids = await generate_uuid()
-                data_insert = "INSERT into pay_shops (uuid, user_id, title, balance, date " \
+                secret_word = await create_random_key(20)
+                data_insert = "INSERT into pay_shops (uuid, user_id, title, balance, date, site_url, success_url, fail_url, secret_word " \
                               ") VALUES ('" \
                               + str(uuids) + "', '" + str(payload.get('user_id')) + "', '" + str(
-                                payload.get('title')) + "', 0, UTC_TIMESTAMP())"
+                                payload.get('title')) + "', 0, UTC_TIMESTAMP(), '"+str(payload.get('site_url')) \
+                                + "', '" + str(payload.get('success_url')) \
+                                + "', '" + str(payload.get('fail_url')) + "', '" + str(secret_word) + "')"
                 cur.execute(data_insert)
                 cnx.commit()
                 if cur.rowcount > 0:
@@ -106,7 +117,9 @@ async def get_shops(id, user_id):
 
             check_settings += dop1
             cur.execute(check_settings)
-            data = cur.fetchone()
+
+
+            data = cur.fetchall()
             if data:
                 return {"Success": True, "data": data}
             else:

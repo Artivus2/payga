@@ -195,6 +195,7 @@ class ReqsFilters(BaseModel):
     sequence: int | None = None
     pay_pay_id: int | None = None
     value: str | None = None
+    short_value: str | None = None
     currency_id: int | None = None
     reqs_types_id: int | None = None
     reqs_status_id: int | None = None

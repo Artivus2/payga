@@ -7,7 +7,10 @@
     <list default="true" id="1d37d695-bb31-4eb5-87e8-c4c9df400ca9" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/routers/api_merchant/controller.py" beforeDir="false" afterPath="$PROJECT_DIR$/routers/api_merchant/controller.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/routers/api_merchant/models.py" beforeDir="false" afterPath="$PROJECT_DIR$/routers/api_merchant/models.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/routers/api_merchant/router.py" beforeDir="false" afterPath="$PROJECT_DIR$/routers/api_merchant/router.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/routers/mains/controller.py" beforeDir="false" afterPath="$PROJECT_DIR$/routers/mains/controller.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/routers/mains/models.py" beforeDir="false" afterPath="$PROJECT_DIR$/routers/mains/models.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />

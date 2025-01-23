@@ -2,8 +2,8 @@ from fastapi import APIRouter, HTTPException, Depends, Body
 import routers.api_merchant.models as merchant_models
 from routers.admin.utils import get_min_amount, send_mail
 from routers.api_merchant.controller import (
-    get_settings,
-    set_settings,
+    getfavtypes,
+    setfavtypes,
     create_or_update_shop,
     get_shops
 )
@@ -82,12 +82,12 @@ async def min_amount():
     return response
 
 
-@router.get("/get-settings/{user_id}")
-async def get_merchant_settings(user_id: int):
+@router.get("/get-fav-reqs-types/{shop_id}")
+async def get_merchant_settings(shop_id: int):
     """
     получить настройки мерчанта
     """
-    response = await get_settings(user_id)
+    response = await getfavtypes(shop_id)
     if not response['Success']:
             raise HTTPException(
                 status_code=400,
@@ -96,16 +96,12 @@ async def get_merchant_settings(user_id: int):
     return response
 
 
-@router.post("/set-settings")
-async def set_merchant_settings(request: merchant_models.Settings):
+@router.post("/set-fav-reqs-types")
+async def set_merchant_settings(request: merchant_models.FavReqsTypes):
     """
     установить настройки мерчанта
     """
-    payload = {}
-    for k, v in request:
-        if v is not None:
-            payload[k] = v
-    response = await set_settings(payload)
+    response = await setfavtypes(request)
     if not response['Success']:
             raise HTTPException(
                 status_code=400,

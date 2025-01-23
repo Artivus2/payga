@@ -317,17 +317,16 @@ async def req_by_filters(payload):
                      "pay_reqs_groups.types_automate_id as pay_automation_type_id, pay_reqs_groups.turn_off, " \
                      "pay_reqs_groups.uuid as pay_reqs_groups_uuid, " \
                      "sequence, pay_pay_id, pay_pay.title as pay_title," \
-                     "pay_reqs_status.title as pay_status, pay_reqs.value," \
+                     "pay_reqs_status.title as pay_status, pay_reqs.value, pay_reqs.short_value," \
                      "reqs_types_id, pay_reqs_types.title as reqs_types_title," \
-                     "pay_fav_banks.id as bank_id, pay_admin_banks.title as bank_title, currency_id, currency.symbol as currency_symbol," \
+                     "pay_admin_banks.id as bank_id, pay_admin_banks.title as bank_title, currency_id, currency.symbol as currency_symbol," \
                      "fio, DATE_FORMAT(pay_reqs.date, "+str(config.date_format_all)+") as date, pay_automation_type.title as pay_automation_type_title, " \
                      "pay_automation_turn_off.title as turn_off_title," \
                      "qty_limit_hour, qty_limit_day, qty_limit_month, sum_limit_hour, sum_limit_day, " \
                      "sum_limit_month, limit_active_orders, other_banks, min_sum_per_transaction, " \
                      "max_sum_per_transaction, max_limit_transaction_sum, max_limit_transaction " \
                      "from pay_reqs " \
-                     "LEFT JOIN pay_fav_banks ON pay_reqs.bank_id = pay_fav_banks.id " \
-                     "LEFT JOIN pay_admin_banks ON pay_admin_banks.id = pay_fav_banks.bank_id " \
+                     "LEFT JOIN pay_admin_banks ON pay_admin_banks.id = pay_reqs.bank_id " \
                      "LEFT JOIN currency ON pay_reqs.currency_id = currency.id " \
                      "LEFT JOIN pay_reqs_groups ON pay_reqs.req_group_id = pay_reqs_groups.id " \
                      "LEFT JOIN pay_reqs_status ON pay_reqs.reqs_status_id = pay_reqs_status.id " \
