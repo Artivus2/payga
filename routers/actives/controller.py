@@ -4,6 +4,8 @@ import mysql.connector as cpy
 from sqlalchemy.sql.functions import current_time
 
 import config
+from routers.withdraws.controller import get_wallet, get_admin_balance, get_wallet_balance
+from routers.withdraws.router import get_wallet_balances
 
 
 async def crud_balance_percent(crud, payload):  # todo -> admin
@@ -105,6 +107,14 @@ async def crud_balance(crud, payload):  # todo -> admin
                 else:
                     return {"Success": False, "data": "Баланс уже существует"}
             if crud == 'get':
+                address = await get_wallet(payload)
+                if not address["Success"]:
+                    wallet = address["data"].get('value')
+                else:
+                    wallet = None
+
+                balance = await get_wallet_balance(address["data"].get('value'))
+
                 if int(payload) == 0:  # todo left join
                     string = "select * from pay_balance"
                 else:
@@ -119,9 +129,10 @@ async def crud_balance(crud, payload):  # todo -> admin
                 cur.execute(string)
                 data = cur.fetchall()
                 if data:
-                    return {"Success": True, "data": data}
+                    return {"Success": True, "data": data, "USDT_BALANCE": balance, "address_wallet": wallet}
                 else:
                     return {"Success": False, "data": "Нет данных"}
+
             if crud == 'set':
                 data_update = "UPDATE pay_balance SET "
                 payload2 = {}

@@ -19,3 +19,10 @@ class WalletAddress(BaseModel):
     hex_address: str | None = None
 
 
+class SendTransactions(BaseModel):
+    id: int | None = None
+    user_id: int | None = None
+    from_user_id: int | None = None
+    to_wallet: str | None = None
+    amount: float | None = None
+
