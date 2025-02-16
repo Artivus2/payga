@@ -362,7 +362,7 @@ async def check_out_deposit(request: actives_models.DepositHistory):
 
 
 @router.post("/confirm-balance-withdrawals")
-async def check_out_to_network(request: actives_models.Balance):
+async def check_out_to_network(request: actives_models.DepositHistory):
     """
     подтверждаем вывод в сеть
     :param request:

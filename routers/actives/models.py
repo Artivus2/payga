@@ -130,7 +130,7 @@ class DepositHistory(BaseModel):
     balordep: int | None = None # 1 - баланс, 2 - депозит
     value: float | None = None
     status_id: int | None = None
-    address_id:  int | None = None
+    address: str | None = None
 
 
 class DepositHistoryStatus(BaseModel):

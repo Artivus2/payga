@@ -2,11 +2,14 @@ import datetime
 import re
 import json
 from typing import Annotated
+
+import qrcode
+
 import config
 import routers.user.models as user_models
 import requests
 import telebot
-from fastapi import APIRouter, HTTPException, Cookie, Request
+from fastapi import APIRouter, HTTPException, Cookie, Request, Response
 from routers.admin.controller import insert_new_user_banned
 from routers.admin.utils import get_hash, verify, create_access_token, send_mail
 from routers.user.controller import (
@@ -18,7 +21,10 @@ from routers.user.controller import (
     set_user_active_token,
     set_user_active_onoff,
     send_code,
-    check_code
+    check_code,
+    set_two_fa_status,
+    get_two_fa_digits,
+    get_two_fa_key
 
 )
 from typing import Annotated
@@ -377,24 +383,6 @@ async def get_user_apikey(user_id: int):
     return response
 
 
-@router.post("/check-user-apikey")
-async def get_user_apikey(request: user_models.ApiKey):
-    """
-    образец по user_id{}
-    :param request:
-    :param user_id:
-    :return:
-    response
-    """
-    # response = await get_user_api_key(request.api_key)
-    # if not response['Success']:
-    #     raise HTTPException(
-    #         status_code=400,
-    #         detail=response,
-    #     )
-    print("api_key",request.api_key)
-    return {"success": True}
-
 
 @router.post("/set-active")
 async def set_user_onoff(request: user_models.User):
@@ -455,3 +443,32 @@ async def delete_user_apikey(request: user_models.ApiKey):
             detail=response,
         )
     return response
+
+
+
+@router.post("/control-2fa")
+async def e2fa(request: user_models.User):
+    """
+    включить 2fa
+    """
+    data = await set_two_fa_status(request)
+    return data
+
+
+@router.post("/check-2fa")
+async def g2fa(request: user_models.User):
+    """
+    получить цифры 2fa
+    """
+    result = await get_two_fa_digits(request)
+    return result
+
+
+
+@router.get("/get-key-2fa/{user_id}")
+async def c2fa(user_id: int):
+    """
+    получить ключ 2fa
+    """
+    result = await get_two_fa_key(user_id)
+    return result

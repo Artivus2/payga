@@ -2,7 +2,7 @@ from fastapi import FastAPI, HTTPException, Depends, Header, Query
 import requests
 import json
 import config
-from routers.nowpayments import models
+
 
 
 def get_jwt_token():
@@ -19,7 +19,5 @@ def get_jwt_token():
         raise HTTPException(status_code=response.status_code, detail=response.json())
     #print(response.json()["token"])
     return response.json()["token"]
-
-
 
 

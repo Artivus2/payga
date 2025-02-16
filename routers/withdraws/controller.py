@@ -69,7 +69,11 @@ async def send_transaction_from_admin(payload):
 
         # Convert the amount to the correct unit (USDT uses 6 decimals)
         amount_in_sun = int(payload.amount * 10 ** 6)
-
+        account_info = tron.get_account(from_address)
+        bandwidth = account_info.get('freeBandwidth', 0)
+        energy = account_info.get('freeEnergy', 0)
+        print(f"Free Bandwidth: {bandwidth}")
+        print(f"Free Energy: {energy}")
         try:
             # Access the USDT contract
             contract = tron.get_contract(usdt_contract_address)

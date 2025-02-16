@@ -6,11 +6,24 @@
   <component name="ChangeListManager">
     <list default="true" id="1d37d695-bb31-4eb5-87e8-c4c9df400ca9" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/requirements.txt" beforeDir="false" afterPath="$PROJECT_DIR$/requirements.txt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/routers/actives/controller.py" beforeDir="false" afterPath="$PROJECT_DIR$/routers/actives/controller.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/routers/actives/models.py" beforeDir="false" afterPath="$PROJECT_DIR$/routers/actives/models.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/routers/admin/controller.py" beforeDir="false" afterPath="$PROJECT_DIR$/routers/admin/controller.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/routers/admin/router.py" beforeDir="false" afterPath="$PROJECT_DIR$/routers/admin/router.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/routers/api_merchant/controller.py" beforeDir="false" afterPath="$PROJECT_DIR$/routers/api_merchant/controller.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/routers/api_merchant/models.py" beforeDir="false" afterPath="$PROJECT_DIR$/routers/api_merchant/models.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/routers/api_merchant/router.py" beforeDir="false" afterPath="$PROJECT_DIR$/routers/api_merchant/router.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/routers/api_trader/models.py" beforeDir="false" afterPath="$PROJECT_DIR$/routers/api_trader/models.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/routers/api_trader/router.py" beforeDir="false" afterPath="$PROJECT_DIR$/routers/api_trader/router.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/routers/nowpayments/controller.py" beforeDir="false" afterPath="$PROJECT_DIR$/routers/nowpayments/controller.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/routers/nowpayments/models.py" beforeDir="false" afterPath="$PROJECT_DIR$/routers/nowpayments/models.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/routers/nowpayments/router.py" beforeDir="false" afterPath="$PROJECT_DIR$/routers/nowpayments/router.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/routers/user/controller.py" beforeDir="false" afterPath="$PROJECT_DIR$/routers/user/controller.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/routers/user/models.py" beforeDir="false" afterPath="$PROJECT_DIR$/routers/user/models.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/routers/user/router.py" beforeDir="false" afterPath="$PROJECT_DIR$/routers/user/router.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/routers/withdraws/controller.py" beforeDir="false" afterPath="$PROJECT_DIR$/routers/withdraws/controller.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/routers/withdraws/models.py" beforeDir="false" afterPath="$PROJECT_DIR$/routers/withdraws/models.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/routers/withdraws/router.py" beforeDir="false" afterPath="$PROJECT_DIR$/routers/withdraws/router.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/services.py" beforeDir="false" afterPath="$PROJECT_DIR$/services.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -48,7 +61,8 @@
     &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
     &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
     &quot;git-widget-placeholder&quot;: &quot;main&quot;,
-    &quot;last_opened_file_path&quot;: &quot;C:/projects/payga&quot;
+    &quot;last_opened_file_path&quot;: &quot;C:/projects/payga&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable&quot;
   }
 }</component>
   <component name="RecentsManager">
@@ -57,7 +71,7 @@
       <recent name="C:\projects\payga\routers\withdraws" />
     </key>
   </component>
-  <component name="RunManager" selected="Python.main">
+  <component name="RunManager" selected="Python.services">
     <configuration name="config" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="payga" />
       <option name="ENV_FILES" value="" />
@@ -170,8 +184,8 @@
     </configuration>
     <recent_temporary>
       <list>
-        <item itemvalue="Python.main" />
         <item itemvalue="Python.services" />
+        <item itemvalue="Python.main" />
         <item itemvalue="Python.router" />
         <item itemvalue="Python.config" />
         <item itemvalue="Python.utils" />

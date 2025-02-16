@@ -1,7 +1,9 @@
 import mysql.connector as cpy
 import config
+import requests
 from routers.admin.utils import create_random_key
 from routers.orders.utils import generate_uuid
+from fastapi import APIRouter, HTTPException, Depends, Body
 
 
 async def getfavtypes(shop_id):
@@ -124,3 +126,77 @@ async def get_shops(id, user_id):
                 return {"Success": True, "data": data}
             else:
                 return {"Success": False, "data": "не удалось найти магазин"}
+
+
+
+async def save_history_payment(payload):
+    with cpy.connect(**config.config) as cnx:
+        with cnx.cursor(dictionary=True) as cur:
+            status =payload.get('payment_status')
+            print(status)
+            string = "SELECT * FROM user where id = " + str(payload.get('user_id'))
+            cur.execute(string)
+            data0 = cur.fetchone()
+            if data0:
+                history = "INSERT into pay_history (user_id, np_order_uuid, value, date, status, payment_id, type) " \
+                "VALUES ('" + str(payload.get('user_id')) + "','" + str(payload.get('order_uuid')) + \
+                "','" + str(payload.get('price_amount')) + "',UTC_TIMESTAMP(), '"+str(status)+ \
+                          "', '" + str(payload.get('payment_id')) + "', 1)"
+                cur.execute(history)
+                cnx.commit()
+                if cur.rowcount > 0:
+                    return {"Success": True, "data": payload.get('payment_id')}
+                else:
+                    return {"Success": False, "data": "Данных нет"}
+            else:
+                return {"Success": False, "data": "Заявка не найдена"}
+
+
+
+async def save_history_payout(payload):
+    with cpy.connect(**config.config) as cnx:
+        with cnx.cursor(dictionary=True) as cur:
+            status =payload.get('payout_status')
+            print(status)
+            string = "SELECT * FROM user where id = " + str(payload.get('user_id'))
+            cur.execute(string)
+            data0 = cur.fetchone()
+            if data0.get('twofa_status') == 1:
+                if data0:
+                    history = "INSERT into pay_history (user_id, np_order_uuid, value, date, status, payment_id, type) " \
+                    "VALUES ('" + str(payload.get('user_id')) + "','" + str(payload.get('order_uuid')) + \
+                    "','" + str(payload.get('price_amount')) + "',UTC_TIMESTAMP(), '"+str(status)+ \
+                              "', '" + str(payload.get('payout_id')) + "',2)"
+                    cur.execute(history)
+                    cnx.commit()
+                    if cur.rowcount > 0:
+                        return {"Success": True, "data": payload.get('payout_id')}
+                    else:
+                        return {"Success": False, "data": "Данных нет"}
+                else:
+                    return {"Success": False, "data": "Заявка не найдена"}
+            else:
+                return {"Success": False, "data": "Заявка не создана, включите 2фа верификацию"}
+
+
+# async def get_payment_status_by_uuid(payment_id):
+#     with cpy.connect(**config.config) as cnx:
+#         with cnx.cursor(dictionary=True) as cur:
+#             string = "SELECT * FROM pay_history where payment_id = '" + str(payment_id) + "'"
+#             cur.execute(string)
+#             data = cur.fetchone()
+#             if data:
+#                 url = f"{config.base_url_np}payment/{payment_id}"
+#                 headers = {
+#                     "x-api-key": config.api_key_np,
+#                     "Content-Type": "application/json"
+#                 }
+#                 response = requests.get(url, headers=headers)
+#                 if response.status_code != 200:
+#                     raise HTTPException(status_code=response.status_code, detail=response.json())
+#                 print(response.json())
+#                 return {"Success": True, "data": response.json()}
+#             else:
+#                 return {"Success": False, "data": "Данных нет"}
+
+

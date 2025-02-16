@@ -2,6 +2,9 @@ import datetime
 import random
 import uuid
 import mysql.connector as cpy
+import requests
+from fastapi import HTTPException
+
 import config
 import telebot
 
@@ -194,43 +197,160 @@ def set_order_status_18_payout(time=-240):
             cnx.commit()
             if cur.rowcount > 0:
                 message = "PAYOUT переведены в статус Ордер отменен " + "\n" + \
-                          "Время (utc): " + str(datetime.datetime.utcnow())
+                          "Время (utc): " + str(datetime.datetime.now(datetime.UTC))
                 botgreenavipay.send_message(config.pay_main_group, message)
                 print("PAYOUT переведены в статус Ордер отменен")
 
 
+def get_payments():
+    with cpy.connect(**config.config) as cnx:
+        with cnx.cursor(dictionary=True) as cur:
+            string = "SELECT * from pay_history where status = 'waiting' and type = 1"
+            cur.execute(string)
+            data = cur.fetchall()
+            if data:
+                for i in data:
+                    print(i['payment_id'])
+                    url = f"{config.base_url_np}payment/{i['payment_id']}"
+                    headers = {
+                        "x-api-key": config.api_key_np,
+                        "Content-Type": "application/json"
+                    }
+                    response = requests.get(url, headers=headers)
+                    print(response.json())
+                    status = response.json()["payment_status"]
+                    id = i['id']
+                    #status = 'finished'
+                    paid_amount = response.json()["actually_paid"]
+                    try:
+                        outcome_price = response.json()["outcome_amount"]
+                    except:
+                        outcome_price = 0
+                    #value = i['value']
+                    user_id = i['user_id']
+                    if status == 'waiting':
+                        print('В обработке')
+                    if status == 'failed':
+                        print('Ошибка')
+                    if status == 'expired':
+                        print('Просрочен')
+                    #finished
+                    if status == 'finished' and outcome_price > 0:
+                        #пополнили депозит до лимит + остатки на баланс
+                        print(user_id,":", outcome_price,":", status,":", id)
+                        confirm_bal_or_dep_funds({'user_id': user_id, 'value': outcome_price, 'payment_status': status, 'id': id})
 
-# def set_order_status_222324_payout(time=-240):
-#     with cpy.connect(**config.config) as cnx:
-#         with cnx.cursor(dictionary=True) as cur:
-#             string = "UPDATE pay_orders SET pay_notify_order_types_id = 20 where " \
-#                      "pay_notify_order_types_id in (22,23,24) and pay_id = 2 and " \
-#                      "date_expiry < UTC_TIMESTAMP()"
-#             cur.execute(string)
-#             cnx.commit()
-#             if cur.rowcount > 0:
-#                 print("PAYOUT переведены в статус Ордер отменен")
-#             else:
-#                 print("никаких действий не проведено")
+                    if status == 'partially_paid':
+                        #на сумму actually_paid пополнили депозит до лимит + остатки на баланс
+                        print(user_id, ":", paid_amount, ":", status, ":", id)
+                        confirm_bal_or_dep_funds({'user_id': user_id, 'value': outcome_price, 'payment_status': status, 'id': id})
+
+                    if status =='overpaid':
+                        # на сумму actually_paid пополнили депозит до лимит + остатки на баланс
+                        print(user_id, ":", paid_amount, ":", status, ":", id)
+                        confirm_bal_or_dep_funds({'user_id': user_id, 'value': outcome_price, 'payment_status': status, 'id': id})
+
+            else:
+                print("нет входящих заявок на пополнение")
 
 
-# def generate_orders():
-#     with cpy.connect(**config.config) as cnx:
-#         with cnx.cursor(dictionary=True) as cur:
-#             uuids = uuid.uuid4()
-#             pay_id = 1 #payin
-#             pay_notify_order_types_id = 0
-#             req_id = 17
-#             user_id=628
-#             data_string = "INSERT INTO pay_orders (uuid, user_id, course, chart_id, sum_fiat, pay_id," \
-#                           "value, cashback, date, date_expiry, req_id, pay_notify_order_types_id, docs_id) " \
-#                           "VALUES ('" + str(uuids) + "', '"+str(user_id)+"','" + str(random.randint(97, 105)) + "',259,'" + \
-#                           str(random.randint(97, 105) * 100) + "','"+str(pay_id)+"','" + str(random.randint(97, 105) * 100) + "','" \
-#                           + str(random.randint(1, 10)) + "',UTC_TIMESTAMP(), DATE_ADD(UTC_TIMESTAMP(), INTERVAL 15 minute), '"+str(req_id)+"', '"+str(pay_notify_order_types_id)+"', 1)"
-#             print(data_string)
-#             cur.execute(data_string)
-#             cnx.commit()
-#
+def get_payouts():
+    with cpy.connect(**config.config) as cnx:
+        with cnx.cursor(dictionary=True) as cur:
+            string = "SELECT * from pay_history where status = 'CREATING' and type = 2"
+            cur.execute(string)
+            data = cur.fetchall()
+            # creating;
+            # processing;
+            # sending;
+            # finished;
+            # failed;
+            # rejected;
+            if data:
+                for i in data:
+                    print(i['payment_id'])
+                    url = f"{config.base_url_np}payout/{i['payment_id']}"
+                    headers = {
+                        "x-api-key": config.api_key_np,
+                        "Content-Type": "application/json"
+                    }
+                    response = requests.get(url, headers=headers)
+                    print(response.json())
+                    status = response.json()['withdrawals'][0]["status"]
+                    id = i['id']
+                    #status = 'finished'
+                    try:
+                        paid_amount = response.json()['withdrawals'][0]["amount"]
+                        #fee = response.json()["fee"]
+                    except:
+                        paid_amount = 0
+                        #fee = 0
+                    #value = paid_amount - fee
+                    user_id = i['user_id']
+                    if status == 'PROCESSING':
+                        confirm_withdrawals_funds({'user_id': user_id, 'payment_status': status, 'id': id})
+                        print('В обработке')
+                    if status == 'SENDING':
+                        confirm_withdrawals_funds({'user_id': user_id, 'payment_status': status, 'id': id})
+                        print('отправляется')
+                    if status == 'REJECTED':
+                        confirm_withdrawals_funds({'user_id': user_id, 'payment_status': status, 'id': id})
+
+                        print('Отказано')
+                    #finished
+                    if status == 'finished':
+                        #отправили на адрес value - fee
+                        print(user_id, ":", status, ":", id)
+                        confirm_withdrawals_funds({'payment_status': status, 'id': id})
+            else:
+                print("нет исходящих заявок на вывод")
+
+
+def confirm_withdrawals_funds(payload):
+    with cpy.connect(**config.config) as cnx:
+        with cnx.cursor(dictionary=True) as cur:
+            #user_id = payload.get('user_id')
+            status = payload.get('payment_status')
+            id = payload.get('id')
+            status_string = "UPDATE pay_history SET status = '"+str(status)+"' where id = " + str(id)
+            cur.execute(status_string)
+            cnx.commit()
+
+
+
+
+
+
+
+def confirm_bal_or_dep_funds(payload):
+    with cpy.connect(**config.config) as cnx:
+        with cnx.cursor(dictionary=True) as cur:
+            user_id = payload.get('user_id')
+            value = payload.get('value')
+            status = payload.get('payment_status')
+            id = payload.get('id')
+            check_balance = "SELECT * from pay_balance where baldep_status_id = 1" \
+                            " and baldep_types_id = 1 and " \
+                            "user_id = " + str(user_id)
+            cur.execute(check_balance)
+            data_bal = cur.fetchone()
+            if data_bal:
+                result_string = "UPDATE pay_balance SET value = " + str(data_bal.get('value') + value) + "where user_id = " + str(user_id)
+                cur.execute(result_string)
+                cnx.commit()
+                if cur.rowcount > 0:
+                    status_string = "UPDATE pay_history SET status = '"+str(status)+"' where id = " + str(id)
+                    cur.execute(status_string)
+                    cnx.commit()
+                    if cur.rowcount > 0:
+                        print("Баланс пополнен, статус обновлен")
+                    else:
+                        print("Баланс пополнен, статус не обновлен")
+                else:
+                    print("Баланс пользователя", str(user_id), "не пополнен")
+            else:
+                print("Баланс пользователя", str(user_id), "не найден")
+
 
 # generate_orders()
 del_order_status_0_payin()
@@ -238,12 +358,6 @@ del_order_status_0_payin()
 set_order_status_8_payin()
 set_order_status_9_payin()
 set_order_status_15_payout()
-# set_order_status_16_payout()
-# set_order_status_17_payout()
-# set_order_status_18_payout()
-#set_order_status_222324_payout()
-
-# check_orders()
-#print("ok", datetime.datetime.now())
-
+get_payments()
+get_payouts()
 

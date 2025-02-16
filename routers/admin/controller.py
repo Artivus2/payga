@@ -102,7 +102,7 @@ async def insert_new_user_banned(**payload):
                 message = "Пользователь " + str(payload['email']) \
                           + " поставлен в очередь на регистрацию " + str(datetime.datetime.utcnow())
                 botgreenavipay.send_message(config.pay_main_group, message)
-                await crud_balance("create", data_user.get('id'))
+                await crud_balance("create", {'user_id': data_user.get('id'), 'chart_id': 259})
                 await crud_deposit("create", data_user.get('id'))
                 await crud_balance_percent("create", {"user_id": data_user.get('id'),"pay_id": 1, "value": 0})
                 await crud_balance_percent("create", {"user_id": data_user.get('id'),"pay_id": 2, "value": 0})
@@ -446,8 +446,7 @@ async def get_info_for_invoice(payload):
                               "pay_admin_banks.id as bank_id, pay_admin_banks.url as bank_url FROM pay_reqs " + \
                               "LEFT JOIN user ON user.id = pay_reqs.user_id " + \
                               "LEFT JOIN pay_pay_percent ON pay_pay_percent.user_id = pay_reqs.user_id and pay_pay_percent.pay_id = 1 " + \
-                              "LEFT JOIN pay_fav_banks ON pay_reqs.bank_id = pay_fav_banks.id " + \
-                              "LEFT JOIN pay_admin_banks ON pay_fav_banks.bank_id = pay_admin_banks.id " + \
+                              "LEFT JOIN pay_admin_banks ON pay_reqs.bank_id = pay_admin_banks.id " + \
                               "WHERE reqs_types_id = '" + str(types_reqs.get('id')) + \
                                "' and reqs_status_id = 1 and pay_pay_id = 1 and user.role_id = 4 and user.app_id = 3 ORDER BY RAND() LIMIT 1"
                     cur.execute(string2)
@@ -564,7 +563,7 @@ async def get_pattern(sender, text):
 async def confirm_balance_to_network(payload):
     with cpy.connect(**config.config) as cnx:
         with cnx.cursor(dictionary=True) as cur:
-            history_check = "select id from pay_deposit_history where status_id = 0 " \
+            history_check = "select id, address from pay_deposit_history where status_id = 3 " \
                             "and user_id = " + str(payload.user_id)
             cur.execute(history_check)
             data0 = cur.fetchone()
@@ -575,20 +574,36 @@ async def confirm_balance_to_network(payload):
                 cur.execute(check_string)
                 data = cur.fetchone()
                 if data:
-                    value = data.get('withdrawals')
-                    update_balance = "UPDATE pay_balance set withdrawals = 0 where user_id = " + str(payload.user_id)
-                    cur.execute(update_balance)
-                    cnx.commit()
-                    if cur.rowcount > 0:
-                        # todo add status to history
-                        result = await set_deposit_history_status(data0.get('id'), 1)
-                        if result:
-                            #send transaction to trx
-                            wallet = "UBObjOBb"
+                    withdrawals = data.get('withdrawals')
+                    value = data.get('value')
 
-                            return {"Success": True, "data": str(value) + ' USDT отправлено на кошелек: ' + str(wallet)}
-                        else:
-                            return {"Success": False, "data": 'Не удалось отправить средства. Обратитесь к администратору'}
+                    if payload.status_id == 1:
+                        update_balance = "UPDATE pay_balance set withdrawals = 0 where user_id = " + str(
+                            payload.user_id)
+                        cur.execute(update_balance)
+                        cnx.commit()
+                        if cur.rowcount > 0:
+                            result = await set_deposit_history_status(data0.get('id'), 1)
+                            if result:
+                                return {"Success": True, "data": str(value) + ' USDT отправлено на кошелек: ' + str(data0.get('address'))}
+                            else:
+                                return {"Success": False, "data": 'Не удалось отправить средства. Обратитесь к администратору'}
+
+                    if payload.status_id == 2:
+
+                        update_balance = "UPDATE pay_balance set withdrawals = 0, value = '"+str(value + withdrawals)+"' where user_id = " + str(
+                            payload.user_id)
+                        cur.execute(update_balance)
+                        cnx.commit()
+                        if cur.rowcount > 0:
+                            result = await set_deposit_history_status(data0.get('id'), 2)
+                            if result:
+                                return {"Success": True, "data": ' заявка отклонена. средства возвращены на баланс'}
+                            else:
+                                return {"Success": False,
+                                        "data": 'Не удалось отклонить заявку'}
+
+
                 else:
                     return {"Success": False, "data": 'Недостаточно средств на балансе'}
             else:

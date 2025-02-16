@@ -21,6 +21,7 @@ class User(BaseModel):
     banned: int | None = None
     app_id: int | None = None
     api_key: str | None = None
+    twofa_status: int | None = None
 
 
 class JwtTokenSchema(BaseModel):

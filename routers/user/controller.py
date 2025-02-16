@@ -1,6 +1,13 @@
+import base64
+
 import mysql.connector as cpy
+from pyotp import totp
+
 import config
 import telebot
+import pyotp
+import qrcode
+import io
 from jose import JWTError, jwt
 from datetime import datetime, timedelta
 from fastapi import Depends, HTTPException, status
@@ -87,9 +94,9 @@ async def insert_generated_api_key(user_id):
 async def get_user_api_key(user_id):
     with cpy.connect(**config.config) as cnx:
         with cnx.cursor(dictionary=True) as cur:
-            string = "SELECT * from pay_api_keys where status in (0,1,3) and user_id = " + str(user_id)  # todo
+            string = "SELECT * from pay_api_keys where status = 1 and user_id = " + str(user_id)  # todo
             cur.execute(string)
-            data = cur.fetchall()
+            data = cur.fetchone()
             if data:
                 return {"Success": True, "data": data}
             else:
@@ -145,7 +152,7 @@ async def get_profile_by_id(user_id):
     # todo dic(zip)
     with cpy.connect(**config.config) as cnx:
         with cnx.cursor(dictionary=True) as cur:
-            string = "SELECT user.id, login, role_id, email, phone, telegram, created_at as reg_date, telegram_connected, " \
+            string = "SELECT user.id, login, role_id, email, phone, telegram, twofa_status, created_at as reg_date, telegram_connected, " \
                      "twofa_status, user.verify_status, verify_status.title as verify, user.banned as banned_status," \
                      "banned_status.title as banned, is_active, user.chart_id, chart.symbol as chart, user.currency_id, " \
                      "currency.symbol as currency from user " \
@@ -358,3 +365,80 @@ async def set_user_active_onoff(payload):
 #
 #     # The end result is the list which contains query results in tuple format
 #     return [rowproxy for rowproxy in resultproxy]
+
+
+
+async def set_two_fa_status(payload):
+    with cpy.connect(**config.config) as cnx:
+        with cnx.cursor(dictionary=True) as cur:
+            status = payload.twofa_status
+
+            string = "SELECT id, twofa_status, login from user where" \
+                     " id = " + str(payload.user_id)
+            cur.execute(string)
+            data = cur.fetchone()
+            if data:
+
+                if status == 1:
+                    code = pyotp.random_base32()
+                    string_twofa = "UPDATE user SET twofa_status = 1 where id = " + str(payload.user_id)
+                    cur.execute(string_twofa)
+                    cnx.commit()
+                    delete_string = "DELETE FROM user_two_factor where user_id = " + str(payload.user_id)
+                    cur.execute(delete_string)
+                    cnx.commit()
+                    insert_twofa = "INSERT into user_two_factor (user_id, secret, date, status) " + \
+                        "VALUES ('"+str(payload.user_id)+"', '"+str(code)+"', UNIX_TIMESTAMP(UTC_TIMESTAMP()), 1)"
+                    cur.execute(insert_twofa)
+                    cnx.commit()
+                    return {"Success": True, "code": code}
+                else:
+                    string_twofa = "UPDATE user SET twofa_status = 0 where id = " + str(payload.user_id)
+                    cur.execute(string_twofa)
+                    cnx.commit()
+                    delete_string = "DELETE FROM user_two_factor where user_id = " + str(payload.user_id)
+                    cur.execute(delete_string)
+                    cnx.commit()
+                    return {"Success": True, "data": "2fa отключено"}
+            else:
+                return {"Success": False, "data": "Пользователь не найден"}
+
+
+async def get_two_fa_digits(payload):
+    with cpy.connect(**config.config) as cnx:
+        with cnx.cursor(dictionary=True) as cur:
+
+            string = "SELECT secret from user_two_factor where" \
+                     " user_id = " + str(payload.user_id)
+            cur.execute(string)
+            data = cur.fetchone()
+            if data:
+                key = data.get('secret')
+                totp = pyotp.TOTP(key)
+
+                print("Current OTP:", totp.now())
+
+                return {"Success": True, "data": totp.now() }
+            else:
+                return {"Success": False, "data": 'Ключ не найден'}
+
+
+
+async def get_two_fa_key(payload):
+    with cpy.connect(**config.config) as cnx:
+        with cnx.cursor(dictionary=True) as cur:
+            string = "SELECT secret from user_two_factor where" \
+                     " user_id = " + str(payload)
+            cur.execute(string)
+            data = cur.fetchone()
+            if data:
+                totp = pyotp.TOTP(data.get('secret'))
+                uri = totp.provisioning_uri(name=str(payload), issuer_name="pay.greenavi.com")
+                img = qrcode.make(uri)
+                buffer = io.BytesIO()
+                img.save(buffer, format="PNG")
+                buffer.seek(0)
+                qr_code_base64 = base64.b64encode(buffer.getvalue()).decode()
+                return {"Success": True, "data": {'secret': data.get('secret'), 'qrcode': f"data:image/png;base64,{qr_code_base64}"}}
+            else:
+                return {"Success": False, "data": 'Ключ не найден'}

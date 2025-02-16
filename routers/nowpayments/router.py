@@ -4,7 +4,9 @@ import requests
 from fastapi import APIRouter, HTTPException, Header
 import config
 from routers.nowpayments import models
-from routers.nowpayments.controller import get_jwt_token
+from routers.nowpayments.controller import (
+    get_jwt_token
+    )
 
 router = APIRouter(prefix='/np', include_in_schema=False, tags=['NowPayments'])
 
@@ -25,7 +27,7 @@ def list_currencies():
 
 # Create payment
 @router.post("/create_payment")
-def create_payment(request: models.CreatePaymentRequest):
+async def create_payment(request: models.CreatePaymentRequest):
     url = f"{config.base_url_np}payment"
     headers = {
         "x-api-key": config.api_key_np,
@@ -81,7 +83,39 @@ def get_payment_status(payment_id: str):
     response = requests.get(url, headers=headers)
     if response.status_code != 200:
         raise HTTPException(status_code=response.status_code, detail=response.json())
+    print(response.json())
     return response.json()
+
+
+
+#get_payout_status
+@router.get("/get_payout_status/{payout_id}")
+def get_payment_status(payout_id: str):
+    url = f"{config.base_url_np}payout/{payout_id}"
+    headers = {
+        "x-api-key": config.api_key_np,
+        "Content-Type": "application/json"
+    }
+    response = requests.get(url, headers=headers)
+    if response.status_code != 200:
+        raise HTTPException(status_code=response.status_code, detail=response.json())
+    return response.json()
+
+
+
+
+@router.get("/get_payout_fee/{amount}")
+def get_payment_status(amount: str):
+    url = f"{config.base_url_np}payout/fee?currency=USDTTRC20&amount={amount}"
+    headers = {
+        "x-api-key": config.api_key_np,
+        "Content-Type": "application/json"
+    }
+    response = requests.get(url, headers=headers)
+    if response.status_code != 200:
+        raise HTTPException(status_code=response.status_code, detail=response.json())
+    return response.json()
+
 
 
 @router.get("/fp/wallet/history")
@@ -125,3 +159,26 @@ def get_wallet_history(
 @router.post("/get_jwt_token")
 def get_jwt_token_endpoint(request: models.JwtRequest):
     return get_jwt_token()
+
+
+
+
+@router.post("/verify-payout")
+async def verify_payout_id(request: models.VerifyPayout):
+    """
+    id payout merchant verify
+    """
+    if not request.code:
+        raise HTTPException(status_code=400, detail="Для вывода включите 2ФА верификацию")
+    jwt_token = get_jwt_token()
+    url = f"{config.base_url_np}{str(request.payout_id)}/verify"
+    headers = {
+        'Authorization': f'Bearer {jwt_token}',
+        'x-api-key': config.api_key_np,
+        'Content-Type': 'application/json'
+    }
+    payload = {
+        'verification_code': request.code
+    }
+    response = requests.post(url, headers=headers, data=json.dumps(payload))
+    return response.json()

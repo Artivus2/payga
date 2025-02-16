@@ -43,3 +43,29 @@ class Shops(BaseModel):
     balance: float | None = None
     date: str | None = None
 
+
+class CreatePaymentRequest(BaseModel):
+    amount: float | None = None
+    currency: str | None = None
+    order_id: str | None = None
+    pay_currency: str | None = None
+    user_id: int | None = None
+    type_id: int | None = None
+
+
+class CreatePayoutRequest(BaseModel):
+    amount: float | None = None
+    currency: str | None = None
+    address: str | None = None
+    type_id: int | None = None
+    user_id: int | None = None
+
+
+class FundsHistory(BaseModel):
+    __table_name__ = "pay_history"
+    id: int | None = None
+    user_id: int | None = None
+    np_order_uuid: str | None = None
+    value: float | None = None
+    date: str | None = None
+    status: str | None = None

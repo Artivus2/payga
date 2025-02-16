@@ -17,3 +17,8 @@ class CreatePayoutRequest(BaseModel):
 class JwtRequest(BaseModel):
     email: str
     password: str
+
+
+class VerifyPayout(BaseModel):
+    code: str
+    payout_id: str
