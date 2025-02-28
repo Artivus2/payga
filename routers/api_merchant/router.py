@@ -90,37 +90,37 @@ async def min_amount():
     response = await get_min_amount()
     return response
 
-
-@router.get("/get-fav-reqs-types/{shop_id}")
-async def get_merchant_settings(shop_id: int):
-    """
-    получить настройки мерчанта
-    """
-    response = await getfavtypes(shop_id)
-    if not response['Success']:
-            raise HTTPException(
-                status_code=400,
-                detail=response
-            )
-    return response
-
-
-@router.post("/set-fav-reqs-types")
-async def set_merchant_settings(request: merchant_models.FavReqsTypes):
-    """
-    установить настройки мерчанта
-    """
-    response = await setfavtypes(request)
-    if not response['Success']:
-            raise HTTPException(
-                status_code=400,
-                detail=response
-            )
-    return response
+#
+# @router.get("/get-fav-reqs-types/{shop_id}")
+# async def get_merchant_settings(shop_id: int):
+#     """
+#     получить настройки мерчанта
+#     """
+#     response = await getfavtypes(shop_id)
+#     if not response['Success']:
+#             raise HTTPException(
+#                 status_code=400,
+#                 detail=response
+#             )
+#     return response
+#
+#
+# @router.post("/set-fav-reqs-types")
+# async def set_merchant_settings(request: merchant_models.FavReqsTypes):
+#     """
+#     установить настройки мерчанта
+#     """
+#     response = await setfavtypes(request)
+#     if not response['Success']:
+#             raise HTTPException(
+#                 status_code=400,
+#                 detail=response
+#             )
+#     return response
 
 
 @router.post("/create-shops")
-async def create_shops(request: merchant_models.Shops):
+async def create_or_update_shop_by_any(request: merchant_models.Shops):
     """
     Создать магазин
     """

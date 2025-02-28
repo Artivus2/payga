@@ -1,12 +1,13 @@
 import datetime
 
 import mysql.connector as cpy
-import config
 from routers.actives.controller import crud_balance, crud_deposit, crud_transfer
+from routers.notifications.controller import send_tg_messages_by_id
 from routers.orders.utils import (
     generate_uuid,
     get_course
 )
+import config
 import telebot
 
 botgreenavipay = telebot.TeleBot(config.telegram_api)
@@ -18,7 +19,7 @@ async def create_order_for_user_payin(payload):
         with cnx.cursor(dictionary=True) as cur:
             summa = payload.get('sum_fiat')
             if type(summa) is float or type(summa) is int:
-                if summa > 0:
+                if summa >= 1000:
                     uuids = await generate_uuid()
                     string0 = "SELECT * FROM pay_reqs WHERE id = " + str(payload.get('req_id'))
                     cur.execute(string0)
@@ -27,6 +28,7 @@ async def create_order_for_user_payin(payload):
                         user_id = data.get('user_id')
                         course = await get_course()
                         if course:
+
                             course_value = float(course['data']['amount'])
                             currency_id = 1
                             stringcash = "SELECT * from pay_pay_percent where pay_id = 1 and user_id = " + str(user_id)
@@ -37,37 +39,62 @@ async def create_order_for_user_payin(payload):
                                 interval_order = config.TIME_ORDER_PAYIN_EXPIRY
                                 course2 = float(course_value) * (1 + cashback / 100)
                                 summ = float(summa) / course2 * (1 - cashback / 100)
-                                docs_id = payload.get('docs_id')
-                                data_string = "INSERT INTO pay_orders (uuid, user_id, course, chart_id, sum_fiat, pay_id," \
-                                              "value, cashback, date, date_expiry, req_id, pay_notify_order_types_id, " \
-                                              "docs_id, user_pay, o_id) " \
-                                              "VALUES ('" + str(uuids) + "','" + str(user_id) + \
-                                              "','" + str(course2) + "','" + str(currency_id) + "','" + \
-                                              str(summa) + "',1,'" + str(round(summ, 2)) + "','" \
-                                              + str(cashback) + "',UTC_TIMESTAMP(), DATE_ADD(UTC_TIMESTAMP(), INTERVAL " \
-                                              + str(interval_order) + " minute ),'" \
-                                              + str(data['id']) + "',0,'" + str(docs_id)\
-                                              + "', '"+str(payload.get('user_id_merchant')) + "', '"+str(payload.get('o_id'))+"')"
-                                print(data_string)
-                                cur.execute(data_string)
-                                cnx.commit()
-                                if cur.rowcount > 0:
-                                    message = "PAYIN: Создан новый ордер. назначен трейдеру. id: "+str(user_id)+" \n " + str(
-                                        uuids)  + \
-                                              "\nВремя (utc): " + str(datetime.datetime.utcnow())
-                                    botgreenavipay.send_message(config.pay_main_group, message)
-                                    return {"Success": True, "data": uuids}
+                                get_trader_balandep = await get_trader_bal(user_id)
+                                #get_trader_balandep = 0
+                                if summ <= get_trader_balandep:
+                                    docs_id = payload.get('docs_id')
+                                    shop_data_string = "SELECT * from pay_shops where uuid = '" + str(
+                                        payload.get('shop_uuid')) + "'"
+                                    cur.execute(shop_data_string)
+                                    data_shop = cur.fetchone()
+                                    if data_shop:
+                                        data_string = "INSERT INTO pay_orders (uuid, user_id, course, chart_id, sum_fiat, pay_id," \
+                                                      "value, cashback, date, date_expiry, req_id, pay_notify_order_types_id, " \
+                                                      "docs_id, user_pay, o_id) " \
+                                                      "VALUES ('" + str(uuids) + "','" + str(user_id) + \
+                                                      "','" + str(course2) + "','" + str(currency_id) + "','" + \
+                                                      str(summa) + "',1,'" + str(round(summ, 2)) + "','" \
+                                                      + str(cashback) + "',UTC_TIMESTAMP(), DATE_ADD(UTC_TIMESTAMP(), INTERVAL " \
+                                                      + str(interval_order) + " minute ),'" \
+                                                      + str(data['id']) + "',0,'" + str(docs_id)\
+                                                      + "', '"+str(payload.get('user_id_merchant')) + "', '"+str(payload.get('o_id'))+"')"
+                                        print(data_string)
+                                        cur.execute(data_string)
+                                        cnx.commit()
+                                        if cur.rowcount > 0:
+                                            message = "PAYIN: Создан новый ордер. назначен трейдеру. id: "+str(user_id)+" \n " + str(
+                                                uuids)  + \
+                                                      "\nВремя (utc): " + str(datetime.datetime.now(datetime.UTC))
+                                            botgreenavipay.send_message(config.pay_main_group, message)
+                                            await send_tg_messages_by_id(user_id, "Вам назначен ордер "+str(uuids)+", оплатите его")
+                                            return {"Success": True, "data": uuids, "shop_data": data_shop}
+                                        else:
+                                            return {"Success": False, "data": "не удалось создать ордер"}
+                                    else:
+                                        return {"Success": False, "data": uuids, "shop_data": "Данные по магазину не найдены, ордер не создан"}
                                 else:
-                                    return {"Success": False, "data": "не удалось создать ордер"}
+                                    message = "Ордер не будет создан у трейдера недостаточно средств на балансе"
+                                    botgreenavipay.send_message(config.pay_main_group,message)
+                                    return {"Success": False, "data": message}
                             else:
-                                return {"Success": False, "data": "PAYIN % не установлен"}
+                                message = "Ордер не будет создан у трейдера недостаточно средств на балансе"
+                                botgreenavipay.send_message(config.pay_main_group, message)
+                                return {"Success": False, "data": message}
                         else:
+                            message = "Не удалось определить курс рубля к usd, ордер "+str(uuids)+" не создан"
+                            botgreenavipay.send_message(config.pay_main_group, message)
                             return {"Success": False, "data": "Курс не найден"}
                     else:
-                        return {"Success": False, "data": "Ордер не может быть создан"}
+                        message = "Ордер не может быть создан, обратитесь к разработчику"
+                        botgreenavipay.send_message(config.pay_main_group, message)
+                        return {"Success": False, "data": message}
                 else:
-                    return {"Success": False, "data": "Не корректная сумма"}
+                    message = "Ордер не может быть создан, сумма должна быть более 1000 руб"
+                    botgreenavipay.send_message(config.pay_main_group, message)
+                    return {"Success": False, "data": message}
             else:
+                message = "Ордер не может быть создан, обратитесь к разработчику, не верное значение суммы"
+                botgreenavipay.send_message(config.pay_main_group, message)
                 return {"Success": False, "data": "Не верное значение суммы"}
 
 
@@ -77,7 +104,7 @@ async def create_order_for_user_payout(payload):
             uuids = await generate_uuid()
             summa = payload.get('sum_fiat')
             if type(summa) is float or type(summa) is int:
-                if summa > 0:
+                if summa >= 1000:
                     receiver = payload.get('receiver')
                     user_pay = payload.get('user_id_merchant')
                     o_id = payload.get('o_id')
@@ -170,18 +197,32 @@ async def create_order_for_user_payout(payload):
                                         botgreenavipay.send_message(config.pay_main_group, message)
                                         return {"Success": True, "data": data_order}
                                     else:
-                                        return {"Success": False, "data": "не удалось создать ордер"}
+                                        message = "Ордер не может быть создан, обратитесь к разработчику"
+                                        botgreenavipay.send_message(config.pay_main_group, message)
+                                        return {"Success": False, "data": message}
                                 else:
-                                    return {"Success": False, "data": "Не удалось заблокировать средства на балансе"}
+                                    message = "Не удалось заблокировать средства на балансе"
+                                    botgreenavipay.send_message(config.pay_main_group, message)
+                                    return {"Success": False, "data": message}
                             else:
-                                return {"Success": False, "data": "Не достаточно средств на балансе"}
+                                message = "Не достаточно средств на балансе"
+                                botgreenavipay.send_message(config.pay_main_group, message)
+                                return {"Success": False, "data": message}
                         else:
-                            return {"Success": False, "data": "Отсутствует информация о балансе мерчанта / магазина"}
+                            message = "Отсутствует информация о балансе мерчанта / магазина"
+                            botgreenavipay.send_message(config.pay_main_group, message)
+                            return {"Success": False, "data": message}
                     else:
+                        message = "Не удалось определить курс рубля к usd, ордер " + str(uuids) + " не создан"
+                        botgreenavipay.send_message(config.pay_main_group, message)
                         return {"Success": False, "data": "Курс не найден"}
                 else:
-                    return {"Success": False, "data": "Не корректная сумма"}
+                    message = "Ордер не может быть создан, сумма должна быть более 1000 руб"
+                    botgreenavipay.send_message(config.pay_main_group, message)
+                    return {"Success": False, "data": message}
             else:
+                message = "Ордер не может быть создан, обратитесь к разработчику, не верное значение суммы"
+                botgreenavipay.send_message(config.pay_main_group, message)
                 return {"Success": False, "data": "Не верное значение суммы"}
 
 
@@ -225,7 +266,7 @@ async def get_orders_by_any(payload):
                     else:
                         if k != 'date_start' and k != 'date_end':
                             data_check += "pay_orders." + str(k) + " = '" + str(v) + "' and "
-            data_check += "pay_orders.id > 0"
+            data_check += "pay_orders.id > 0 order by id desc"
             #фильтр по параметрам реквизитов
 
             # else:
@@ -268,26 +309,28 @@ async def update_order_by_any(payload):
             #     print(data0.get('pay_id'))
             # else:
             #     return {"Success": False, "data": "Ордер не найден"}
-
-            ###проверка по параметрам reqs
-            ###всю логику блокировки баланса и депозита здесь###
-            result = await block_baldep_by_status(data0, payload)
-            print(result)
-            if result["Success"]:
-                data_update = "UPDATE pay_orders SET "
-                for k, v in dict(payload).items():
-                    if k != 'id':
-                        data_update += str(k) + " = '" + str(v) + "',"
-                data_update = data_update[:-1]
-                data_update += " where id = " + str(payload.get('id'))
-                cur.execute(data_update)
-                cnx.commit()
-                if cur.rowcount > 0:
-                    return {"Success": True, "data": ". Статус успешно изменен"}
+            if data0:
+                ###проверка по параметрам reqs
+                ###всю логику блокировки баланса и депозита здесь###
+                result = await block_baldep_by_status(data0, payload)
+                print(result)
+                if result["Success"]:
+                    data_update = "UPDATE pay_orders SET "
+                    for k, v in dict(payload).items():
+                        if k != 'id':
+                            data_update += str(k) + " = '" + str(v) + "',"
+                    data_update = data_update[:-1]
+                    data_update += " where id = " + str(payload.get('id'))
+                    cur.execute(data_update)
+                    cnx.commit()
+                    if cur.rowcount > 0:
+                        return {"Success": True, "data": ". Статус успешно изменен"}
+                    else:
+                        return {"Success": False, "data": ". Статус не может быть изменен"}
                 else:
-                    return {"Success": False, "data": ". Статус не может быть изменен"}
+                    return {"Success": False, "data": result['data'] + ". Статус не может быть изменен"}
             else:
-                return {"Success": False, "data": ". Статус не может быть изменен"}
+                return {"Success": False, "data": "Ордер не найден"}
 
 
 
@@ -311,6 +354,8 @@ async def insert_docs(order_id, images):
             #for i in images:
             string_check = "select * from pay_docs where order_id = " + str(order_id)
             cur.execute(string_check)
+
+
             data = cur.fetchall()
             if not data:
                 insert_string = "INSERT into pay_docs (order_id, url) " \
@@ -329,6 +374,8 @@ async def insert_docs(order_id, images):
                     return {"Success": True, "data": data[0].get('id')}
                 else:
                     return {"Success": False, "data": "Платежки не добавлены"}
+            else:
+                return {"Success": False, "data": "Платежки не добавлены уже есть такой"}
 
 
 
@@ -430,6 +477,7 @@ async def block_baldep_by_status(payload, new_status):
     with cpy.connect(**config.config) as cnx:
         with cnx.cursor(dictionary=True) as cur:
             order_id = new_status.get('id')
+            order_uuid = payload.get('uuid')
             new_status_notify = new_status.get('pay_notify_order_types_id', -1)
             old_status_notify = payload.get('pay_notify_order_types_id')
             print("notify",old_status_notify,new_status_notify)
@@ -442,6 +490,7 @@ async def block_baldep_by_status(payload, new_status):
                     print("Выполняем операцию с балансом")
                     order_value = round(payload.get('value'), 2)
                     balance_value = round(value_bal.get('value'), 2)
+                    print(balance_value)
                     frozen_value = round(value_bal.get('frozen'), 2)
                     check_dep = "SELECT * FROM pay_deposit where baldep_status_id = 1 and baldep_types_id = 1 and " \
                                 "user_id = " + str(payload.get('user_id'))
@@ -470,7 +519,8 @@ async def block_baldep_by_status(payload, new_status):
                                 if result["Success"]:
                                     result = await insert_balance_history(payload_history)
                                     if result["Success"]:
-
+                                        await send_tg_messages_by_id(payload.get('user_id'),
+                                                                     "Средства заблокированы с баланса, ордер uuid: " + str(order_uuid))
                                         return {"Success": True, "data": "Выполняем операцию"}
                                     else:
                                         return {"Success": True, "data": "История не записалась"}
@@ -478,6 +528,30 @@ async def block_baldep_by_status(payload, new_status):
                                     return {"Success": True, "data": "Баланс записать не удалось"}
                             else:
                                 print("order_value > balance")
+                                print("Баланса трейдера не хватает")
+                                print(payload.get('user_id'))
+                                result_bal = await crud_balance("frozen",
+                                                            {'user_id': payload.get('user_id'), 'value': balance_value})
+                                if result_bal["Success"]:
+                                    froze_dep = order_value - balance_value
+                                    result_dep = await crud_deposit("frozen", {'user_id': payload.get('user_id'), 'value': froze_dep})
+                                    if result_dep["Success"]:
+                                        result_history = await insert_balance_history(payload_history)
+                                        if result_history["Success"]:
+                                            message = "Баланса трейдера не хватает, заблокировано с депозита" + str(result_history['data']) + ". Сумма "+str(order_value)+" USDT заблокирована с депозита"
+                                            botgreenavipay.send_message(config.pay_main_group, message)
+                                            await send_tg_messages_by_id(payload.get('user_id'), "Пополните депозит, средства заблокированы с депозита")
+                                            return {"Success": True, "data": message}
+                                        else:
+                                            return {"Success": False, "data": result_history['data'] + ". Сумма не заблокирована"}
+                                    else:
+                                        # отмена ордер в 0 unfrozen c депозита
+                                        return {"Success": False, "data": result_dep['data'] + ". Сумма не заблокирована c депозита"}
+                                else:
+                                    # отмена ордер в 0 unfrozen c баланса
+                                    return {"Success": False,
+                                            "data": result_bal['data'] + ". Сумма не заблокирована c баланса"}
+
                         elif old_status_notify == 1 and new_status_notify == 3:  # вручную зачислил админ
                             string = "SELECT * from pay_orders where id = " + str(order_id)
                             cur.execute(string)
@@ -490,7 +564,9 @@ async def block_baldep_by_status(payload, new_status):
                                 }
                                 send = await crud_transfer("payin", transfer)
                                 if send["Success"]:
-                                    return {"Success": True, "data": "Средства отправлены мерчанту администратором"}
+                                    message = "Средства отправлены мерчанту администратором по ордеру: " + str(order_uuid)
+                                    await send_tg_messages_by_id(payload.get('user_id'),message)
+                                    return {"Success": True, "data": message}
                                 else:
                                     return {"Success": True, "data": "Средства не отправлены"}
                             else:
@@ -506,9 +582,11 @@ async def block_baldep_by_status(payload, new_status):
                                 'user_id_out': data.get('user_id'),
                                 'value': data.get('value')
                             }
-                            send = await crud_transfer("payin", transfer)
+                            send = await crud_transfer("autopayin", transfer)
                             if send["Success"]:
-                                return {"Success": True, "data": "Средства отправлены мерчанту"}
+                                message = "Средства отправлены мерчанту по ордеру: " + str(order_uuid)
+                                await send_tg_messages_by_id(payload.get('user_id'), message)
+                                return {"Success": True, "data": message}
                             else:
                                 return {"Success": True, "data": "Средства не отправлены"}
                         elif old_status_notify == 1 and new_status_notify == 2:
@@ -523,9 +601,13 @@ async def block_baldep_by_status(payload, new_status):
                                 }
                                 send = await crud_transfer("nopayin", transfer)
                                 if send["Success"]:
-                                    return {"Success": True, "data": "Отмена отправки средств мерчанту"}
+                                    message = "Отмена отправки средств мерчанту" + str(order_uuid)
+                                    await send_tg_messages_by_id(payload.get('user_id'), message)
+                                    return {"Success": True, "data": message}
                                 else:
-                                    return {"Success": True, "data": "Ошибка отмены отправки средств мерчанту"}
+                                    message = "Ошибка отмены отправки средств мерчанту" + str(order_uuid)
+                                    await send_tg_messages_by_id(payload.get('user_id'), message)
+                                    return {"Success": True, "data": message}
                             else:
                                 return {"Success": True, "data": "Ордер не найден"}
 
@@ -598,142 +680,6 @@ async def block_baldep_by_status(payload, new_status):
                     return {"Success": False, "data": "Реквизиты не обновлены"}
 
 
-            # if value_bal:
-            #
-            #     check_dep = "SELECT * FROM pay_deposit where baldep_status_id = 1 and baldep_types_id = 1 and " \
-            #                 "user_id = " + str(payload.get('user_id'))
-            #     cur.execute(check_dep)
-            #     value_dep = cur.fetchone()
-            #     print("value_dep",value_dep)
-            #     if value_dep:
-            #         order_value = round(payload.get('value'),2)
-            #         # froze_bal = froze_dep = 0
-            #
-            #         get_bal = "select * from pay_balance where user_id = " + str(payload.get('user_id'))
-            #         cur.execute(get_bal)
-            #         bal_info = value_bal
-            #         if bal_info:
-            #             payload_history = {
-            #                 'user_id': payload.get('user_id'),
-            #                 'balance_id': bal_info.get('id'),
-            #                 'chart_id': payload.get('chart_id'),
-            #                 'value': round(value_bal.get('value'), 2),
-            #                 'frozen': float(round(order_value,2)),
-            #                 'balance_history_status_id': payload.get('id'),
-            #                 'new_status_notify': new_status_notify
-            #                 }
-            #             print("pay_history",payload_history)
-            #             if order_value <= value_bal.get('value') + float(value_dep.get('value')):
-            #                 if new_status_notify == 1:
-            #                     #print("принят ордер payin ждем оплаты, блокируем сумму с балдепозита", payload)
-            #                     if order_value <= value_bal.get('value'):
-            #                         froze_bal = order_value
-            #                         print("блкоируем",froze_bal, payload)
-            #                         result = await crud_balance("frozen", {'user_id': payload.get('user_id'), 'value': froze_bal})
-            #                         if result["Success"]:
-            #                             result = await insert_balance_history(payload_history)
-            #
-            #                             if result["Success"]:
-            #                                 print("result_hisotry", result)
-            #                                 return {"Success": True, "data": str(result['data']) + ". Сумма заблокирована"}
-            #                             else:
-            #                                 return {"Success": False,
-            #                                         "data": str(result['data']) + ". Сумма не заблокирована"}
-            #                         else:
-            #                             return {"Success": False, "data": str(result['data']) + ". История не записана"}
-            #                     else:
-            #                         froze_bal = value_bal.get('value')
-            #                         result = await crud_balance("frozen", {'user_id': payload.get('user_id'), 'value': froze_bal})
-            #                         if result["Success"]:
-            #                             print("снимаем с депозита")
-            #                             if value_dep.get('value') >= order_value - value_bal.get('value'):
-            #                                 froze_dep = order_value - value_bal.get('value')
-            #                                 result = await crud_deposit("frozen", {'user_id': payload.get('user_id'), 'value': froze_dep})
-            #                                 if result["Success"]:
-            #                                     result = await insert_balance_history(payload_history)
-            #                                     if result["Success"]:
-            #                                         return {"Success": True, "data": result['data'] + ". Сумма "+str(order_value)+" USDT заблокирована"}
-            #                                     else:
-            #                                         return {"Success": False, "data": result['data'] + ". Сумма не заблокирована"}
-            #                                 else:
-            #                                     return {"Success": False, "data": result['data'] + ". История не обновилась"}
-            #                             else:
-            #                                 return {"Success": False, "data": result['data'] + "Недостаточно баланса на депозите"}
-            #                         else:
-            #                             return {"Success": False, "data": result['data'] + ". Сумма не заблокирована"}
-            #                 elif new_status_notify == 2:
-            #                     unfroze_sum = order_value
-            #                     print(value_bal)
-            #                     print(order_value, value_bal.get('frozen'))
-            #                     if value_bal.get('frozen') >= unfroze_sum:
-            #                         print("ордер отменен, разблокируем баланс по ордеру либо с баланса")
-            #                         result = await crud_balance("unfrozen",
-            #                                                     {'user_id': payload.get('user_id'), 'value': unfroze_sum})
-            #                         if result["Success"]:
-            #                             result = await insert_balance_history(payload_history)
-            #                             if result["Success"]:
-            #                                 # отправляем внутрянку USDT МЕРЧАНТУ
-            #                                 return {"Success": True, "data": result['data'] + ". Сумма " + str(
-            #                                     order_value) + " USDT разблокирована. Ордер отменен."}
-            #                             else:
-            #                                 return {"Success": False, "data": result['data'] + ". Сумма не заблокирована"}
-            #                         else:
-            #                             return {"Success": False, "data": result['data'] + ". Не удалось разморозить баланс. Обратитесь к администратору"}
-            #                     else:
-            #                         print("ордер отменен, разблокируем баланс по ордеру либо с баланса, либо частично баланс + депозит")
-            #                         unfroze_sum_bal = value_bal.get('unfrozen')
-            #                         unfroze_sum_dep = order_value - value_bal.get('frozen')
-            #                         result = await crud_balance("unfrozen",
-            #                                                     {'user_id': payload.get('user_id'), 'value': unfroze_sum_bal})
-            #                         if result["Success"]:
-            #                             result = await crud_deposit("unfrozen",
-            #                                                         {'user_id': payload.get('user_id'),
-            #                                                          'value': unfroze_sum_dep})
-            #                             if result["Success"]:
-            #                                 result = await insert_balance_history(payload_history)
-            #                                 if result["Success"]:
-            #                                     return {"Success": True, "data": result['data'] + ". Сумма " + str(
-            #                                         order_value) + " USDT разблокирована"}
-            #                                 else:
-            #                                     return {"Success": False,
-            #                                             "data": result['data'] + ". Сумма не разблокирована"}
-            #                             else:
-            #                                 return {"Success": False, "data": result[
-            #                                                                       'data'] + ". Не удалось разморозить депозит. Обратитесь к администратору"}
-            #                         else:
-            #                             return {"Success": False, "data": result[
-            #                                                                   'data'] + ". Не удалось разморозить баланс. Обратитесь к администратору"}
-            #                 elif new_status_notify == 3: #если автоматом оплачено
-            #                     string = "SELECT * from pay_orders where id = '" + str(order_id) \
-            #                              + "' and pay_id = 1 and pay_notify_order_types_id = 1"
-            #                     cur.execute(string)
-            #                     data = cur.fetchone()
-            #                     print(data)
-            #                     if data:
-            #                         transfer = {
-            #                             'user_id_in': data.get('user_pay'),
-            #                             'user_id_out': data.get('user_id'),
-            #                             'value': data.get('value')
-            #                         }
-            #                         print("transfer", transfer)
-            #                         send = await crud_transfer("payin", transfer)
-            #                         if send["Success"]:
-            #                             return {"Success": True, "data": "Средства отправлены мерчанту"}
-            #                         else:
-            #                             return {"Success": True, "data": "Средства не отправлены"}
-            #                 else:
-            #                     return {"Success": True, "data": "тест. статус изменен"}
-            #             else:
-            #                 return {"Success": False, "data": "Не достаточно средств на балансе. Обратитесь к администратору"}
-            #         else:
-            #             return {"Success": False, "data": "Не достаточно средств. Обратитесь к администратору"}
-            #     else:
-            #         return {"Success": False,
-            #                 "data": "Не возможно выполнить операции с депозитом"}
-            # else:
-            #     return {"Success": False,
-            #             "data": "Не возможно выполнить операции с балансом"}
-
 
 async def insert_balance_history(payload):
     with cpy.connect(**config.config) as cnx:
@@ -766,3 +712,18 @@ async def payout_reqs(payload):
                 return {"Success": True, "data": data}
             else:
                 return {"Success": False, "data": "Не удалось найти реквизиты"}
+
+
+async def get_trader_bal(user_id):
+    with cpy.connect(**config.config) as cnx:
+        with cnx.cursor(dictionary=True) as cur:
+            string_bal = "select value from pay_balance where user_id = " + str(user_id)
+            cur.execute(string_bal)
+            data_bal = cur.fetchone()
+            bal = float(data_bal.get('value', 0))
+            string_dep = "select value from pay_deposit where user_id = " + str(user_id)
+            cur.execute(string_dep)
+            data_dep = cur.fetchone()
+            dep = float(data_dep.get('value', 0))
+            all_bal = bal + dep
+            return all_bal

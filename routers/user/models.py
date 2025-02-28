@@ -22,6 +22,7 @@ class User(BaseModel):
     app_id: int | None = None
     api_key: str | None = None
     twofa_status: int | None = None
+    telegram_connected: int | None = None
 
 
 class JwtTokenSchema(BaseModel):

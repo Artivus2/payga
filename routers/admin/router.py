@@ -20,7 +20,7 @@ from routers.admin.controller import (
     set_users_any,
     check_order_by_id_payin,
     check_order_by_id_payout,
-    confirm_deposit_to_balance,
+    #confirm_deposit_to_balance,
     confirm_balance_to_network,
     confirm_bal_or_dep_funds,
     get_active_traders,
@@ -345,20 +345,20 @@ async def check_order_payout(request: orders_models.Orders):
     return response
 
 
-@router.post("/confirm-deposit-withdrawals")
-async def check_out_deposit(request: actives_models.DepositHistory):
-    """
-    подтверждаем вывод депозита на баланс
-    :param request:
-    :return:
-    """
-    response = await confirm_deposit_to_balance(request)
-    if not response['Success']:
-        raise HTTPException(
-            status_code=400,
-            detail=response
-        )
-    return response
+# @router.post("/confirm-deposit-withdrawals")
+# async def check_out_deposit(request: actives_models.DepositHistory):
+#     """
+#     подтверждаем вывод депозита на баланс
+#     :param request:
+#     :return:
+#     """
+#     response = await confirm_deposit_to_balance(request)
+#     if not response['Success']:
+#         raise HTTPException(
+#             status_code=400,
+#             detail=response
+#         )
+#     return response
 
 
 @router.post("/confirm-balance-withdrawals")
@@ -428,23 +428,27 @@ async def store(id: int = Form(...), image: UploadFile = File(...)):
 
         return response
 
-    @router.post("/change-png-admin-banks")
-    async def store(id: int = Form(...), image: UploadFile = File(...)):
-        """
-        изменение png у админа
-        :param id:
-        :param image:
-        :return:
-        """
-        file_location = f"files/{image.filename}"
-        with open(file_location, "wb+") as file_object:
-            shutil.copyfileobj(image.file, file_object)
-            response = await set_admin_banks_png(id, image.filename)
-            if not response['Success']:
-                raise HTTPException(
-                    status_code=400,
-                    detail=response
-                )
 
-            return response
+
+@router.post("/change-png-admin-banks")
+async def store(id: int = Form(...), image: UploadFile = File(...)):
+    """
+    изменение png у админа
+    :param id:
+    :param image:
+    :return:
+    """
+    file_location = f"files/{image.filename}"
+    with open(file_location, "wb+") as file_object:
+        shutil.copyfileobj(image.file, file_object)
+        response = await set_admin_banks_png(id, image.filename)
+        if not response['Success']:
+            raise HTTPException(
+                status_code=400,
+                detail=response
+            )
+
+        return response
+
+
 

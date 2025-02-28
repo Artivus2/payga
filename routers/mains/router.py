@@ -716,7 +716,7 @@ async def get_reqs_urls(id: int):
         )
     filename = response["data"]
     print(filename)
-    if response["data"].endswith((".jpg", ".jpeg", ".png", ".gif")):
+    if response["data"].endswith((".jpg", ".jpeg", ".png", ".gif", ".svg")):
         #file_path = os.path.join("\\files", filename)
         file_path = os.path.join("/files", filename)
         #image_url = f"c:\\projects\\payga{file_path}" #wtest

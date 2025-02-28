@@ -1,9 +1,7 @@
 import datetime
-
 import mysql.connector as cpy
-from sqlalchemy.sql.functions import current_time
-
 import config
+from routers.notifications.controller import send_tg_messages_by_id
 from routers.withdraws.controller import get_wallet, get_admin_balance, get_wallet_balance
 from routers.withdraws.router import get_wallet_balances
 
@@ -63,7 +61,7 @@ async def crud_balance_percent(crud, payload):  # todo -> admin
                 cur.execute(string)
                 cnx.commit()
                 if cur.rowcount > 0:
-                    return {"Success": True, "data": "Успешно изменен"}
+                    return {"Success": True, "data": "Успешно изменен процент"}
                 else:
                     return {"Success": False, "data": "Не удалось изменить"}
             if crud == 'remove':
@@ -209,7 +207,7 @@ async def crud_balance(crud, payload):  # todo -> admin
                     return {"Success": False, "data": "У вас уже есть необработанные заявки на вывод"}
 
             if crud == 'frozen':
-
+                print("проверка баланса")
                 user_id = payload.get('user_id')
                 value = float(payload.get('value'))
                 string0 = "SELECT value, frozen FROM pay_balance where user_id = " + str(user_id)
@@ -219,12 +217,13 @@ async def crud_balance(crud, payload):  # todo -> admin
 
                     current_value = float(data0.get('value', 0))
                     current_frozen = float(data0.get('frozen', 0))
-                    if current_value > value:
+                    if current_value >= value:
                         string = "UPDATE pay_balance set value = '" + str(current_value - value) + \
                                  "', frozen = '" + str(current_frozen + value) + \
-                                 "' where user_id = " + str(user_id)
+                                 "', date = UTC_TIMESTAMP() where user_id = " + str(user_id)
                         cur.execute(string)
                         cnx.commit()
+                        print(string)
                         if cur.rowcount > 0:
                             return {"Success": True, "data": "Средства баланса заморожены: " + str(value) + " USDT"}
                         else:
@@ -453,34 +452,32 @@ async def crud_deposit(crud, payload):  # todo -> admin
                     cnx.close()
                     return {"Success": False, "data": "Не удалось изменить тип"}
             if crud == 'frozen':
+                value = float(payload.get('value'))
+                user_id = payload.get('user_id')
                 string0 = "SELECT value, frozen FROM pay_deposit where baldep_status_id = 1 and " \
-                                          "baldep_types_id = 1 and user_id = " + str(payload.user_id)
+                                          "baldep_types_id = 1 and user_id = " + str(user_id)
                 cur.execute(string0)
                 data0 = cur.fetchone()
                 if data0:
                     current_value = float(data0.get('value')) #value получаем
                     current_frozen = float(data0.get('frozen'))
-                    if payload.value is None:
-                        payload.value = 0
-                    if payload.frozen is None:
-                        payload.frozen = 0
-                    if current_frozen == 0:
-                        if current_value > 0 and current_value >= payload.frozen and (current_frozen + payload.frozen) >= 0:
-                            string = "UPDATE pay_deposit set value = '" + str(current_value - payload.value) + \
-                                     "', frozen = '" + str(current_frozen + payload.value) + \
-                                     "' where user_id = " + str(payload.user_id)
+                    #if current_frozen == 0:
+                    if current_value >= value >= 0:
+                        string = "UPDATE pay_deposit set value = '" + str(current_value - value) + \
+                                 "', frozen = '" + str(current_frozen + value) + \
+                                 "' where user_id = " + str(user_id)
 
-                            cur.execute(string)
-                            cnx.commit()
-                            cnx.close()
-                            if cur.rowcount > 0:
-                                return {"Success": True, "data": "Изменены доступные средства депозита"}
-                            else:
-                                return {"Success": False, "data": "Не удалось изменить доступные средства депозита"}
+                        cur.execute(string)
+                        cnx.commit()
+                        cnx.close()
+                        if cur.rowcount > 0:
+                            return {"Success": True, "data": "Изменены доступные средства депозита"}
                         else:
-                            return {"Success": False, "data": "Недостаточно средств депозита"}
+                            return {"Success": False, "data": "Не удалось изменить доступные средства депозита"}
                     else:
-                        return {"Success": False, "data": "У вас уже есть необработанные заявки на вывод"}
+                        return {"Success": False, "data": "Недостаточно средств депозита"}
+                    # else:
+                    #     return {"Success": False, "data": "У вас уже есть необработанные заявки на вывод"}
                 else:
                     return {"Success": False, "data": "Депозит не найден или заблокирован"}
             if crud == 'unfrozen':
@@ -516,64 +513,74 @@ async def crud_deposit(crud, payload):  # todo -> admin
                           "baldep_types_id = 1 and user_id = " + str(payload.user_id)
                 cur.execute(string0)
                 data0 = cur.fetchone()
-                if data0:
+                check_balance = "SELECT value from pay_balance where baldep_status_id = 1 and baldep_types_id = 1 and " \
+                                "user_id = " + str(payload.user_id)
+                cur.execute(check_balance)
+                data_bal = cur.fetchone()
+                if data0 and data_bal:
                     current_value = float(data0.get('value'))  # value получаем
-                    current_withdrawals = float(data0.get('withdrawals'))
-                    if payload.value is None:
-                        payload.value = 0
-                    if current_withdrawals == 0:
-                        if current_value >= payload.value:
-                            string = "UPDATE pay_deposit set value = '" + str(round(current_value - payload.value, 2)) + \
-                                     "', withdrawals = '" + str(round(current_withdrawals + payload.value, 2)) + \
-                                     "' where user_id = " + str(payload.user_id)
-                            cur.execute(string)
-                            cnx.commit()
-                            if cur.rowcount > 0:
-                                return {"Success": True,
-                                        "data": "Заявка на вывод средств с депозита одобрена. Ожидайте подтверждения."}
-                            else:
-                                return {"Success": False, "data": "Не удалось изменить доступные средства депозита"}
+                    #current_withdrawals = float(data0.get('withdrawals'))
+                    balance_value = float(data_bal.get('value'))
+
+                    if current_value >= payload.value:
+                        #to do transaction
+                        string = "UPDATE pay_deposit set value = '" + str(round(current_value - payload.value, 2)) + \
+                                 "' where user_id = " + str(payload.user_id)
+                        cur.execute(string)
+                        cnx.commit()
+                        string_bal = "UPDATE pay_balance set value = '" + str(round(balance_value + payload.value, 2)) + \
+                                 "' where user_id = " + str(payload.user_id)
+                        cur.execute(string_bal)
+                        cnx.commit()
+
+                        if cur.rowcount > 0:
+                            return {"Success": True,
+                                    "data": "Заявка на вывод средств с депозита одобрена. Ожидайте подтверждения."}
                         else:
-                            return {"Success": False, "data": "Недостаточно средств депозита"}
+                            return {"Success": False, "data": "Не удалось изменить доступные средства депозита"}
                     else:
-                        return {"Success": False, "data": "У вас уже есть необработанные заявки на вывод"}
+                        return {"Success": False, "data": "Недостаточно средств депозита"}
                 else:
-                    return {"Success": False, "data": "Депозит не найден или заблокирован"}
+                    return {"Success": False, "data": "Счет баланса не найден или заблокирован. обратитесь к администратору"}
 
 
 async def dep_withdrawal_check(payload):
     with cpy.connect(**config.config) as cnx:
         with cnx.cursor(dictionary=True) as cur:
-            history_check = "select * from pay_deposit_history where status_id in (3,6) " \
-                            "and user_id = " + str(payload.user_id)
-            cur.execute(history_check)
-            data0 = cur.fetchall()
-            if not data0:
-                date_check_from_balance = "SELECT date FROM pay_balance_history where " \
-                                          "user_id = '" + str(payload.user_id) + "' and " \
-                                          "date < DATE_ADD(UTC_TIMESTAMP(), INTERVAL -1 month)"
-                cur.execute(date_check_from_balance)
-                data = cur.fetchall()
-                if data:
-                    return {"Success": False, "data": "Вы не можете выводить с депозита не прошел срок 1 месяц"}
-                else:
-                    result = await crud_deposit("withdrawals", payload)
-                    if result["Success"]:
-                        insert_string = "INSERT into pay_deposit_history (user_id, date, " \
-                                        "balordep, value, status_id, address_id) VALUES ('" + str(payload.user_id) \
-                                        + "', UTC_TIMESTAMP(), 1, '" + str(payload.value) + "', 3, 0)"
-                        cur.execute(insert_string)
-                        cnx.commit()
-                        if cur.rowcount > 0:
-                            return {"Success": True, "data":
-                                result["data"] + ". Вывод с депозита будет подтвержден администратором. Ожидайте."}
-                        else:
-                            return {"Success": False, "data":
-                                result["data"] + ". Вывод не может быть осуществлен. Обратитесь к администратору"}
-                    return {"Success": False, "data":
-                        result["data"] + ". Вывод не может быть осуществлен. Обратитесь к администратору"}
+            # history_check = "select * from pay_deposit_history " \
+            #                 " user_id = " + str(payload.user_id)
+            # cur.execute(history_check)
+            # data0 = cur.fetchall()
+            # if not data0:
+            date_check_from_balance = "SELECT date FROM pay_balance_history where " \
+                                      "user_id = '" + str(payload.user_id) + "' and " \
+                                      "date < DATE_ADD(UTC_TIMESTAMP(), INTERVAL -1 month)"
+            cur.execute(date_check_from_balance)
+            data = cur.fetchall()
+            if data:
+                return {"Success": False, "data": "Вы не можете выводить с депозита не прошел срок 1 месяц"}
             else:
-                return {"Success": False, "data": "Есть не обработаные заявки на вывод. Обратитесь к администратору"}
+                result = await crud_deposit("withdrawals", payload)
+                if result["Success"]:
+                    insert_string = "INSERT into pay_deposit_history (user_id, date, " \
+                                    "balordep, value, status_id, address) VALUES ('" + str(payload.user_id) \
+                                    + "', UTC_TIMESTAMP(), 1, '" + str(payload.value) + "', 1, 'to balance')"
+                    cur.execute(insert_string)
+                    cnx.commit()
+                    if cur.rowcount > 0:
+                        message = str(result["data"]) + ". Вывод произведен"
+                        await send_tg_messages_by_id(payload.user_id, message)
+                        return {"Success": True, "data":
+                            result["data"] + ". Вывод произведен. Ожидайте."}
+                    else:
+                        message = str(result["data"]) + ". Вывод не может быть осуществлен. Обратитесь к администратору"
+                        await send_tg_messages_by_id(payload.user_id, message)
+                        return {"Success": False, "data": message}
+                else:
+                    message = str(result["data"]) + ". Вывод с депозита не может быть осуществлен. Обратитесь к администратору"
+                    await send_tg_messages_by_id(payload.user_id, message)
+                    return {"Success": False, "data": message}
+
 
 
 
@@ -582,7 +589,7 @@ async def bal_withdrawal_check(payload):
     with cpy.connect(**config.config) as cnx:
         with cnx.cursor(dictionary=True) as cur:
 
-            history_check = "select * from pay_deposit_history where status_id in (3,6) " \
+            history_check = "select * from pay_deposit_history where status_id in (3) " \
                             "and user_id = " + str(payload.user_id)
             cur.execute(history_check)
             data0 = cur.fetchall()
@@ -602,15 +609,25 @@ async def bal_withdrawal_check(payload):
                         cur.execute(insert_string)
                         cnx.commit()
                         if cur.rowcount > 0:
-                            return {"Success": True, "data": result['data'] + ". Ожидайте подтверждения администратором."}
+                            message = str(result['data']) + ". Ожидайте подтверждения администратором."
+                            await send_tg_messages_by_id(payload.user_id, message)
+                            return {"Success": True, "data": message}
                         else:
-                            return {"Success": False, "data": result['data'] + ". Не выполнено."}
+                            message = str(result['data']) + ". Не выполнено."
+                            await send_tg_messages_by_id(payload.user_id, message)
+                            return {"Success": False, "data": message}
                     else:
-                        return {"Success": False, "data": result['data'] + ". Операция не выполнена."}
+                        message = str(result['data']) + ". Операция не выполнена."
+                        await send_tg_messages_by_id(payload.user_id, message)
+                        return {"Success": False, "data": message}
                 else:
-                    return {"Success": False, "data": "Есть не обработаные остатки на счету для вывода. Обратитесь к администратору"}
+                    message =  "Есть не обработаные остатки на счету для вывода. Обратитесь к администратору"
+                    await send_tg_messages_by_id(payload.user_id, message)
+                    return {"Success": False, "data": message}
             else:
-                return {"Success": False, "data": "Есть не обработаные заявки на вывод. Обратитесь к администратору"}
+                message = "Есть не обработаные заявки на вывод. Обратитесь к администратору"
+                await send_tg_messages_by_id(payload.user_id, message)
+                return {"Success": False, "data": message}
 
 
 
@@ -645,18 +662,30 @@ async def bal_refunds_check(payload):
                             cur.execute(insert_string)
                             cnx.commit()
                             if cur.rowcount > 0:
+                                message = "Ожидайте подтверждение пополнения администратором."
+                                await send_tg_messages_by_id(payload.user_id, message)
                                 return {"Success": True,
-                                        "data": "Ожидайте подтверждение пополнения администратором."}
+                                        "data": message}
                             else:
-                                return {"Success": False, "data": "Не удалось создать заявку на ввод средств"}
+                                message = "Не удалось создать заявку на ввод средств"
+                                await send_tg_messages_by_id(payload.user_id, message)
+                                return {"Success": False, "data": message}
                         else:
-                            return {"Success": False, "data": "Операция не может быть выполнена"}
+                            message = "Операция не может быть выполнена"
+                            await send_tg_messages_by_id(payload.user_id, message)
+                            return {"Success": False, "data": message}
                     else:
-                        return {"Success": False, "data": "У вас есть не обработанные заявки на ввод / вывод"}
+                        message = "У вас есть не обработанные заявки на ввод / вывод"
+                        await send_tg_messages_by_id(payload.user_id, message)
+                        return {"Success": False, "data": message}
                 else:
-                    return {"Success": False, "data": "Не установлен лимит депозита. Обратитесь к администратрору"}
+                    message = "Не установлен лимит депозита. Обратитесь к администратрору"
+                    await send_tg_messages_by_id(payload.user_id, message)
+                    return {"Success": False, "data": message}
             else:
-                return {"Success": False, "data": "Баланс не найден. Обратитесь к администратрору"}
+                message = "Баланс не найден. Обратитесь к администратрору"
+                await send_tg_messages_by_id(payload.user_id, message)
+                return {"Success": False, "data": message}
 
 
 
@@ -914,12 +943,12 @@ async def crud_transfer(crud, payload):
                         cur.execute(string_bal)
                         cnx.commit()
                         if cur.rowcount > 0:
-                            return {"Success": True, "data": "Средтва разблокированы админисраттором"}
+                            return {"Success": True, "data": "Средтва разблокированы администратором"}
                         else:
                             return {"Success": False, "data": "Не удалось завершить разблокировку средств"}
                     else:
                         string_bal = "UPDATE pay_balance SET value = " + str(current_value + current_frozen) \
-                                  + ", frozen = "+str(current_frozen-current_frozen)+" where user_id = " + str(user_out)
+                                  + ", frozen = 0, date = UTC_TIMESTAMP() where user_id = " + str(user_out)
                         cur.execute(string_bal)
                         cnx.commit()
                         if cur.rowcount > 0:
@@ -935,7 +964,7 @@ async def crud_transfer(crud, payload):
                                 cur.execute(string_bal)
                                 cnx.commit()
                                 if cur.rowcount > 0:
-                                    return {"Success": True, "data": "Средтва разблокированы админисраттором"}
+                                    return {"Success": True, "data": "Средтва разблокированы администратором"}
                                 else:
                                     return {"Success": False, "data": "Не удалось завершить разблокировку средств"}
                             else:
@@ -946,47 +975,110 @@ async def crud_transfer(crud, payload):
                     return {"Success": False, "data": "Пользователь не найден"}
 
             if crud == "payin":
-                frozen = payload.get('value')
+                value_out = float(payload.get('value'))
                 user_out = payload.get('user_id_out')
                 user_in = payload.get('user_id_in')
+
                 if user_in > 0 and user_out > 0:
-                    string1 = "SELECT value FROM pay_balance where user_id = " + str(user_in)
+                    string0 = "SELECT value FROM pay_balance where user_id = " + str(user_in)
+                    cur.execute(string0)
+                    data0 = cur.fetchone()
+                    value_in = float(data0.get('value',0)) #баланс получателя
+                    string1 = "SELECT frozen FROM pay_balance where user_id = " + str(user_out)
                     cur.execute(string1)
                     data1 = cur.fetchone()
-                    value_in = float(data1.get('value'))
-                    string2 = "SELECT frozen FROM pay_balance where user_id = " + str(user_out)
+                    frozen_trader_balance = float(data1.get('frozen', 0)) #заморожено у трейдера на балике
+                    string2 = "SELECT frozen FROM pay_deposit where user_id = " + str(user_out)
                     cur.execute(string2)
                     data2 = cur.fetchone()
-                    value_from = float(data2.get('frozen', 0))
-                    if float(value_from) >= frozen:
-                        # todo transaction multi
-                        string3 = "UPDATE pay_balance SET value = " + str(value_in + frozen) \
+                    frozen_trader_deposit = float(data2.get('frozen', 0)) #заморожено у трейдера на deposite
+                    # todo transaction
+                    if value_out <= frozen_trader_balance:
+
+                        string4 = "UPDATE pay_balance SET frozen = '" + str(frozen_trader_balance - value_out) \
+                                  + "' where user_id = " + str(user_out)
+                        cur.execute(string4)
+                        cnx.commit()
+                        string5 = "UPDATE pay_balance SET value = " + str(value_in + value_out) \
                                   + " where user_id = " + str(user_in)
-                        cur.execute(string3)
+                        cur.execute(string5)
+                        cnx.commit()
+                    else:
+                        value_out_dep = value_out - frozen_trader_balance
+                        string4 = "UPDATE pay_balance SET frozen = 0, date = UTC_TIMESTAMP() where user_id = " + str(user_out)
+                        cur.execute(string4)
+                        cnx.commit()
+                        string5 = "UPDATE pay_deposit SET frozen = "+str(frozen_trader_deposit - value_out_dep)+" where user_id = " + str(user_out)
+                        cur.execute(string5)
+                        cnx.commit()
+                        string6 = "UPDATE pay_balance SET value = " + str(value_in + value_out) \
+                                  + " where user_id = " + str(user_in)
+                        cur.execute(string6)
+                        cnx.commit()
+
+                        data_string = "INSERT INTO pay_transfer_history (user_id_in, user_id_out, value, status, date) " \
+                                      "VALUES ('" + str(user_in) + "','" + str(user_out) + \
+                                      "','" + str(value_out) + "','1', UTC_TIMESTAMP())"
+                        cur.execute(data_string)
                         cnx.commit()
                         if cur.rowcount > 0:
-                            string4 = "UPDATE pay_balance SET frozen = " + str(value_from - frozen) \
-                                      + " where user_id = " + str(user_out)
-                            cur.execute(string4)
-                            cnx.commit()
-                            if cur.rowcount > 0:
-                                data_string = "INSERT INTO pay_transfer_history (user_id_in, user_id_out, value, status, date) " \
-                                              "VALUES ('" + str(user_in) + "','" + str(user_out) + \
-                                              "','" + str(frozen) + "','1', UTC_TIMESTAMP())"
-                                cur.execute(data_string)
-                                cnx.commit()
-                                if cur.rowcount > 0:
-                                    return {"Success": True, "data": "Перевод успешно проведен"}
-                                else:
-                                    return {"Success": False, "data": "Не удалось совершить транзакцию перевода"}
-                            else:
-                                return {"Success": False, "data": "Не удалось списать с баланса gjkexftnzk"}
+                            return {"Success": True, "data": "Перевод успешно проведен"}
                         else:
-                            return {"Success": False, "data": "Не удалось списать с баланса отправителя"}
-                    else:
-                        return {"Success": False, "data": "Недостаточно баланса для совершения операции"}
+                            return {"Success": False, "data": "Не удалось совершить транзакцию перевода"}
                 else:
-                    return {"Success": False, "data": "Выбранные пользователи не найдены"}
+                    return {"Success": False, "data": "Пользователь не найден"}
+            if crud == "autopayin":
+                value_out = float(payload.get('value'))
+                user_out = payload.get('user_id_out')
+                user_in = payload.get('user_id_in')
+
+                if user_in > 0 and user_out > 0:
+                    string0 = "SELECT value FROM pay_balance where user_id = " + str(user_in)
+                    cur.execute(string0)
+                    data0 = cur.fetchone()
+                    value_in = float(data0.get('value',0)) #баланс получателя
+                    string1 = "SELECT value FROM pay_balance where user_id = " + str(user_out)
+                    cur.execute(string1)
+                    data1 = cur.fetchone()
+                    value_trader_balance = float(data1.get('value', 0)) #сразу списываем у трейдера на балике
+                    string2 = "SELECT value FROM pay_deposit where user_id = " + str(user_out)
+                    cur.execute(string2)
+                    data2 = cur.fetchone()
+                    value_trader_deposit = float(data2.get('value', 0)) #сразу списываем у трейдера на deposite
+                    # todo transaction
+                    if value_out <= value_trader_balance:
+
+                        string4 = "UPDATE pay_balance SET value = '" + str(value_trader_balance - value_out) \
+                                  + "' where user_id = " + str(user_out)
+                        cur.execute(string4)
+                        cnx.commit()
+                    else:
+                        value_out_dep = value_out - value_trader_balance
+                        string4 = "UPDATE pay_balance SET value = 0, date = UTC_TIMESTAMP() where user_id = " + str(user_out)
+                        cur.execute(string4)
+                        cnx.commit()
+                        string5 = "UPDATE pay_deposit SET value = "+str(value_trader_deposit - value_out_dep)+" where user_id = " + str(user_out)
+                        cur.execute(string5)
+                        cnx.commit()
+                        string6 = "UPDATE pay_balance SET value = " + str(value_in + value_out) \
+                                  + " where user_id = " + str(user_in)
+                        cur.execute(string6)
+                        cnx.commit()
+
+                        data_string = "INSERT INTO pay_transfer_history (user_id_in, user_id_out, value, status, date) " \
+                                      "VALUES ('" + str(user_in) + "','" + str(user_out) + \
+                                      "','" + str(value_out) + "','1', UTC_TIMESTAMP())"
+                        cur.execute(data_string)
+                        cnx.commit()
+                        if cur.rowcount > 0:
+                            return {"Success": True, "data": "Перевод успешно проведен"}
+                        else:
+                            return {"Success": False, "data": "Не удалось совершить транзакцию перевода"}
+                else:
+                    return {"Success": False, "data": "Пользователь не найден"}
+
+
+
             if crud == "payout":
                 frozen = payload.get('value')
                 user_out = payload.get('user_id_out')
@@ -1022,7 +1114,7 @@ async def crud_transfer(crud, payload):
                                 else:
                                     return {"Success": False, "data": "Не удалось совершить транзакцию перевода"}
                             else:
-                                return {"Success": False, "data": "Не удалось списать с баланса gjkexftnzk"}
+                                return {"Success": False, "data": "Не удалось списать с баланса"}
                         else:
                             return {"Success": False, "data": "Не удалось списать с баланса отправителя"}
                     else:

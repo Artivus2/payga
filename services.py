@@ -288,20 +288,19 @@ def get_payouts():
                     #value = paid_amount - fee
                     user_id = i['user_id']
                     if status == 'PROCESSING':
-                        confirm_withdrawals_funds({'user_id': user_id, 'payment_status': status, 'id': id})
+                        confirm_withdrawals_funds({'user_id': user_id, 'payment_status': status, 'id': id, 'value': paid_amount})
                         print('В обработке')
                     if status == 'SENDING':
-                        confirm_withdrawals_funds({'user_id': user_id, 'payment_status': status, 'id': id})
+                        confirm_withdrawals_funds({'user_id': user_id, 'payment_status': status, 'id': id, 'value': paid_amount})
                         print('отправляется')
                     if status == 'REJECTED':
-                        confirm_withdrawals_funds({'user_id': user_id, 'payment_status': status, 'id': id})
+                        confirm_withdrawals_funds({'user_id': user_id, 'payment_status': status, 'id': id, 'value': paid_amount})
 
                         print('Отказано')
                     #finished
-                    if status == 'finished':
+                    if status == 'FINISHED':
                         #отправили на адрес value - fee
-                        print(user_id, ":", status, ":", id)
-                        confirm_withdrawals_funds({'payment_status': status, 'id': id})
+                        confirm_withdrawals_funds({'user_id': user_id, 'payment_status': status, 'id': id, 'value': paid_amount})
             else:
                 print("нет исходящих заявок на вывод")
 
@@ -309,12 +308,47 @@ def get_payouts():
 def confirm_withdrawals_funds(payload):
     with cpy.connect(**config.config) as cnx:
         with cnx.cursor(dictionary=True) as cur:
-            #user_id = payload.get('user_id')
+            user_id = payload.get('user_id')
             status = payload.get('payment_status')
+            withdrawals = float(payload.get('value'))
             id = payload.get('id')
-            status_string = "UPDATE pay_history SET status = '"+str(status)+"' where id = " + str(id)
-            cur.execute(status_string)
-            cnx.commit()
+            if status == 'FINISHED':
+                select_string = "SELECT value from pay_balance where user_id = " + str(user_id)
+                cur.execute(select_string)
+                data0 = cur.fetchone()
+                if data0:
+                    value = float(data0.get('value'))
+                    update_balance = "UPDATE pay_balance set withdrawals = 0, value = '" + str(
+                    value - withdrawals) + "' where user_id = " + str(user_id)
+                    cur.execute(update_balance)
+                    cnx.commit()
+                    status_string = "UPDATE pay_history SET status = '"+str(status)+"' where id = " + str(id)
+                    cur.execute(status_string)
+                    cnx.commit()
+                else:
+                    status_string = "UPDATE pay_history SET status = 'REJECTED' where id = " + str(id)
+                    cur.execute(status_string)
+                    cnx.commit()
+            if status == 'REJECTED':
+                select_string = "SELECT value, withdrawals from pay_balance where user_id = " + str(user_id)
+                cur.execute(select_string)
+                data0 = cur.fetchone()
+                if data0:
+                    value = float(data0.get('value'))
+                    withdrawals = float(data0.get('value'))
+                    update_balance = "UPDATE pay_balance set withdrawals = 0, value = '" + str(
+                        value + withdrawals) + "' where user_id = " + str(user_id)
+                    cur.execute(update_balance)
+                    cnx.commit()
+                    status_string = "UPDATE pay_history SET status = 'REJECTED' where id = " + str(id)
+                    cur.execute(status_string)
+                    cnx.commit()
+                else:
+                    status_string = "UPDATE pay_history SET status = 'REJECTED' where id = " + str(id)
+                    cur.execute(status_string)
+                    cnx.commit()
+
+
 
 
 

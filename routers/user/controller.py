@@ -15,6 +15,9 @@ from fastapi.security import OAuth2PasswordBearer
 from pydantic import ValidationError
 from routers.admin.utils import create_random_key, generate_code, send_mail
 import telebot
+
+from routers.notifications.controller import send_tg_messages_by_id
+
 botgreenavipay = telebot.TeleBot(config.telegram_api)
 
 
@@ -154,7 +157,7 @@ async def get_profile_by_id(user_id):
         with cnx.cursor(dictionary=True) as cur:
             string = "SELECT user.id, login, role_id, email, phone, telegram, twofa_status, created_at as reg_date, telegram_connected, " \
                      "twofa_status, user.verify_status, verify_status.title as verify, user.banned as banned_status," \
-                     "banned_status.title as banned, is_active, user.chart_id, chart.symbol as chart, user.currency_id, " \
+                     "banned_status.title as banned, is_active, user.chart_id, chart.symbol as chart, user.currency_id, affiliate_invitation_code, " \
                      "currency.symbol as currency from user " \
                      "LEFT JOIN verify_status ON user.verify_status = verify_status.id " \
                      "LEFT JOIN banned_status ON user.banned = banned_status.id " \
@@ -212,7 +215,7 @@ async def set_user_active_onoff(payload):
                     cur.execute(string0)
                     data0 = cur.fetchall()
                     if data0:
-                        string1 = "SELECT * from pay_deposit where value > 0 and user_id = " + str(payload.user_id)
+                        string1 = "SELECT * from pay_deposit where value > 0  and user_id = " + str(payload.user_id)
                         cur.execute(string1)
                         data1 = cur.fetchall()
                         if data1:
@@ -236,28 +239,47 @@ async def set_user_active_onoff(payload):
                                             cur.execute(string)
                                             cnx.commit()
                                             if cur.rowcount > 0:
-                                                return {"Success": True, "data": "Активен. Можете принимать ордера"}
+                                                message = "Активен. Можете принимать ордера"
+                                                await send_tg_messages_by_id(payload.user_id, message)
+                                                message_to_admin = "Трейдер id: " + str(payload.user_id) + " может принимать ордера"
+                                                botgreenavipay.send_message(config.pay_main_group, message_to_admin)
+                                                return {"Success": True, "data": message}
                                             else:
                                                 return {"Success": False, "data": "Не активен"}
                                         else:
-                                            return {"Success": False, "data": "Отсутствует активный АПИ ключ"}
+                                            message = "Отсутствует активный АПИ ключ"
+                                            await send_tg_messages_by_id(payload.user_id, message)
+                                            return {"Success": False, "data": message}
                                     else:
-                                        return {"Success": False, "data": "Не выбраны банки для приема платежей"}
+                                        message = "Не выбраны банки для приема платежей"
+                                        await send_tg_messages_by_id(payload.user_id, message)
+                                        return {"Success": False, "data": message}
                                 else:
-                                    return {"Success": False, "data": "Не выбраны группы автоматизации"}
+                                    message = "Не выбраны группы автоматизации"
+                                    await send_tg_messages_by_id(payload.user_id, message)
+                                    return {"Success": False, "data": message}
                             else:
-                                return {"Success": False, "data": "Не заполнены реквизиты. Нет активных реквизитов"}
+                                message = "Не заполнены реквизиты. Нет активных реквизитов"
+                                await send_tg_messages_by_id(payload.user_id, message)
+                                return {"Success": False, "data": message}
                         else:
-                            return {"Success": False, "data": "Недостаточно средств на депозите"}
+                            message = "Недостаточно средств на депозите"
+                            await send_tg_messages_by_id(payload.user_id, message)
+                            return {"Success": False, "data": message}
                     else:
-                        return {"Success": False, "data": "Недостаточно средств на балансе"}
+                        message = "Недостаточно средств на балансе"
+                        await send_tg_messages_by_id(payload.user_id, message)
+                        return {"Success": False, "data": message}
                 else:
                     string = "UPDATE user SET is_active = " + str(payload.is_active) + " where id = " + str(payload.user_id)
                     cur.execute(string)
                     cnx.commit()
                     if cur.rowcount > 0:
-                        cnx.close()
-                        return {"Success": True, "data": "Не активен. Прием ордеров остановлен"}
+                        message = "Не активен. Прием ордеров остановлен"
+                        await send_tg_messages_by_id(payload.user_id, message)
+                        message_to_admin = "Трейдер id: " + str(payload.user_id) + " не активен"
+                        botgreenavipay.send_message(config.pay_main_group, message_to_admin)
+                        return {"Success": True, "data": message}
                     else:
                         cnx.close()
                         return {"Success": False, "data": "Не удалось выключить. Обратитесь к администратору"}

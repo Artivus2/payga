@@ -10,15 +10,6 @@ async def generate_uuid() -> str:
 
 async def get_course():
 
-    # api_url = "https://api.coinbase.com/v2/prices/USDT-RUB/spot"
-    # headers = {
-    #     'Content-Type': 'application/json'
-    # }
-    # response = requests.get(api_url, headers=headers)
-    # if response.status_code != 200:
-    #     raise HTTPException(status_code=response.status_code, detail=response.json())
-    # print(response.json())
-
     api_url = "https://www.cbr-xml-daily.ru/daily_json.js"
     headers = {
         'Content-Type': 'application/json'

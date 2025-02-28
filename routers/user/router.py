@@ -12,6 +12,7 @@ import telebot
 from fastapi import APIRouter, HTTPException, Cookie, Request, Response
 from routers.admin.controller import insert_new_user_banned
 from routers.admin.utils import get_hash, verify, create_access_token, send_mail
+from routers.orders.utils import get_course
 from routers.user.controller import (
     insert_generated_api_key,
     get_user_api_key,
@@ -471,4 +472,14 @@ async def c2fa(user_id: int):
     получить ключ 2fa
     """
     result = await get_two_fa_key(user_id)
+    return result
+
+
+
+@router.get("/get-usd-cource")
+async def get_usd_cource_from_cb():
+    """
+    курс USD к рублю с cbr.ru
+    """
+    result = await get_course()
     return result

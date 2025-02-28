@@ -2,6 +2,7 @@ import mysql.connector as cpy
 import config
 import requests
 from routers.admin.utils import create_random_key
+from routers.notifications.controller import send_tg_messages_by_id
 from routers.orders.utils import generate_uuid
 from fastapi import APIRouter, HTTPException, Depends, Body
 
@@ -95,6 +96,8 @@ async def create_or_update_shop(payload):
                 cur.execute(data_insert)
                 cnx.commit()
                 if cur.rowcount > 0:
+                    message = "Успешно обновлен магазин, uuid" + str(uuids)
+                    await send_tg_messages_by_id(payload.get('user_id'), message)
                     return {"Success": True, "data": "Успешно обновлен магазин"}
                 else:
                     return {"Success": False, "data": "магазин не обновлен"}
@@ -170,33 +173,20 @@ async def save_history_payout(payload):
                     cur.execute(history)
                     cnx.commit()
                     if cur.rowcount > 0:
+                        message = 'заявка на вывод сформирована: ' + str(payload.get('payout_id'))
+                        await send_tg_messages_by_id(payload.get('user_id'), message)
                         return {"Success": True, "data": payload.get('payout_id')}
                     else:
-                        return {"Success": False, "data": "Данных нет"}
+                        message = "Данных нет"
+                        await send_tg_messages_by_id(payload.get('user_id'), message)
+                        return {"Success": False, "data": message}
                 else:
-                    return {"Success": False, "data": "Заявка не найдена"}
+                    message = "Заявка не найдена"
+                    await send_tg_messages_by_id(payload.get('user_id'), message)
+                    return {"Success": False, "data": message}
             else:
-                return {"Success": False, "data": "Заявка не создана, включите 2фа верификацию"}
-
-
-# async def get_payment_status_by_uuid(payment_id):
-#     with cpy.connect(**config.config) as cnx:
-#         with cnx.cursor(dictionary=True) as cur:
-#             string = "SELECT * FROM pay_history where payment_id = '" + str(payment_id) + "'"
-#             cur.execute(string)
-#             data = cur.fetchone()
-#             if data:
-#                 url = f"{config.base_url_np}payment/{payment_id}"
-#                 headers = {
-#                     "x-api-key": config.api_key_np,
-#                     "Content-Type": "application/json"
-#                 }
-#                 response = requests.get(url, headers=headers)
-#                 if response.status_code != 200:
-#                     raise HTTPException(status_code=response.status_code, detail=response.json())
-#                 print(response.json())
-#                 return {"Success": True, "data": response.json()}
-#             else:
-#                 return {"Success": False, "data": "Данных нет"}
+                message = "Заявка не создана, включите 2фа верификацию"
+                await send_tg_messages_by_id(payload.get('user_id'), message)
+                return {"Success": False, "data": message}
 
 

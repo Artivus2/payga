@@ -1,17 +1,18 @@
 import datetime
 import json
+import os
 import re
 import shutil
 import sqlite3
-
-import routers.roles.models as roles_models
+from fastapi.responses import FileResponse
 import requests
 from fastapi import APIRouter, HTTPException, Depends, UploadFile, File
+from starlette.requests import Request
 import routers.api_trader.models as trader_models
 import routers.user.models as user_models
 import routers.admin.models as admin_models
 import config
-from starlette.requests import Request
+
 
 from routers.actives.controller import crud_balance
 from routers.admin.controller import (
@@ -28,12 +29,13 @@ from routers.admin.controller import (
 from routers.admin.utils import create_access_token, get_min_amount
 from routers.api_merchant.controller import save_history_payment, save_history_payout
 from routers.mains.controller import get_chart
+from routers.notifications.controller import send_tg_messages_by_id
 from routers.nowpayments.controller import get_jwt_token
 from routers.orders.controller import (
     create_order_for_user_payin,
     insert_docs,
     create_order_for_user_payout)
-from routers.orders.utils import generate_uuid
+from routers.orders.utils import generate_uuid, get_course
 
 router = APIRouter(prefix='/api/v1/trader',
                    tags=['Трейдер'],
@@ -117,8 +119,11 @@ async def create_payin_order_for_trader(request: Request):
     user_id = await get_user_from_api_key(api_key_from_merchant)
     req_id = string.get('req_id')
     get_trader_by_chosen_req = await get_trader_user_id(req_id)
+
+
     result_from_payment = {
         "req_id": req_id, #user_id_trader из reqs
+        "shop_uuid": string.get('shop_uuid'),
         "sum_fiat": string.get('sum_fiat'),
         "o_id": string.get('o_id'),
         'user_id_trader': get_trader_by_chosen_req, #user_trader
@@ -126,13 +131,14 @@ async def create_payin_order_for_trader(request: Request):
         'pay_id': 1, # payin,
         'docs_id': string.get('docs_id', 0)
     }
-
+    print(result_from_payment)
     response = await create_order_for_user_payin(result_from_payment)
     if not response['Success']:
         raise HTTPException(
             status_code=400,
             detail=response
         )
+
     return response
 
 
@@ -286,7 +292,7 @@ async def create_withdrawals_trader_from_balance(request: trader_models.CreatePa
     order_uuid = await generate_uuid()
     response = requests.post(url, headers=headers, data=json.dumps(payload))
     try:
-        id = response.json()['batch_withdrawal_id']
+        id = response.json()['id']
     except:
         id = 0
     if id == 0:
@@ -308,3 +314,8 @@ async def create_withdrawals_trader_from_balance(request: trader_models.CreatePa
         raise HTTPException(status_code=response.status_code, detail="Не удалось получить данные")
 
 
+@router.get("/apk-doc.jpg")
+def download_doc_file():
+    folder_path = r"files"
+    file_location = f'{folder_path}{os.sep}apk-doc.jpg'
+    return FileResponse(file_location, media_type='application/octet-stream', filename='apk-doc.jpg')

@@ -715,11 +715,26 @@ async def get_pay_refs_by_user(payload):
             if int(payload) == 0:
                 string = "SELECT * FROM pay_refs"
             else:
-                string = "SELECT * FROM pay_refs where user_id = " + str(payload)
+                string = "SELECT id, login, role_id, telegram FROM user where id in (SELECT referal_id FROM pay_refs where user_id = " + str(payload) +")"
             cur.execute(string)
             check = cur.fetchall()
+            all = []
+            for i in check:
+                result0 = {
+                    'id': i['id'],
+                    'login': i['login'],
+                    'role_id': i['role_id'],
+                    'telegram': i['telegram']
+                }
+                string1 = "SELECT id, login, role_id, telegram FROM user where id in (SELECT referal_id FROM pay_refs where user_id = " + str(
+                    i['id']) + ")"
+                cur.execute(string1)
+                check1 = cur.fetchall()
+                result0['referals'] = check1
+                all.append(result0)
+
             if check:
-                return {"Success": True, "data": check}
+                return {"Success": True, "data": all}
             else:
                 return {"Success": False, "data": "Рефералы не найдены"}
 

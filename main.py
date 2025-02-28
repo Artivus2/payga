@@ -19,6 +19,7 @@ from routers.api_merchant.router import router as merchant
 from routers.api_trader.router import router as trader
 from routers.api_operator.router import router as operator
 from routers.withdraws.router import router as withdraws
+from routers.notifications.router import router as notifications
 
 
 app = FastAPI()
@@ -55,6 +56,7 @@ app.include_router(router_roles)
 app.include_router(router_stats)
 app.include_router(nowpayments)
 app.include_router(withdraws)
+app.include_router(notifications)
 # и еще todo
 
 
